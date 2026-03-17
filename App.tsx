@@ -232,19 +232,19 @@ export default function App() {
   // Auto-load ticket when in ticket mode with CPF
   const ticketCpf = query.get('cpf');
   useEffect(() => {
-    if (isTicketMode && leads.length > 0 && ticketCpf) {
-      const lead = leads.find(l => l.cpf === ticketCpf);
-      if (lead) {
-        setCustomer({
-          name: lead.name,
-          email: lead.email || '',
-          phone: lead.phone || '',
-          city: lead.city || '',
-          cpf: lead.cpf
-        });
-        setShowSuccess(true);
-        setBarWidth('100%');
-      }
+    if (!isTicketMode || !ticketCpf || leads.length === 0) return;
+    
+    const lead = leads.find(l => l.cpf === ticketCpf);
+    if (lead) {
+      setCustomer({
+        name: lead.name,
+        email: lead.email || '',
+        phone: lead.phone || '',
+        city: lead.city || '',
+        cpf: lead.cpf
+      });
+      setShowSuccess(true);
+      setBarWidth('100%');
     }
   }, [isTicketMode, leads, ticketCpf]);
 
