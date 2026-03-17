@@ -170,7 +170,7 @@ export default function App() {
         thankYouButtonText: c.thank_you_button_text,
         thankYouButtonUrl: c.thank_you_button_url,
         thankYouImageUrl: c.thank_you_image_url,
-        variations: c.variations || []
+        variations: typeof c.variations === 'string' ? JSON.parse(c.variations) : (c.variations || [])
       }));
 
       setAllCheckouts(mappedCheckouts);
