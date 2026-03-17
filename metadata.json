@@ -1,0 +1,5 @@
+{
+  "name": "Checkout Vox Marketing Academy",
+  "description": "A professional and simple checkout form that captures customer data (CPF, Email, Phone) before redirecting to a Mercado Pago payment link.",
+  "requestFramePermissions": []
+}

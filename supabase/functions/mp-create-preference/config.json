@@ -1,0 +1,6 @@
+{
+  "name": "mp-create-preference",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "type": "module"
+}

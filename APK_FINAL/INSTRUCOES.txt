@@ -1,0 +1,7 @@
+Para instalar este aplicativo no seu celular Android:
+
+1. Transfira o arquivo "checkoutvox.apk" desta pasta para o seu celular (via cabo USB, Google Drive, WhatsApp ou e-mail).
+2. No celular, localize o arquivo e toque nele para instalar.
+3. Se aparecer um aviso de segurança, vá em Configurações e permita a instalação de "Fontes Desconhecidas" ou "Instalar apps desconhecidos" para o app que você está usando (gerenciador de arquivos, navegador, etc).
+4. Siga as instruções na tela e aguarde a conclusão.
+5. O aplicativo "checkoutvox" aparecerá na sua lista de apps.
