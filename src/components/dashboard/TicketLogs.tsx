@@ -29,10 +29,15 @@ export const TicketLogs: React.FC<TicketLogsProps> = ({
 
     const ticketLeadsList = useMemo(() => {
         return leads.filter(lead => {
-            // Access custom properties safely
-            const isTicketLead = lead.utmSource === 'Ticket_Link' ||
-                lead.utmSource === 'Direct_Registration' ||
-                lead.utmSource === 'Manual_Entry';
+            // Access custom properties safely - check both camelCase and snake_case
+            const utmSource = lead.utmSource || (lead as any).utm_source || '';
+            const source = lead.source || '';
+            const isTicketLead = utmSource === 'Ticket_Link' ||
+                utmSource === 'Direct_Registration' ||
+                utmSource === 'Manual_Entry' ||
+                source === 'manual' ||
+                utmSource === 'checkout' ||
+                lead.ticket_generated === true;
             const matchProduct = selectedTicketFilter === 'all' || lead.product_id === selectedTicketFilter;
             const matchTurma = selectedTicketTurmaFilter === 'all' || lead.turma === selectedTicketTurmaFilter;
 
