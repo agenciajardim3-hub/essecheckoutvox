@@ -458,6 +458,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             isSubmitting={isSubmitting}
                             onCancel={() => setSetupTab('list')}
                             allCheckouts={checkouts}
+                            leads={leads}
                         />
                     )}
 
