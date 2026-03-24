@@ -743,6 +743,7 @@ export default function App() {
       } else {
         setTimeout(() => {
           setBarWidth('100%');
+          setIsSubmitting(false);
         }, 1000);
       }
     } catch (err: any) {
