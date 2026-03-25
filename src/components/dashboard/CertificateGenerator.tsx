@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Input } from '../ui/Input';
-import { Printer, Loader2, CheckCircle, Upload, MessageCircle } from 'lucide-react';
+import { Printer, Loader2, CheckCircle, Upload, MessageCircle, Download } from 'lucide-react';
 import { AppConfig, Lead } from '../../types';
 
 interface CertificateGeneratorProps {
@@ -346,6 +346,263 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
     window.open(`https://wa.me/${prefix}${num}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
+  const handleOpenInNewTab = () => {
+    if (!certGenData.name || !certGenData.courseName) {
+      alert('Preencha o nome do aluno e do curso para gerar o certificado!');
+      return;
+    }
+
+    const certificateHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Certificado - ${certGenData.name}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Great+Vibes&display=swap');
+
+            body {
+              margin: 0;
+              padding: 20px;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              min-height: 100vh;
+              background: #f8fafc;
+              font-family: 'Montserrat', sans-serif;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+
+            .certificate-wrapper {
+              width: 1122px;
+              height: 794px;
+              background: white;
+              position: relative;
+              overflow: hidden;
+              box-sizing: border-box;
+              box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            }
+
+            .content {
+              position: relative;
+              z-index: 10;
+              padding: 50px 80px;
+              text-align: center;
+              height: 100%;
+              box-sizing: border-box;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+            }
+
+            .header {
+              margin-top: 20px;
+            }
+            .vox-title {
+              font-size: 72px;
+              font-weight: 900;
+              color: #4b5563;
+              margin: 0;
+              line-height: 1;
+              letter-spacing: 2px;
+            }
+            .vox-subtitle {
+              font-size: 14px;
+              font-weight: 700;
+              color: #0ea5e9;
+              letter-spacing: 8px;
+              margin-top: 5px;
+              margin-bottom: 30px;
+            }
+
+            .cert-title {
+              font-size: 28px;
+              font-weight: 700;
+              color: #6b7280;
+              margin: 20px 0;
+              letter-spacing: 2px;
+            }
+
+            .student-name {
+              font-size: 42px;
+              font-weight: 700;
+              color: #4b5563;
+              margin: 30px 0;
+              text-transform: uppercase;
+              letter-spacing: 4px;
+            }
+
+            .course-desc-bold {
+              font-size: 18px;
+              font-weight: 700;
+              color: #374151;
+              margin: 20px 0;
+            }
+
+            .course-desc-text {
+              font-size: 14px;
+              color: #6b7280;
+              margin: 20px 0;
+              line-height: 1.6;
+              max-width: 900px;
+            }
+
+            .footer {
+              margin-top: 40px;
+              display: flex;
+              justify-content: space-around;
+              align-items: flex-end;
+              width: 100%;
+            }
+
+            .signature-box {
+              text-align: center;
+              margin-right: 60px;
+              width: 300px;
+            }
+            .signature-img {
+              height: 80px;
+              margin-bottom: -10px;
+              object-fit: contain;
+            }
+            .signature-text {
+              font-family: 'Great Vibes', cursive;
+              font-size: 56px;
+              color: #000;
+              margin-bottom: -10px;
+              line-height: 1;
+            }
+            .signature-line {
+              width: 100%;
+              height: 2px;
+              background: #1e3a8a;
+              margin-top: 10px;
+            }
+
+            .controls {
+              position: fixed;
+              top: 20px;
+              right: 20px;
+              display: flex;
+              gap: 10px;
+              z-index: 1000;
+            }
+
+            .btn {
+              padding: 10px 20px;
+              border: none;
+              border-radius: 8px;
+              font-weight: 700;
+              cursor: pointer;
+              font-size: 14px;
+              transition: all 0.3s;
+            }
+
+            .btn-print {
+              background: #2563eb;
+              color: white;
+            }
+
+            .btn-print:hover {
+              background: #1d4ed8;
+            }
+
+            .btn-download {
+              background: #16a34a;
+              color: white;
+            }
+
+            .btn-download:hover {
+              background: #15803d;
+            }
+
+            .btn-close {
+              background: #ef4444;
+              color: white;
+            }
+
+            .btn-close:hover {
+              background: #dc2626;
+            }
+
+            @media print {
+              body { background: white; padding: 0; }
+              @page { size: landscape; margin: 0; }
+              .controls { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="controls">
+            <button class="btn btn-print" onclick="window.print()">🖨️ Imprimir</button>
+            <button class="btn btn-download" onclick="downloadPDF()">⬇️ Baixar PDF</button>
+            <button class="btn btn-close" onclick="window.close()">✕ Fechar</button>
+          </div>
+
+          <div class="certificate-wrapper">
+            <div class="content">
+              <div class="header">
+                ${certGenData.logoUrl ? `<img src="${certGenData.logoUrl}" style="height: 80px; margin-bottom: 20px; object-fit: contain;" />` : `<div class="vox-title">VOX</div><div class="vox-subtitle">MARKETING ACADEMY</div>`}
+              </div>
+
+              <div class="cert-title">CERTIFICADO DE CONCLUSÃO</div>
+
+              <div class="student-name">${certGenData.name || 'NOME'}</div>
+
+              <div class="course-desc-bold">
+                Completou com êxito o ${certGenData.courseName || 'Curso de Tráfego Pago - Meta Ads'}, com carga horária de ${certGenData.hours} horas.
+              </div>
+
+              <div class="course-desc-text">
+                Na Vox Marketing Academy, ministrado por ${certGenData.instructorName || 'Rodrigo Jardim'}, no dia ${certGenData.date}. Durante o curso, demonstrou dedicação e empenho exemplares, adquirindo habilidades valiosas em estratégias de tráfego pago. Parabéns pela conclusão bem-sucedida deste curso! Desejamos sucesso contínuo em suas futuras iniciativas e carreira profissional.
+              </div>
+
+              <div class="footer">
+                <div class="signature-box">
+                  ${certGenData.signatureUrl ? `<img src="${certGenData.signatureUrl}" class="signature-img" />` : `<div class="signature-text">${certGenData.instructorName || 'Rodrigo Jardim'}</div>`}
+                  <div class="signature-line"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <script>
+            function downloadPDF() {
+              const element = document.querySelector('.certificate-wrapper');
+              const fileName = 'Certificado_${certGenData.name.replace(/\\s+/g, '_')}.pdf';
+
+              // Use html2pdf library via CDN if available
+              const script = document.createElement('script');
+              script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+              script.onload = function() {
+                const opt = {
+                  margin: 10,
+                  filename: fileName,
+                  image: { type: 'jpeg', quality: 0.98 },
+                  html2canvas: { scale: 2 },
+                  jsPDF: { orientation: 'landscape', unit: 'mm', format: 'a4' }
+                };
+                html2pdf().set(opt).save().then(() => {
+                  // After download attempt, show print dialog as fallback
+                  console.log('PDF download iniciado');
+                });
+              };
+              document.head.appendChild(script);
+            }
+          </script>
+        </body>
+      </html>
+    `;
+
+    const newWindow = window.open('', '_blank');
+    if (newWindow) {
+      newWindow.document.write(certificateHtml);
+      newWindow.document.close();
+    }
+  };
+
   return (
     <div className="animate-in fade-in duration-500 flex flex-col lg:flex-row gap-10 pb-20">
       <div className="flex-1 max-w-md space-y-6">
@@ -488,6 +745,12 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
               className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
             >
               <Printer size={18} /> GERAR E IMPRIMIR
+            </button>
+            <button
+              onClick={handleOpenInNewTab}
+              className="w-full bg-purple-600 text-white py-4 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-purple-700 transition-all flex items-center justify-center gap-2"
+            >
+              <Download size={18} /> ABRIR PARA SALVAR/BAIXAR
             </button>
             <button
               onClick={handleWhatsApp}

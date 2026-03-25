@@ -1,8 +1,8 @@
 
-import React from 'react';
-import { Tag, Wand2, ImageIcon as ImageIconLucide, Loader2, Upload, ImageIcon, PieChart, BarChart3, ListChecks, Plus, Trash2, CheckCircle, PartyPopper, Webhook, Layers, Link as LinkIcon, Megaphone } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Tag, Wand2, ImageIcon as ImageIconLucide, Loader2, Upload, ImageIcon, PieChart, BarChart3, ListChecks, Plus, Trash2, CheckCircle, PartyPopper, Webhook, Layers, Link as LinkIcon, Megaphone, Users, DollarSign, TrendingUp } from 'lucide-react';
 import { Input } from '../ui/Input';
-import { AppConfig, ProductVariation } from '../../types';
+import { AppConfig, ProductVariation, Lead } from '../../types';
 
 interface ProductConfigProps {
     config: AppConfig;
@@ -13,6 +13,7 @@ interface ProductConfigProps {
     isSubmitting: boolean;
     onCancel: () => void;
     allCheckouts: AppConfig[];
+    leads?: Lead[];
 }
 
 export const ProductConfig: React.FC<ProductConfigProps> = ({
@@ -23,8 +24,23 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
     onSave,
     isSubmitting,
     onCancel,
-    allCheckouts
+    allCheckouts,
+    leads = []
 }) => {
+    // Calculate product statistics
+    const productStats = useMemo(() => {
+        const productLeads = leads.filter(l => l.product_id === config.id);
+        const paidLeads = productLeads.filter(l => l.status === 'Pago' || l.status === 'Aprovado');
+        const totalRevenue = paidLeads.reduce((sum, l) => sum + (l.paid_amount || 0), 0);
+
+        return {
+            total: productLeads.length,
+            paid: paidLeads.length,
+            pending: productLeads.filter(l => l.status !== 'Pago' && l.status !== 'Aprovado').length,
+            revenue: totalRevenue,
+            conversionRate: productLeads.length > 0 ? ((paidLeads.length / productLeads.length) * 100).toFixed(1) : '0'
+        };
+    }, [config.id, leads]);
 
     const generateAutoSlug = () => {
         const base = config.productName || 'checkout';
@@ -67,6 +83,31 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
                         </h2>
                         <p className="text-[10px] font-black uppercase text-gray-400 tracking-tighter mt-1">Configuração do Checkout</p>
                     </div>
+
+                    {/* Product Statistics */}
+                    {allCheckouts.some(p => p.id === config.id) && productStats.total > 0 && (
+                        <div className="mb-8 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-4 space-y-3">
+                            <p className="text-[9px] font-black uppercase text-blue-600 tracking-widest">Estatísticas</p>
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-bold text-gray-700 flex items-center gap-1"><Users size={12} /> Cadastros</span>
+                                    <span className="font-black text-sm text-blue-600">{productStats.total}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-bold text-gray-700 flex items-center gap-1"><CheckCircle size={12} /> Pagos</span>
+                                    <span className="font-black text-sm text-emerald-600">{productStats.paid}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-bold text-gray-700 flex items-center gap-1"><DollarSign size={12} /> Recebido</span>
+                                    <span className="font-black text-sm text-gray-900">R$ {productStats.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                                <div className="flex justify-between items-center pt-2 border-t border-blue-200">
+                                    <span className="text-xs font-bold text-gray-700 flex items-center gap-1"><TrendingUp size={12} /> Taxa</span>
+                                    <span className="font-black text-sm text-gray-900">{productStats.conversionRate}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <button
                         onClick={() => setActiveTab('geral')}
@@ -278,6 +319,7 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-6">
                                     <Input label="Identificador da Turma" type="text" placeholder="Ex: Turma 05" value={config.turma || ''} onChange={v => setConfig({ ...config, turma: v })} />
+                                    <Input label="Pasta / Categoria" type="text" placeholder="Ex: Cursos, Webinars, etc" value={config.folder || ''} onChange={v => setConfig({ ...config, folder: v })} />
                                     <Input label="Data do Evento" type="text" placeholder="Ex: 25/12/2024" value={config.eventDate || ''} onChange={v => setConfig({ ...config, eventDate: v })} />
                                 </div>
                                 <div className="space-y-6">

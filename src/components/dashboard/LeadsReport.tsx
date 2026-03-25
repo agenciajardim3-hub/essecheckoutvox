@@ -112,6 +112,35 @@ export const LeadsReport: React.FC<LeadsReportProps> = ({
         setTimeout(() => setCopiedNames(false), 2000);
     };
 
+    // Calculate product stats
+    const productStats = useMemo(() => {
+        const stats: Record<string, { count: number; paid: number; revenue: number; name: string }> = {};
+
+        leads.forEach(lead => {
+            if (!lead.product_id) return;
+
+            if (!stats[lead.product_id]) {
+                const product = allCheckouts.find(c => c.id === lead.product_id);
+                stats[lead.product_id] = {
+                    count: 0,
+                    paid: 0,
+                    revenue: 0,
+                    name: product?.productName || 'Desconhecido'
+                };
+            }
+
+            stats[lead.product_id].count++;
+            if (lead.status === 'Pago' || lead.status === 'Aprovado') {
+                stats[lead.product_id].paid++;
+                stats[lead.product_id].revenue += lead.paid_amount || 0;
+            }
+        });
+
+        return Object.entries(stats)
+            .map(([id, data]) => ({ id, ...data }))
+            .sort((a, b) => b.count - a.count);
+    }, [leads, allCheckouts]);
+
     const handleManualLeadSubmit = async () => {
         if (!manualLead.name || !manualLead.email) {
             alert('Preencha pelo menos nome e email');
@@ -241,6 +270,37 @@ export const LeadsReport: React.FC<LeadsReportProps> = ({
                             </div>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Product Statistics Cards */}
+            {productStats.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {productStats.map(product => (
+                        <div key={product.id} className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-xs font-black uppercase text-blue-600 tracking-widest mb-2">Produto</h3>
+                                    <p className="text-sm font-black text-gray-900 truncate">{product.name}</p>
+                                </div>
+                                <div className="text-2xl text-blue-200 ml-2">📊</div>
+                            </div>
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-bold text-gray-600">Cadastros</span>
+                                    <span className="text-lg font-black text-blue-600">{product.count}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-bold text-gray-600">Pagos</span>
+                                    <span className="text-lg font-black text-emerald-600">{product.paid}</span>
+                                </div>
+                                <div className="flex justify-between items-center pt-2 border-t border-blue-200">
+                                    <span className="text-xs font-bold text-gray-600">Recebido</span>
+                                    <span className="text-sm font-black text-gray-900">R$ {product.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             )}
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Eye, Calendar, TrendingUp, Loader2, Smartphone, Monitor, Tablet } from 'lucide-react';
+import { Eye, Calendar, TrendingUp, Loader2, ArrowUpDown } from 'lucide-react';
 import { useSupabase } from '../../hooks/useSupabase';
 import { AppConfig } from '../../types';
 
@@ -23,6 +23,7 @@ export const CheckoutViews: React.FC<CheckoutViewsProps> = ({ checkouts }) => {
     const [loading, setLoading] = useState(true);
     const [viewData, setViewData] = useState<ViewStats[]>([]);
     const [period, setPeriod] = useState<'7' | '15' | '30' | 'all'>('7');
+    const [sortBy, setSortBy] = useState<'visits' | 'name'>('visits');
 
     useEffect(() => {
         fetchViewData();
@@ -120,6 +121,16 @@ export const CheckoutViews: React.FC<CheckoutViewsProps> = ({ checkouts }) => {
         }
     };
 
+    const sortedViewData = useMemo(() => {
+        const sorted = [...viewData];
+        if (sortBy === 'visits') {
+            sorted.sort((a, b) => getPeriodValue(b) - getPeriodValue(a));
+        } else {
+            sorted.sort((a, b) => a.checkout_name.localeCompare(b.checkout_name));
+        }
+        return sorted;
+    }, [viewData, period, sortBy]);
+
     const totalViews = useMemo(() => {
         return viewData.reduce((acc, v) => acc + getPeriodValue(v), 0);
     }, [viewData, period]);
@@ -131,27 +142,53 @@ export const CheckoutViews: React.FC<CheckoutViewsProps> = ({ checkouts }) => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h3 className="font-black text-gray-900 text-lg flex items-center gap-2">
                         <Eye className="text-blue-600" /> Visualizações de Checkouts
                     </h3>
                     <p className="text-gray-500 text-xs font-medium">Acompanhe quantas pessoas visualizaram cada checkout</p>
                 </div>
-                <div className="flex gap-2">
-                    {(['7', '15', '30', 'all'] as const).map(p => (
+                <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                    <div className="flex gap-2">
+                        {(['7', '15', '30', 'all'] as const).map(p => (
+                            <button
+                                key={p}
+                                onClick={() => setPeriod(p)}
+                                className={`px-4 py-2 rounded-xl text-xs font-black uppercase transition-all ${
+                                    period === p
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                            >
+                                {p === 'all' ? 'Total' : `${p} dias`}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex gap-2 border-l pl-2">
                         <button
-                            key={p}
-                            onClick={() => setPeriod(p)}
-                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase transition-all ${
-                                period === p 
-                                    ? 'bg-blue-600 text-white' 
+                            onClick={() => setSortBy('visits')}
+                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-1 ${
+                                sortBy === 'visits'
+                                    ? 'bg-emerald-600 text-white'
                                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
+                            title="Ordenar por mais visualizados"
                         >
-                            {p === 'all' ? 'Total' : `${p} dias`}
+                            <TrendingUp size={14} /> Mais Visitados
                         </button>
-                    ))}
+                        <button
+                            onClick={() => setSortBy('name')}
+                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase transition-all flex items-center gap-1 ${
+                                sortBy === 'name'
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                            title="Ordenar por nome"
+                        >
+                            <ArrowUpDown size={14} /> Nome
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -218,7 +255,7 @@ export const CheckoutViews: React.FC<CheckoutViewsProps> = ({ checkouts }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {viewData.map((stats) => (
+                            {sortedViewData.map((stats) => (
                                 <tr key={stats.checkout_id} className="hover:bg-gray-50">
                                     <td className="p-4">
                                         <span className="font-black text-gray-900 text-sm">{stats.checkout_name}</span>

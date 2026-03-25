@@ -330,8 +330,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     <p className="text-gray-400 max-w-sm mt-2 font-bold">Comece criando seu primeiro produto para começar as vendas.</p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                    {checkouts.map(c => {
+                                <div>
+                                    {/* Group checkouts by folder */}
+                                    {Object.entries(
+                                        checkouts.reduce((acc, c) => {
+                                            const folder = c.folder || 'Sem Pasta';
+                                            if (!acc[folder]) acc[folder] = [];
+                                            acc[folder].push(c);
+                                            return acc;
+                                        }, {} as Record<string, typeof checkouts>)
+                                    ).map(([folder, folderCheckouts]) => (
+                                        <div key={folder} className="mb-12">
+                                            <div className="mb-6">
+                                                <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                                                    <div className="w-3 h-3 rounded-full bg-blue-600"></div>
+                                                    {folder}
+                                                    <span className="text-xs font-bold text-gray-400 bg-gray-100 px-3 py-1 rounded-full ml-2">{folderCheckouts.length}</span>
+                                                </h3>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                                {folderCheckouts.map(c => {
                                         const isDeleting = savingId === c.id;
                                         return (
                                             <div key={c.id} className={`p-6 md:p-8 rounded-[3rem] bg-white border-2 transition-all group hover:shadow-2xl hover:shadow-blue-900/5 ${c.isActive ? 'border-transparent shadow-xl' : 'border-gray-100 opacity-60'}`}>
@@ -344,6 +362,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                                     />
                                                     <div className="absolute top-4 right-4 flex flex-col gap-2 items-end">
                                                         {c.isActive && <div className="bg-blue-600 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase shadow-lg">Ativo</div>}
+                                                        {c.folder && <div className="bg-purple-600/90 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase flex items-center gap-2"><Layers size={12} /> {c.folder}</div>}
                                                         {c.turma && <div className="bg-gray-900/80 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase flex items-center gap-2"><GraduationCap size={12} /> {c.turma}</div>}
                                                     </div>
                                                 </div>
@@ -442,7 +461,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                                 </div>
                                             </div>
                                         );
-                                    })}
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
@@ -458,6 +480,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             isSubmitting={isSubmitting}
                             onCancel={() => setSetupTab('list')}
                             allCheckouts={checkouts}
+                            leads={leads}
                         />
                     )}
 

@@ -102,6 +102,8 @@ export interface AppConfig {
   // Emitente info
   emitted_by?: string;
   emission_date?: string;
+  // Folder/Category
+  folder?: string;
 }
 
 export interface MultiTicketPurchase {

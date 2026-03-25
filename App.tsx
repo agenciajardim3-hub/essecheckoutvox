@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RotateCw } from 'lucide-react';
 import { LocalNotifications } from '@capacitor/local-notifications';
 
 import { useSupabase } from './src/hooks/useSupabase';
+import { useNotifications } from './src/hooks/useNotifications';
+import { usePullToRefresh } from './src/hooks/usePullToRefresh';
 import { AppConfig, Lead, CustomerData, UserRole, MultiTicketPurchase, Coupon } from './src/types';
 // Lazy load Dashboard for code splitting
 const Dashboard = lazy(() => import('./src/components/dashboard/Dashboard').then(module => ({ default: module.Dashboard })));
@@ -15,6 +17,23 @@ import { SolicitacaoFormPage } from './src/components/client/SolicitacaoFormPage
 
 export default function App() {
   const supabase = useSupabase();
+  const { sendNewLeadNotification } = useNotifications();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Refresh handler for both pull-to-refresh and button click
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchData();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchData]);
+
+  const { containerRef } = usePullToRefresh({
+    onRefresh: handleRefresh,
+    threshold: 80,
+  });
 
   // Global State
   const [allCheckouts, setAllCheckouts] = useState<AppConfig[]>([]);
@@ -682,6 +701,12 @@ export default function App() {
         insertedLeads.forEach((lead: any) => triggerWebhook(config.webhookUrl, { ...lead, event: 'new_lead' }));
       }
 
+      // Send notifications for new leads (only first participant to avoid spam)
+      if (insertedLeads && insertedLeads.length > 0) {
+        const firstLead = insertedLeads[0];
+        await sendNewLeadNotification(firstLead.name, config.productName);
+      }
+
       // Increment coupon usage if applied
       if (appliedCoupon && appliedCoupon.id) {
         await supabase.from('coupons')
@@ -718,6 +743,7 @@ export default function App() {
       } else {
         setTimeout(() => {
           setBarWidth('100%');
+          setIsSubmitting(false);
         }, 1000);
       }
     } catch (err: any) {
@@ -1145,21 +1171,40 @@ export default function App() {
 
   // --- Render ---
 
+  // Refresh button component (visible in all screens)
+  const RefreshButton = () => (
+    <button
+      onClick={handleRefresh}
+      disabled={isRefreshing}
+      className="fixed top-4 right-4 z-40 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-full p-3 shadow-lg transition-all duration-200 transform hover:scale-110 active:scale-95"
+      title="Atualizar página"
+    >
+      <RotateCw size={20} className={isRefreshing ? 'animate-spin' : ''} />
+    </button>
+  );
+
   if (isLogin && userRole === 'none') {
-    return <LoginPage onLogin={setUserRole} />;
+    return (
+      <div ref={containerRef}>
+        <RefreshButton />
+        <LoginPage onLogin={setUserRole} />
+      </div>
+    );
   }
 
   if (userRole !== 'none') {
     return (
-      <Suspense fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center space-y-4">
-            <Loader2 className="animate-spin text-blue-600 w-12 h-12 mx-auto" />
-            <p className="text-gray-400 font-bold tracking-widest uppercase text-xs">Carregando Dashboard...</p>
+      <div ref={containerRef}>
+        <RefreshButton />
+        <Suspense fallback={
+          <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="text-center space-y-4">
+              <Loader2 className="animate-spin text-blue-600 w-12 h-12 mx-auto" />
+              <p className="text-gray-400 font-bold tracking-widest uppercase text-xs">Carregando Dashboard...</p>
+            </div>
           </div>
-        </div>
-      }>
-        <Dashboard
+        }>
+          <Dashboard
           userRole={userRole}
           checkouts={allCheckouts}
           leads={leads}
@@ -1203,6 +1248,7 @@ export default function App() {
           onSync={processPendingQueue}
         />
       </Suspense>
+      </div>
     );
   }
 
@@ -1213,12 +1259,22 @@ export default function App() {
   // Show Thank You page after successful payment
   if (isPaymentSuccess) {
     const successConfig = allCheckouts.find(c => c.slug === checkoutParam || c.id === checkoutParam) || config;
-    return <ThankYouPage config={successConfig} />;
+    return (
+      <div ref={containerRef}>
+        <RefreshButton />
+        <ThankYouPage config={successConfig} />
+      </div>
+    );
   }
 
   // Show Solicitacao Form page
   if (isSolicitacaoForm) {
-    return <SolicitacaoFormPage />;
+    return (
+      <div ref={containerRef}>
+        <RefreshButton />
+        <SolicitacaoFormPage />
+      </div>
+    );
   }
 
   // Show standalone certificate page
@@ -1227,20 +1283,23 @@ export default function App() {
     const certCourse = query.get('course') || 'Evento';
     const certDate = query.get('date') || query.get('Data') || '';
     const certCpf = query.get('cpf') || '';
-    
+
     // Find lead data if CPF provided
     const leadData = certCpf ? leads.find(l => l.cpf === certCpf) : null;
     const finalName = certName || leadData?.name || '';
     const finalCourse = leadData?.product_name || certCourse;
     const finalDate = leadData?.date || certDate;
-    
+
     if (!finalName) {
       return (
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 shadow-xl text-center max-w-md">
-            <h2 className="text-2xl font-black text-gray-900 mb-4">Certificado Não Encontrado</h2>
-            <p className="text-gray-600">Parâmetros inválidos. Por favor, gere o certificado novamente pelo painel.</p>
-            <a href="/" className="inline-block mt-6 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold">Voltar ao Início</a>
+        <div ref={containerRef}>
+          <RefreshButton />
+          <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-8 shadow-xl text-center max-w-md">
+              <h2 className="text-2xl font-black text-gray-900 mb-4">Certificado Não Encontrado</h2>
+              <p className="text-gray-600">Parâmetros inválidos. Por favor, gere o certificado novamente pelo painel.</p>
+              <a href="/" className="inline-block mt-6 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold">Voltar ao Início</a>
+            </div>
           </div>
         </div>
       );
@@ -1297,22 +1356,27 @@ export default function App() {
     }
     
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl p-8 shadow-xl text-center max-w-md">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
+      <div ref={containerRef}>
+        <RefreshButton />
+        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 shadow-xl text-center max-w-md">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-black text-gray-900 mb-2">Abrindo Certificado...</h2>
+            <p className="text-gray-600">O certificado será aberto em uma nova aba para impressão.</p>
           </div>
-          <h2 className="text-2xl font-black text-gray-900 mb-2">Abrindo Certificado...</h2>
-          <p className="text-gray-600">O certificado será aberto em uma nova aba para impressão.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <ClientView
+    <div ref={containerRef}>
+      <RefreshButton />
+      <ClientView
       config={config}
       customer={customer}
       onSubmit={handleCheckoutSubmit}
@@ -1330,5 +1394,6 @@ export default function App() {
       onApplyCoupon={handleValidateCoupon}
       onSaveAbandonment={handleSaveAbandonment}
     />
+    </div>
   );
 }
