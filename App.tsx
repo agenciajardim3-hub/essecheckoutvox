@@ -20,22 +20,7 @@ export default function App() {
   const { sendNewLeadNotification } = useNotifications();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Refresh handler for both pull-to-refresh and button click
-  const handleRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      await fetchData();
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [fetchData]);
-
-  const { containerRef } = usePullToRefresh({
-    onRefresh: handleRefresh,
-    threshold: 80,
-  });
-
-  // Global State
+  // Global State (defined early to be available for fetchData and other callbacks)
   const [allCheckouts, setAllCheckouts] = useState<AppConfig[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [userRole, setUserRole] = useState<UserRole>(() => {
@@ -48,10 +33,7 @@ export default function App() {
   }); // Admin mode role
   const [isLoading, setIsLoading] = useState(true);
   const [dbStatus, setDbStatus] = useState<'online' | 'offline' | 'error'>('online');
-  const [headerClicks, setHeaderClicks] = useState(0);
-
-  // Client State
-  const [customer, setCustomer] = useState<CustomerData>({ name: '', email: '', phone: '', city: '', cpf: '' });
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [config, setConfig] = useState<AppConfig>({
     id: crypto.randomUUID(),
     mercadoPagoLink: '',
@@ -71,54 +53,21 @@ export default function App() {
     isActive: true,
     slug: ''
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [showPaymentRedirect, setShowPaymentRedirect] = useState(false);
-  const [barWidth, setBarWidth] = useState('0%');
-  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
 
-  // Dashboard Data
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [savingId, setSavingId] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState<string | null>(null);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [pendingSyncCount, setPendingSyncCount] = useState(0);
-
-  // Network Status Monitoring
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    // Initial check for pending items
-    const pending = JSON.parse(localStorage.getItem('vox_pending_checkins') || '[]');
-    setPendingSyncCount(pending.length);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  // UTMs & Modes
+  // UTMs & Modes (defined early for fetchData dependencies)
   const query = new URLSearchParams(window.location.search);
   const isRegistrationMode = query.get('mode') === 'reg';
   const isTicketMode = query.get('mode') === 'ticket';
   const isCertificateMode = query.get('mode') === 'certificate';
   const checkoutParam = query.get('checkout') || query.get('p') || '';
+  const ticketCpf = query.get('cpf');
   const utms = {
     source: query.get('utm_source') || 'direct',
     medium: query.get('utm_medium') || 'cpc',
     campaign: query.get('utm_campaign') || 'general'
   };
 
-  // Check if should show login (APK without checkout param shows login)
-  const isLogin = query.get('mode') === 'login' || window.location.pathname === '/login' || (window.location.pathname !== '/solicitacaoformulario' && !checkoutParam && !isCertificateMode && !isTicketMode && userRole === 'none');
-  const isPaymentSuccess = query.get('success') === 'true';
-  const isSolicitacaoForm = window.location.pathname === '/solicitacaoformulario' || query.get('mode') === 'solicitacao';
-
-  // --- Fetch Logic ---
+  // --- Fetch Logic (defined before handleRefresh that depends on it) ---
   const fetchData = useCallback(async () => {
     // Try to load from cache first if offline or just to show something fast
     const cachedLeads = localStorage.getItem('vox_leads_cache');
@@ -232,7 +181,60 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, checkoutParam]);
+  }, [supabase, checkoutParam, userRole]);
+
+  // Refresh handler for both pull-to-refresh and button click
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchData();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchData]);
+
+  const { containerRef } = usePullToRefresh({
+    onRefresh: handleRefresh,
+    threshold: 80,
+  });
+
+  // Additional Client State
+  const [headerClicks, setHeaderClicks] = useState(0);
+  const [customer, setCustomer] = useState<CustomerData>({ name: '', email: '', phone: '', city: '', cpf: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showPaymentRedirect, setShowPaymentRedirect] = useState(false);
+  const [barWidth, setBarWidth] = useState('0%');
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+
+  // Additional Dashboard Data
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+
+  // Network Status Monitoring
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Initial check for pending items
+    const pending = JSON.parse(localStorage.getItem('vox_pending_checkins') || '[]');
+    setPendingSyncCount(pending.length);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Check if should show login (APK without checkout param shows login)
+  const isLogin = query.get('mode') === 'login' || window.location.pathname === '/login' || (window.location.pathname !== '/solicitacaoformulario' && !checkoutParam && !isCertificateMode && !isTicketMode && userRole === 'none');
+  const isPaymentSuccess = query.get('success') === 'true';
+  const isSolicitacaoForm = window.location.pathname === '/solicitacaoformulario' || query.get('mode') === 'solicitacao';
+
 
   useEffect(() => {
     fetchData();
@@ -249,7 +251,6 @@ export default function App() {
   }, [checkoutParam, allCheckouts]);
 
   // Auto-load ticket when in ticket mode with CPF
-  const ticketCpf = query.get('cpf');
   useEffect(() => {
     if (!isTicketMode || !ticketCpf || leads.length === 0) return;
     
