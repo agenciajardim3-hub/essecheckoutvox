@@ -20,21 +20,6 @@ export default function App() {
   const { sendNewLeadNotification } = useNotifications();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Refresh handler for both pull-to-refresh and button click
-  const handleRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      await fetchData();
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [fetchData]);
-
-  const { containerRef } = usePullToRefresh({
-    onRefresh: handleRefresh,
-    threshold: 80,
-  });
-
   // Global State
   const [allCheckouts, setAllCheckouts] = useState<AppConfig[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -233,6 +218,21 @@ export default function App() {
       setIsLoading(false);
     }
   }, [supabase, checkoutParam]);
+
+  // Refresh handler for both pull-to-refresh and button click
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchData();
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchData]);
+
+  const { containerRef } = usePullToRefresh({
+    onRefresh: handleRefresh,
+    threshold: 80,
+  });
 
   useEffect(() => {
     fetchData();
