@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronDown, Folder, Plus, X } from 'lucide-react';
+import { useSupabase } from '../../hooks/useSupabase';
 
 interface FolderSelectProps {
     value: string | undefined;
@@ -16,17 +17,68 @@ export const FolderSelect: React.FC<FolderSelectProps> = ({
     label = 'Pasta / Categoria',
     placeholder = 'Selecionar ou criar uma pasta'
 }) => {
+    const supabase = useSupabase();
     const [isOpen, setIsOpen] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
+    const [dbFolders, setDbFolders] = useState<string[]>([]);
+
+    // Load folders from Supabase
+    useEffect(() => {
+        const loadFolders = async () => {
+            if (!supabase) return;
+            try {
+                const { data, error } = await supabase
+                    .from('folders')
+                    .select('name')
+                    .order('name');
+
+                if (error) throw error;
+                setDbFolders((data || []).map(row => row.name));
+            } catch (err) {
+                console.error('Erro ao carregar pastas:', err);
+            }
+        };
+
+        loadFolders();
+    }, [supabase]);
 
     const folders = useMemo(() => {
-        const unique = [...new Set(existingFolders.filter(f => f && f !== 'Sem Pasta'))];
-        return unique.sort();
-    }, [existingFolders]);
+        const unique = new Set<string>();
 
-    const handleCreateFolder = () => {
+        // Add folders from database
+        dbFolders.forEach(f => unique.add(f));
+
+        // Add folders from existing products
+        existingFolders.forEach(f => {
+            if (f && f !== 'Sem Pasta') unique.add(f);
+        });
+
+        return Array.from(unique).sort();
+    }, [dbFolders, existingFolders]);
+
+    const handleCreateFolder = async () => {
         if (!newFolderName.trim()) return;
+        if (folders.some(f => f === newFolderName.trim())) {
+            alert('Pasta com esse nome já existe!');
+            return;
+        }
+
+        if (supabase) {
+            try {
+                const { error } = await supabase
+                    .from('folders')
+                    .insert({ name: newFolderName.trim() });
+
+                if (error) throw error;
+                setDbFolders([...dbFolders, newFolderName.trim()].sort());
+            } catch (err) {
+                console.error('Erro ao criar pasta:', err);
+                alert('Erro ao criar pasta. Tente novamente.');
+                return;
+            }
+        }
+
         onChange(newFolderName.trim());
         setNewFolderName('');
         setIsCreating(false);
