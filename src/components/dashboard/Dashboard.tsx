@@ -112,42 +112,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
     };
 
     const handleCreateFolder = async (folderName: string) => {
-        // Folder is created by assigning it to a product, just show success
-        alert(`Pasta "${folderName}" criada com sucesso! Agora você pode atribuir produtos a ela.`);
+        // Handled by FolderManager component with Supabase
     };
 
     const handleRenameFolder = async (oldName: string, newName: string) => {
-        setIsLoadingFolder(true);
-        try {
-            // Update all checkouts with the old folder name to the new folder name
-            const checkoutsToUpdate = checkouts.filter(c => c.folder === oldName);
-            for (const checkout of checkoutsToUpdate) {
-                await onSaveConfig({ ...checkout, folder: newName }, false);
-            }
-            alert(`Pasta renomeada de "${oldName}" para "${newName}" com sucesso!`);
-        } catch (err) {
-            console.error('Erro ao renomear pasta:', err);
-            alert('Erro ao renomear pasta. Tente novamente.');
-        } finally {
-            setIsLoadingFolder(false);
-        }
+        // Handled by FolderManager component with Supabase
     };
 
     const handleDeleteFolder = async (folderName: string) => {
-        setIsLoadingFolder(true);
-        try {
-            // This shouldn't happen if validation works, but just in case
-            const checkoutsInFolder = checkouts.filter(c => c.folder === folderName);
-            if (checkoutsInFolder.length > 0) {
-                throw new Error('Pasta não está vazia');
-            }
-            alert(`Pasta "${folderName}" deletada com sucesso!`);
-        } catch (err) {
-            console.error('Erro ao deletar pasta:', err);
-            alert('Erro ao deletar pasta. Tente novamente.');
-        } finally {
-            setIsLoadingFolder(false);
-        }
+        // Handled by FolderManager component with Supabase
     };
     const [setupTab, setSetupTab] = useState<'list' | 'product' | 'integrations' | 'leads' | 'tickets' | 'ticket_logs' | 'certificates' | 'scanner' | 'coupons' | 'overview' | 'checkin' | 'materials' | 'solicitacoes' | 'financeiro' | 'signatures' | 'views' | 'remarketing' | 'global_settings' | 'turmas' | 'folders'>(
         userRole === 'manager' ? 'scanner' : 'overview'
@@ -590,6 +563,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 onCreateFolder={handleCreateFolder}
                                 onRenameFolder={handleRenameFolder}
                                 onDeleteFolder={handleDeleteFolder}
+                                onSaveConfig={onSaveConfig}
                                 isLoading={isLoadingFolder}
                             />
                         </div>

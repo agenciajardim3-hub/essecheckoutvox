@@ -1,13 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FolderPlus, Trash2, Edit2, Check, X, Loader2, Folder } from 'lucide-react';
 import { AppConfig } from '../../types';
 import { Input } from '../ui/Input';
+import { useSupabase } from '../../hooks/useSupabase';
 
 interface FolderManagerProps {
     checkouts: AppConfig[];
-    onCreateFolder: (folderName: string) => void;
+    onCreateFolder: (folderName: string) => Promise<void>;
     onRenameFolder: (oldName: string, newName: string) => Promise<void>;
     onDeleteFolder: (folderName: string) => Promise<void>;
+    onSaveConfig: (config: AppConfig, asNew: boolean) => Promise<void>;
     isLoading?: boolean;
 }
 
@@ -16,47 +18,83 @@ export const FolderManager: React.FC<FolderManagerProps> = ({
     onCreateFolder,
     onRenameFolder,
     onDeleteFolder,
+    onSaveConfig,
     isLoading = false
 }) => {
+    const supabase = useSupabase();
     const [newFolderName, setNewFolderName] = useState('');
     const [editingFolder, setEditingFolder] = useState<string | null>(null);
     const [editingName, setEditingName] = useState('');
     const [deletingFolder, setDeletingFolder] = useState<string | null>(null);
     const [renamingFolder, setRenamingFolder] = useState<string | null>(null);
+    const [dbFolders, setDbFolders] = useState<Array<{ name: string; count: number }>>([]);
+    const [loadingFolders, setLoadingFolders] = useState(true);
 
-    // Get all unique folders with their product counts
-    const folders = useMemo(() => {
-        const folderMap = new Map<string, number>();
+    // Load folders from database
+    useEffect(() => {
+        const loadFolders = async () => {
+            if (!supabase) return;
+            setLoadingFolders(true);
+            try {
+                const { data, error } = await supabase
+                    .from('folders')
+                    .select('name')
+                    .order('name');
 
-        checkouts.forEach(checkout => {
-            const folder = checkout.folder || 'Sem Pasta';
-            folderMap.set(folder, (folderMap.get(folder) || 0) + 1);
-        });
+                if (error) throw error;
 
-        return Array.from(folderMap.entries())
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => {
-                if (a.name === 'Sem Pasta') return 1;
-                if (b.name === 'Sem Pasta') return -1;
-                return a.name.localeCompare(b.name);
-            });
-    }, [checkouts]);
+                const folderMap = new Map<string, number>();
+                checkouts.forEach(checkout => {
+                    if (checkout.folder) {
+                        folderMap.set(checkout.folder, (folderMap.get(checkout.folder) || 0) + 1);
+                    }
+                });
 
-    const handleCreateFolder = () => {
+                const folders = (data || []).map(row => ({
+                    name: row.name,
+                    count: folderMap.get(row.name) || 0
+                }));
+
+                setDbFolders(folders);
+            } catch (err) {
+                console.error('Erro ao carregar pastas:', err);
+            } finally {
+                setLoadingFolders(false);
+            }
+        };
+
+        loadFolders();
+    }, [supabase, checkouts]);
+
+    const folders = dbFolders;
+
+    const handleCreateFolder = async () => {
         if (!newFolderName.trim()) return;
         if (folders.some(f => f.name === newFolderName.trim())) {
             alert('Pasta com esse nome já existe!');
             return;
         }
-        onCreateFolder(newFolderName.trim());
-        setNewFolderName('');
+        if (!supabase) {
+            alert('Erro ao conectar ao banco de dados');
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('folders')
+                .insert({ name: newFolderName.trim() });
+
+            if (error) throw error;
+            setNewFolderName('');
+            setDbFolders([...dbFolders, { name: newFolderName.trim(), count: 0 }].sort((a, b) => a.name.localeCompare(b.name)));
+            alert(`Pasta "${newFolderName.trim()}" criada com sucesso!`);
+        } catch (err) {
+            console.error('Erro ao criar pasta:', err);
+            alert('Erro ao criar pasta. Tente novamente.');
+        }
     };
 
     const handleStartRename = (folderName: string) => {
-        if (folderName === 'Sem Pasta') {
-            alert('Não é possível renomear a pasta padrão');
-            return;
-        }
         setEditingFolder(folderName);
         setEditingName(folderName);
     };
@@ -74,9 +112,33 @@ export const FolderManager: React.FC<FolderManagerProps> = ({
             alert('Pasta com esse nome já existe!');
             return;
         }
+        if (!supabase) {
+            alert('Erro ao conectar ao banco de dados');
+            return;
+        }
+
         setRenamingFolder(oldName);
         try {
-            await onRenameFolder(oldName, editingName.trim());
+            // Update folder in database
+            const { error: updateError } = await supabase
+                .from('folders')
+                .update({ name: editingName.trim() })
+                .eq('name', oldName);
+
+            if (updateError) throw updateError;
+
+            // Update all products with the old folder name
+            const checkoutsToUpdate = checkouts.filter(c => c.folder === oldName);
+            for (const checkout of checkoutsToUpdate) {
+                await onSaveConfig({ ...checkout, folder: editingName.trim() }, false);
+            }
+
+            // Update local state
+            setDbFolders(dbFolders.map(f => f.name === oldName ? { ...f, name: editingName.trim() } : f));
+            alert(`Pasta renomeada de "${oldName}" para "${editingName.trim()}" com sucesso!`);
+        } catch (err) {
+            console.error('Erro ao renomear pasta:', err);
+            alert('Erro ao renomear pasta. Tente novamente.');
         } finally {
             setRenamingFolder(null);
             setEditingFolder(null);
@@ -84,19 +146,30 @@ export const FolderManager: React.FC<FolderManagerProps> = ({
     };
 
     const handleDeleteFolder = async (folderName: string) => {
-        if (folderName === 'Sem Pasta') {
-            alert('Não é possível deletar a pasta padrão');
-            return;
-        }
         const folder = folders.find(f => f.name === folderName);
         if (folder && folder.count > 0) {
             alert(`Essa pasta contém ${folder.count} produto(s). Mova os produtos para outra pasta antes de deletá-la.`);
             return;
         }
+        if (!supabase) {
+            alert('Erro ao conectar ao banco de dados');
+            return;
+        }
+
         if (confirm(`Deletar a pasta "${folderName}"?`)) {
             setDeletingFolder(folderName);
             try {
-                await onDeleteFolder(folderName);
+                const { error } = await supabase
+                    .from('folders')
+                    .delete()
+                    .eq('name', folderName);
+
+                if (error) throw error;
+                setDbFolders(dbFolders.filter(f => f.name !== folderName));
+                alert(`Pasta "${folderName}" deletada com sucesso!`);
+            } catch (err) {
+                console.error('Erro ao deletar pasta:', err);
+                alert('Erro ao deletar pasta. Tente novamente.');
             } finally {
                 setDeletingFolder(null);
             }
