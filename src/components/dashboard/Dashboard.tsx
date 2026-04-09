@@ -357,6 +357,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
                     {setupTab === 'list' && (
                         <div className="animate-in fade-in duration-500">
+                            <div className="bg-red-500 text-white p-4 mb-4 rounded text-center font-bold">DEBUG: setupTab = list ✓</div>
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
                                 <div>
                                     <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Meus Produtos</h2>
