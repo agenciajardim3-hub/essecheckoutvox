@@ -235,6 +235,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     return (
         <div className="min-h-screen bg-[#f1f5f9] flex flex-col md:flex-row font-sans text-gray-900">
+            <div className="fixed top-0 right-0 bg-yellow-300 text-black px-4 py-2 text-xs font-bold z-50">
+                DEBUG: userRole={userRole} | setupTab={setupTab}
+            </div>
 
             {/* Desktop Sidebar */}
             <aside className="hidden md:flex flex-col w-72 bg-gray-900 text-white h-screen sticky top-0 border-r border-gray-800">
