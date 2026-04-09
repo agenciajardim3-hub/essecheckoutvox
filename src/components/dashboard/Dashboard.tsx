@@ -235,9 +235,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     return (
         <div className="min-h-screen bg-[#f1f5f9] flex flex-col md:flex-row font-sans text-gray-900">
-            <div className="fixed top-0 right-0 bg-yellow-300 text-black px-4 py-2 text-xs font-bold z-50">
-                DEBUG: userRole={userRole} | setupTab={setupTab}
-            </div>
 
             {/* Desktop Sidebar */}
             <aside className="hidden md:flex flex-col w-72 bg-gray-900 text-white h-screen sticky top-0 border-r border-gray-800">
@@ -360,7 +357,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
                     {setupTab === 'list' && (
                         <div className="animate-in fade-in duration-500">
-                            <div className="bg-red-500 text-white p-4 mb-4 rounded text-center font-bold">DEBUG: setupTab = list ✓</div>
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
                                 <div>
                                     <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Meus Produtos</h2>
