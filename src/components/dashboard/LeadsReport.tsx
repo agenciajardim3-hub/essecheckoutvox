@@ -59,6 +59,7 @@ export const LeadsReport: React.FC<LeadsReportProps> = ({
     const [searchTerm, setSearchTerm] = useState('');
     const [showOnlyTickets, setShowOnlyTickets] = useState(false);
     const [copiedNames, setCopiedNames] = useState(false);
+    const [copiedPhones, setCopiedPhones] = useState(false);
     const [showManualLeadForm, setShowManualLeadForm] = useState(false);
     const [manualLead, setManualLead] = useState<Partial<Lead>>({});
     const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
@@ -110,6 +111,16 @@ export const LeadsReport: React.FC<LeadsReportProps> = ({
         navigator.clipboard.writeText(names);
         setCopiedNames(true);
         setTimeout(() => setCopiedNames(false), 2000);
+    };
+
+    const copyAllPhones = () => {
+        const phones = filteredLeadsList
+            .map(l => l.phone?.replace(/\D/g, ''))
+            .filter(Boolean)
+            .join('\n');
+        navigator.clipboard.writeText(phones);
+        setCopiedPhones(true);
+        setTimeout(() => setCopiedPhones(false), 2000);
     };
 
     // Calculate product stats
@@ -357,6 +368,10 @@ export const LeadsReport: React.FC<LeadsReportProps> = ({
 
                 <button onClick={copyAllNames} className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all shadow-sm border ${copiedNames ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-gray-900 text-white hover:bg-black'}`}>
                     {copiedNames ? <Check size={16} /> : <ClipboardList size={16} />} {copiedNames ? 'Copiado!' : 'Copiar Nomes'}
+                </button>
+
+                <button onClick={copyAllPhones} className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all shadow-sm border ${copiedPhones ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700'}`}>
+                    {copiedPhones ? <Check size={16} /> : <Smartphone size={16} />} {copiedPhones ? 'Copiado!' : 'Copiar Números'}
                 </button>
 
                 <div className="flex items-center gap-3 ml-auto">
