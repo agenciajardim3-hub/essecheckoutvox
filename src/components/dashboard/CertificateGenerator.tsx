@@ -576,6 +576,11 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
               // Use html2pdf library via CDN if available
               const script = document.createElement('script');
               script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+              script.onerror = function() {
+                // Fallback if CDN fails
+                alert('Erro ao carregar PDF. Usando impressão como alternativa.');
+                window.print();
+              };
               script.onload = function() {
                 const opt = {
                   margin: 10,
@@ -584,10 +589,13 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
                   html2canvas: { scale: 2 },
                   jsPDF: { orientation: 'landscape', unit: 'mm', format: 'a4' }
                 };
-                html2pdf().set(opt).save().then(() => {
-                  // After download attempt, show print dialog as fallback
-                  console.log('PDF download iniciado');
-                });
+                try {
+                  const worker = html2pdf().set(opt);
+                  worker.from(element).save(fileName);
+                } catch (e) {
+                  console.error('Erro ao gerar PDF:', e);
+                  window.print();
+                }
               };
               document.head.appendChild(script);
             }
