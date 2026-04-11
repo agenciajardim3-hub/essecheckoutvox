@@ -61,6 +61,11 @@ export const LeadsReport: React.FC<LeadsReportProps> = ({
     const [copiedNames, setCopiedNames] = useState(false);
     const [copiedPhones, setCopiedPhones] = useState(false);
     const [copiedEmails, setCopiedEmails] = useState(false);
+    const [autoSendEmail, setAutoSendEmail] = useState(() => {
+        const saved = localStorage.getItem('autoSendEmail');
+        return saved ? JSON.parse(saved) : false;
+    });
+    const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
     const [showManualLeadForm, setShowManualLeadForm] = useState(false);
     const [manualLead, setManualLead] = useState<Partial<Lead>>({});
     const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
@@ -159,6 +164,37 @@ export const LeadsReport: React.FC<LeadsReportProps> = ({
         a.download = `alunos_${new Date().toISOString().slice(0, 10)}.csv`;
         a.click();
         URL.revokeObjectURL(url);
+    };
+
+    const sendTicketEmail = async (leadId: string) => {
+        setSendingEmailId(leadId);
+        try {
+            const lead = leads.find(l => l.id === leadId);
+            if (!lead) {
+                alert('Aluno não encontrado');
+                return;
+            }
+            if (!lead.email) {
+                alert('Email não informado para este aluno');
+                return;
+            }
+            // Open mailto link as fallback (will be replaced with actual email service)
+            const subject = encodeURIComponent(`Seu Ingresso - ${lead.product_name || 'Curso'}`);
+            const body = encodeURIComponent(`Olá ${lead.name},\n\nSegue seu ingresso para ${lead.product_name || 'o curso'}.\n\nPara acessar, acesse: ${window.location.origin}/?mode=ticket&checkout=${lead.product_id}&cpf=${lead.cpf}\n\nAbs`);
+            window.location.href = `mailto:${lead.email}?subject=${subject}&body=${body}`;
+            alert('Email de ingresso pronto para enviar. Confirme no seu cliente de email.');
+        } catch (err) {
+            console.error('Erro ao preparar email:', err);
+            alert('Erro ao preparar email');
+        } finally {
+            setSendingEmailId(null);
+        }
+    };
+
+    const handleAutoSendToggle = () => {
+        const newValue = !autoSendEmail;
+        setAutoSendEmail(newValue);
+        localStorage.setItem('autoSendEmail', JSON.stringify(newValue));
     };
 
     // Calculate product stats
@@ -420,6 +456,10 @@ export const LeadsReport: React.FC<LeadsReportProps> = ({
                     <FileText size={16} /> Exportar CSV
                 </button>
 
+                <button onClick={handleAutoSendToggle} className={`flex items-center gap-2 px-6 py-3 rounded-2xl text-[10px] font-black uppercase transition-all shadow-sm border ${autoSendEmail ? 'bg-cyan-600 text-white border-cyan-600' : 'bg-gray-200 text-gray-600 border-gray-300 hover:bg-gray-300'}`}>
+                    <MessageCircle size={16} /> {autoSendEmail ? 'Email Automático: ON' : 'Email Automático: OFF'}
+                </button>
+
                 <div className="flex items-center gap-3 ml-auto">
                     <button onClick={() => {
                         setShowManualLeadForm(!showManualLeadForm);
@@ -505,6 +545,15 @@ export const LeadsReport: React.FC<LeadsReportProps> = ({
                                             className="px-3 py-2 rounded-lg bg-blue-50 text-blue-500 text-xs font-bold flex items-center gap-1"
                                         >
                                             <Check size={12} /> Check-in
+                                        </button>
+                                    )}
+                                    {(lead.status === 'Pago' || lead.status === 'Aprovado') && (
+                                        <button
+                                            onClick={() => sendTicketEmail(lead.id)}
+                                            disabled={sendingEmailId === lead.id}
+                                            className="px-3 py-2 rounded-lg bg-cyan-50 text-cyan-500 text-xs font-bold flex items-center gap-1"
+                                        >
+                                            {sendingEmailId === lead.id ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />} Ingresso
                                         </button>
                                     )}
                                     <a
@@ -702,6 +751,18 @@ export const LeadsReport: React.FC<LeadsReportProps> = ({
                                                             className="w-full px-4 py-2 text-left text-xs font-bold text-gray-700 hover:bg-blue-50 flex items-center gap-2"
                                                         >
                                                             <Check size={14} className="text-blue-500" /> Check-in
+                                                        </button>
+                                                    )}
+                                                    {(lead.status === 'Pago' || lead.status === 'Aprovado') && (
+                                                        <button
+                                                            onClick={() => {
+                                                                sendTicketEmail(lead.id);
+                                                                document.getElementById(`actions-${lead.id}`)?.classList.add('hidden');
+                                                            }}
+                                                            disabled={sendingEmailId === lead.id}
+                                                            className="w-full px-4 py-2 text-left text-xs font-bold text-gray-700 hover:bg-cyan-50 flex items-center gap-2"
+                                                        >
+                                                            {sendingEmailId === lead.id ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} className="text-cyan-500" />} Enviar Ingresso
                                                         </button>
                                                     )}
                                                     <a
