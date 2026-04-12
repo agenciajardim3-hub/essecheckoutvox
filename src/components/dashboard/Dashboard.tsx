@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Layout, ListChecks, Plus, Ticket, ListFilter, Award, Terminal, LogOut, Eye, Link as LinkIcon, CopyPlus, Loader2, Trash2, GraduationCap, QrCode, Tag, DollarSign, BarChart3, UserCheck, Layers, FileText, FileCheck, Wallet, Signature, Monitor, MessageCircle, Settings, Calendar, ClipboardList, Mail, Send } from 'lucide-react';
 import { AppConfig, Lead, UserRole, Coupon } from '../../types';
 import { ProductConfig } from './ProductConfig';
-import { LeadsReport } from './LeadsReport';
+import { LeadsReportV2 } from './LeadsReportV2';
 import { TicketGenerator } from './TicketGenerator';
 import { TicketLogs } from './TicketLogs';
 import { CertificateGenerator } from './CertificateGenerator';
@@ -492,23 +492,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
                     {setupTab === 'leads' && (
                         <div className="animate-in fade-in duration-500">
-                            <LeadsReport
+                            <LeadsReportV2
                                 userRole={userRole}
                                 leads={leads}
                                 allCheckouts={checkouts}
-                                totalRevenue={totalRevenue}
-                                totalLeadsCount={totalLeadsCount}
                                 savingId={savingId}
                                 onUpdateStatus={onUpdateLeadStatus}
                                 onUpdatePaidAmount={onUpdateLeadPaidAmount}
                                 onDeleteLead={onDeleteLead}
-                                onSaveManualLead={onSaveManualLead}
-                                onPrintLeads={onPrintLeads}
-                                isOnline={isOnline}
-                                pendingSyncCount={pendingSyncCount}
-                                onSync={onSync}
-                                onMoveLeadTurma={handleMoveLeadTurma}
-                                onCheckIn={onCheckIn}
                             />
                         </div>
                     )}
