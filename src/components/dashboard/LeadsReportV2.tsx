@@ -166,7 +166,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
     };
 
     const exportCSV = () => {
-        const headers = ['#', 'Nome', 'Email', 'Telefone', 'CPF', 'Cidade', 'Status', 'Produto', 'Turma', 'Valor Pago', 'Data'];
+        const headers = ['#', 'Nome', 'Email', 'Telefone', 'CPF', 'Cidade', 'Status', 'Produto', 'Turma', 'Valor Pago', 'Data e Hora'];
         const rows = filteredAndSortedLeads.map((l, index) => [
             String(index + 1),
             l.name || '',
@@ -538,9 +538,15 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                         </div>
                                     )}
 
-                                    {/* Data */}
+                                    {/* Data e Hora */}
                                     <div className="text-xs text-gray-400 font-bold text-right pt-2 border-t border-gray-100">
-                                        {lead.created_at && new Date(lead.created_at).toLocaleDateString('pt-BR')}
+                                        {lead.created_at && new Date(lead.created_at).toLocaleString('pt-BR', {
+                                            year: 'numeric',
+                                            month: '2-digit',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}
                                     </div>
                                 </div>
 
@@ -682,7 +688,13 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                             </td>
                                         )}
                                         <td className="px-4 py-3 text-xs font-bold text-gray-500">
-                                            {lead.created_at && new Date(lead.created_at).toLocaleDateString('pt-BR')}
+                                            {lead.created_at && new Date(lead.created_at).toLocaleString('pt-BR', {
+                                                year: 'numeric',
+                                                month: '2-digit',
+                                                day: '2-digit',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })}
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex flex-wrap gap-1 justify-center">
