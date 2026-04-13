@@ -16,6 +16,7 @@ interface LeadsReportV2Props {
     onDeleteLead: (id: string) => void;
     savingId: string | null;
     onCheckIn?: (leadId: string, checkedIn: boolean) => Promise<void>;
+    onUpdateLeadField?: (id: string, fields: Record<string, any>) => Promise<void>;
 }
 
 type ViewMode = 'grid' | 'table' | 'stats';
@@ -29,7 +30,8 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
     onUpdatePaidAmount,
     onDeleteLead,
     savingId,
-    onCheckIn
+    onCheckIn,
+    onUpdateLeadField
 }) => {
     const [viewMode, setViewMode] = useState<ViewMode>('grid');
     const [searchTerm, setSearchTerm] = useState('');
@@ -43,6 +45,12 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
     const [copiedNames, setCopiedNames] = useState(false);
     const [copiedPhones, setCopiedPhones] = useState(false);
     const [copiedEmails, setCopiedEmails] = useState(false);
+
+    // Verification states
+    const [verifiedLeads, setVerifiedLeads] = useState<Set<string>>(() => {
+        const saved = localStorage.getItem('vox_verified_leads');
+        return new Set(saved ? JSON.parse(saved) : []);
+    });
 
     // Filtrar e ordenar leads
     const filteredAndSortedLeads = useMemo(() => {
@@ -209,6 +217,25 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
     const viewCertificate = (lead: Lead) => {
         const certUrl = `${window.location.origin}/?mode=certificate&checkout=${lead.product_id}&cpf=${lead.cpf}`;
         window.open(certUrl, '_blank');
+    };
+
+    const toggleCheckIn = async (lead: Lead) => {
+        try {
+            await onCheckIn?.(lead.id, !lead.checked_in);
+        } catch (err) {
+            console.error('Erro ao atualizar check-in:', err);
+        }
+    };
+
+    const toggleVerified = (leadId: string) => {
+        const newVerified = new Set(verifiedLeads);
+        if (newVerified.has(leadId)) {
+            newVerified.delete(leadId);
+        } else {
+            newVerified.add(leadId);
+        }
+        setVerifiedLeads(newVerified);
+        localStorage.setItem('vox_verified_leads', JSON.stringify(Array.from(newVerified)));
     };
 
     return (
@@ -438,9 +465,22 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                             const leadNumber = (currentPage - 1) * itemsPerPage + index + 1;
                             return (
                             <div key={lead.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg transition-all relative">
-                                {/* Número sequencial */}
-                                <div className="absolute top-4 right-4 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-black text-xs">
-                                    {leadNumber}
+                                {/* Número sequencial + Verificado */}
+                                <div className="absolute top-4 right-4 flex items-center gap-2">
+                                    <button
+                                        onClick={() => toggleVerified(lead.id)}
+                                        className={`w-8 h-8 rounded-full font-black text-xs transition-all flex items-center justify-center ${
+                                            verifiedLeads.has(lead.id)
+                                                ? 'bg-cyan-600 text-white'
+                                                : 'bg-gray-200 text-gray-400 hover:bg-gray-300'
+                                        }`}
+                                        title="Marcar como verificado"
+                                    >
+                                        ✓
+                                    </button>
+                                    <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-black text-xs">
+                                        {leadNumber}
+                                    </div>
                                 </div>
 
                                 {/* Header do Card */}
@@ -512,28 +552,26 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                             className="px-2 py-1.5 rounded-lg bg-purple-50 text-purple-600 font-bold text-[10px] uppercase hover:bg-purple-100 transition-all flex items-center justify-center gap-1"
                                             title="Ver Ingresso"
                                         >
-                                            <Ticket size={12} /> Ingresso
+                                            <Ticket size={12} />
                                         </button>
                                         <button
                                             onClick={() => viewCertificate(lead)}
                                             className="px-2 py-1.5 rounded-lg bg-amber-50 text-amber-600 font-bold text-[10px] uppercase hover:bg-amber-100 transition-all flex items-center justify-center gap-1"
                                             title="Ver Certificado"
                                         >
-                                            <Award size={12} /> Cert.
+                                            <Award size={12} />
                                         </button>
-                                        {lead.checked_in ? (
-                                            <span className="px-2 py-1.5 rounded-lg bg-emerald-100 text-emerald-600 font-bold text-[10px] uppercase flex items-center justify-center gap-1">
-                                                <UserCheck size={12} /> OK
-                                            </span>
-                                        ) : (
-                                            <button
-                                                onClick={() => onCheckIn?.(lead.id, true)}
-                                                className="px-2 py-1.5 rounded-lg bg-blue-50 text-blue-600 font-bold text-[10px] uppercase hover:bg-blue-100 transition-all flex items-center justify-center gap-1"
-                                                title="Fazer Check-in"
-                                            >
-                                                <Check size={12} /> Check
-                                            </button>
-                                        )}
+                                        <button
+                                            onClick={() => toggleCheckIn(lead)}
+                                            className={`px-2 py-1.5 rounded-lg font-bold text-[10px] uppercase transition-all flex items-center justify-center gap-1 ${
+                                                lead.checked_in
+                                                    ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200'
+                                                    : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                                            }`}
+                                            title="Toggle Check-in"
+                                        >
+                                            <Check size={12} />
+                                        </button>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
                                         {lead.phone && (
@@ -556,7 +594,6 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                             ) : (
                                                 <Trash2 size={12} />
                                             )}
-                                            Apagar
                                         </button>
                                     </div>
                                 </div>
@@ -592,9 +629,22 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                     return (
                                     <tr key={lead.id} className="hover:bg-blue-50/30 transition-all">
                                         <td className="px-4 py-3 text-center">
-                                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white font-black text-xs">
-                                                {leadNumber}
-                                            </span>
+                                            <div className="flex items-center gap-2 justify-center">
+                                                <button
+                                                    onClick={() => toggleVerified(lead.id)}
+                                                    className={`w-6 h-6 rounded-full font-black text-xs transition-all flex items-center justify-center ${
+                                                        verifiedLeads.has(lead.id)
+                                                            ? 'bg-cyan-600 text-white'
+                                                            : 'bg-gray-200 text-gray-400 hover:bg-gray-300'
+                                                    }`}
+                                                    title="Marcar como verificado"
+                                                >
+                                                    ✓
+                                                </button>
+                                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white font-black text-xs">
+                                                    {leadNumber}
+                                                </span>
+                                            </div>
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="font-bold text-gray-900">{lead.name}</div>
@@ -650,19 +700,17 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                                 >
                                                     <Award size={12} />
                                                 </button>
-                                                {lead.checked_in ? (
-                                                    <span className="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-600 font-bold text-[10px] uppercase flex items-center gap-1">
-                                                        <UserCheck size={12} />
-                                                    </span>
-                                                ) : (
-                                                    <button
-                                                        onClick={() => onCheckIn?.(lead.id, true)}
-                                                        className="px-2 py-1 rounded-lg bg-blue-50 text-blue-600 font-bold text-[10px] uppercase hover:bg-blue-100 transition-all flex items-center gap-1"
-                                                        title="Check-in"
-                                                    >
-                                                        <Check size={12} />
-                                                    </button>
-                                                )}
+                                                <button
+                                                    onClick={() => toggleCheckIn(lead)}
+                                                    className={`px-2 py-1 rounded-lg font-bold text-[10px] uppercase transition-all flex items-center gap-1 ${
+                                                        lead.checked_in
+                                                            ? 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200'
+                                                            : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                                                    }`}
+                                                    title="Toggle Check-in"
+                                                >
+                                                    <Check size={12} />
+                                                </button>
                                                 {lead.phone && (
                                                     <a
                                                         href={`https://wa.me/55${lead.phone?.replace(/\D/g, '') || ''}?text=${encodeURIComponent(generateWhatsAppMessage(lead))}`}
