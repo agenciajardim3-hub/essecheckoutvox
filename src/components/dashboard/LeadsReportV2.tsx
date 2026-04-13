@@ -186,6 +186,19 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
         window.print();
     };
 
+    const generateWhatsAppMessage = (lead: Lead) => {
+        const firstName = lead.name?.split(' ')[0] || 'Olá';
+        const productName = lead.product_name || 'turma';
+
+        if (lead.status === 'Pago' || lead.status === 'Aprovado') {
+            return `Oi ${firstName}, tudo bem? Vi que sua inscrição na ${productName} foi confirmada! Seja bem-vindo(a)!`;
+        } else if (lead.status === 'Abandonado') {
+            return `Oi ${firstName}, tudo bem? Vi que você começou sua inscrição na ${productName} mas não finalizou. Ficou com alguma dúvida? Posso te ajudar?`;
+        } else {
+            return `Oi ${firstName}, tudo bem? Vi que você tentou se inscrever na ${productName} mas o pagamento não confirmou. Teve alguma dúvida?`;
+        }
+    };
+
     return (
         <div className="animate-in fade-in duration-500">
             {/* Header */}
@@ -481,9 +494,16 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
 
                                 {/* Ações */}
                                 <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-2">
-                                    <button className="flex-1 px-3 py-2 rounded-lg bg-blue-50 text-blue-600 font-bold text-xs uppercase hover:bg-blue-100 transition-all flex items-center justify-center gap-1">
-                                        <Edit2 size={14} /> Editar
-                                    </button>
+                                    {lead.phone && (
+                                        <a
+                                            href={`https://wa.me/55${lead.phone?.replace(/\D/g, '') || ''}?text=${encodeURIComponent(generateWhatsAppMessage(lead))}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex-1 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-600 font-bold text-xs uppercase hover:bg-emerald-100 transition-all flex items-center justify-center gap-1"
+                                        >
+                                            <MessageCircle size={14} /> WhatsApp
+                                        </a>
+                                    )}
                                     <button
                                         onClick={() => onDeleteLead(lead.id)}
                                         disabled={savingId === lead.id}
@@ -572,17 +592,29 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                             {lead.created_at && new Date(lead.created_at).toLocaleDateString('pt-BR')}
                                         </td>
                                         <td className="px-4 py-3 text-center">
-                                            <button
-                                                onClick={() => onDeleteLead(lead.id)}
-                                                disabled={savingId === lead.id}
-                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 font-bold text-xs uppercase hover:bg-red-100 transition-all disabled:opacity-50"
-                                            >
-                                                {savingId === lead.id ? (
-                                                    <Loader2 size={12} className="animate-spin" />
-                                                ) : (
-                                                    <Trash2 size={12} />
+                                            <div className="flex gap-2 justify-center">
+                                                {lead.phone && (
+                                                    <a
+                                                        href={`https://wa.me/55${lead.phone?.replace(/\D/g, '') || ''}?text=${encodeURIComponent(generateWhatsAppMessage(lead))}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 font-bold text-xs uppercase hover:bg-emerald-100 transition-all"
+                                                    >
+                                                        <MessageCircle size={12} />
+                                                    </a>
                                                 )}
-                                            </button>
+                                                <button
+                                                    onClick={() => onDeleteLead(lead.id)}
+                                                    disabled={savingId === lead.id}
+                                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 font-bold text-xs uppercase hover:bg-red-100 transition-all disabled:opacity-50"
+                                                >
+                                                    {savingId === lead.id ? (
+                                                        <Loader2 size={12} className="animate-spin" />
+                                                    ) : (
+                                                        <Trash2 size={12} />
+                                                    )}
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                     );
