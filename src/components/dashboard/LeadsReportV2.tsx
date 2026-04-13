@@ -16,7 +16,6 @@ interface LeadsReportV2Props {
     onDeleteLead: (id: string) => void;
     savingId: string | null;
     onCheckIn?: (leadId: string, checkedIn: boolean) => Promise<void>;
-    onUpdateLeadField?: (id: string, fields: Record<string, any>) => Promise<void>;
 }
 
 type ViewMode = 'grid' | 'table' | 'stats';
@@ -30,8 +29,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
     onUpdatePaidAmount,
     onDeleteLead,
     savingId,
-    onCheckIn,
-    onUpdateLeadField
+    onCheckIn
 }) => {
     const [viewMode, setViewMode] = useState<ViewMode>('grid');
     const [searchTerm, setSearchTerm] = useState('');
@@ -205,10 +203,6 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
 
     const viewTicket = (lead: Lead) => {
         const ticketUrl = `${window.location.origin}/?mode=ticket&checkout=${lead.product_id}&cpf=${lead.cpf}`;
-        if (onUpdateLeadField && lead.id) {
-            const emittedBy = localStorage.getItem('vox_user_email') || 'Admin';
-            onUpdateLeadField(lead.id, { emitted_by: emittedBy, emission_date: new Date().toISOString() });
-        }
         window.open(ticketUrl, '_blank');
     };
 
