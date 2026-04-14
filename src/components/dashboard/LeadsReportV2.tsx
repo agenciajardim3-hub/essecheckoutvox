@@ -280,7 +280,12 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
         setShowManualLeadForm(true);
     };
 
-    const handleManualLeadSubmit = async () => {
+    // Handle payment amount changes with formatting
+    const handlePaidAmountChange = (value: string) => {
+        // Allow only numbers, comma and dots
+        const cleaned = value.replace(/[^\d.,]/g, '');
+        setManualLead({ ...manualLead, paid_amount: cleaned as any });
+    };
         if (!manualLead.name || !manualLead.product_id) {
             alert('Nome e Produto são obrigatórios');
             return;
@@ -415,9 +420,9 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                         </select>
                         <input
                             type="text"
-                            placeholder="Valor Pago"
+                            placeholder="Ex: 100,50 ou 100.50"
                             value={manualLead.paid_amount || ''}
-                            onChange={(e) => setManualLead({ ...manualLead, paid_amount: e.target.value as any })}
+                            onChange={(e) => handlePaidAmountChange(e.target.value)}
                             className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <input
@@ -762,10 +767,11 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                             <span className="text-xs font-bold text-gray-600 uppercase">Valor:</span>
                                             <input
                                                 type="text"
+                                                inputMode="decimal"
                                                 value={lead.paid_amount || ''}
                                                 onChange={(e) => onUpdatePaidAmount(lead.id, e.target.value)}
                                                 placeholder="0,00"
-                                                className="flex-1 px-2 py-1.5 text-sm font-black text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg"
+                                                className="flex-1 px-2 py-1.5 text-sm font-black text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
                                             />
                                         </div>
                                     )}
@@ -941,10 +947,11 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                             <td className="px-4 py-3">
                                                 <input
                                                     type="text"
+                                                    inputMode="decimal"
                                                     value={lead.paid_amount || ''}
                                                     onChange={(e) => onUpdatePaidAmount(lead.id, e.target.value)}
                                                     placeholder="0,00"
-                                                    className="w-24 px-2 py-1.5 text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg"
+                                                    className="w-24 px-2 py-1.5 text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
                                                 />
                                             </td>
                                         )}
