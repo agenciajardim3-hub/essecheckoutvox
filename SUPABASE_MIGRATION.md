@@ -11,19 +11,24 @@
 
 ### 2. Copiar e Executar o Script
 
-#### Para adicionar campo "Pago por" (payer_name):
+#### ⚠️ IMPORTANTE: Para adicionar os campos "Pago por" (payer_name) e "Onde foi pago" (payment_location):
 
 ```sql
--- Migration: Add payer fields to leads table
+-- Adicionar campo payer_name (Pago por)
 ALTER TABLE leads
 ADD COLUMN IF NOT EXISTS payer_name TEXT;
+
+-- Adicionar campo payment_location (Onde foi pago)
+ALTER TABLE leads
+ADD COLUMN IF NOT EXISTS payment_location TEXT;
 ```
 
 **Passos:**
-1. Copie o script acima
-2. Cole no SQL Editor
-3. Clique em **Run** (Ctrl+Enter)
-4. Você verá a mensagem "Success" quando concluir
+1. Copie AMBAS as linhas de `ALTER TABLE` acima
+2. Abra https://supabase.com → seu projeto → SQL Editor → New Query
+3. Cole o script no editor
+4. Clique em **Run** (ou Ctrl+Enter)
+5. Você verá "Success" quando concluir ✅
 
 #### Scripts Adicionais (conforme necessário):
 
