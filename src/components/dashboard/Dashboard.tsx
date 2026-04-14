@@ -112,6 +112,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
             console.error('Erro ao mover lead para nova turma:', err);
         }
     };
+
+    const handleUpdateLeadField = async (leadId: string, fields: Record<string, any>) => {
+        if (!supabase) {
+            console.warn('Supabase client not available');
+            return;
+        }
+        try {
+            const { error } = await supabase.from('leads').update(fields).eq('id', leadId);
+            if (error) throw error;
+            // Reload to reflect changes
+            window.location.reload();
+        } catch (err) {
+            console.error('Erro ao atualizar lead:', err);
+            throw err;
+        }
+    };
     const [setupTab, setSetupTab] = useState<'list' | 'product' | 'integrations' | 'leads' | 'tickets' | 'ticket_logs' | 'send_tickets' | 'certificates' | 'send_certificates' | 'scanner' | 'coupons' | 'overview' | 'checkin' | 'materials' | 'solicitacoes' | 'financeiro' | 'signatures' | 'views' | 'remarketing' | 'global_settings' | 'turmas' | 'email_marketing'>(
         userRole === 'manager' ? 'scanner' : 'overview'
     );
