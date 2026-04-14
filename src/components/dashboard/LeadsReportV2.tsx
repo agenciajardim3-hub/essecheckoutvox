@@ -3,7 +3,8 @@ import {
     BarChart3, Users, DollarSign, TrendingUp, Search, Filter,
     Download, Mail, MessageCircle, Eye, Edit2, Trash2, Check,
     AlertCircle, Calendar, MapPin, Phone, GraduationCap, Loader2,
-    Copy, FileText, Printer, Smartphone, Send, Ticket, Award, UserCheck
+    Copy, FileText, Printer, Smartphone, Send, Ticket, Award, UserCheck,
+    UserPlus, X
 } from 'lucide-react';
 import { Lead, AppConfig, UserRole } from '../../types';
 
@@ -17,6 +18,7 @@ interface LeadsReportV2Props {
     savingId: string | null;
     onCheckIn?: (leadId: string, checkedIn: boolean) => Promise<void>;
     onUpdateLeadField?: (id: string, fields: Record<string, any>) => Promise<void>;
+    onSaveManualLead?: (lead: Partial<Lead>) => Promise<void>;
 }
 
 type ViewMode = 'grid' | 'table' | 'stats';
@@ -31,7 +33,8 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
     onDeleteLead,
     savingId,
     onCheckIn,
-    onUpdateLeadField
+    onUpdateLeadField,
+    onSaveManualLead
 }) => {
     const [viewMode, setViewMode] = useState<ViewMode>('grid');
     const [searchTerm, setSearchTerm] = useState('');
@@ -39,12 +42,18 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
     const [selectedStatus, setSelectedStatus] = useState('all');
     const [sortBy, setSortBy] = useState<SortBy>('date');
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 12;
+    const [viewAll, setViewAll] = useState(false);
+    const itemsPerPage = viewAll ? 10000 : 12;
 
     // Copy to clipboard states
     const [copiedNames, setCopiedNames] = useState(false);
     const [copiedPhones, setCopiedPhones] = useState(false);
     const [copiedEmails, setCopiedEmails] = useState(false);
+
+    // Manual Lead Form states
+    const [showManualLeadForm, setShowManualLeadForm] = useState(false);
+    const [manualLead, setManualLead] = useState<Partial<Lead>>({});
+    const [isSubmittingManualLead, setIsSubmittingManualLead] = useState(false);
 
     // Verification states
     const [verifiedLeads, setVerifiedLeads] = useState<Set<string>>(() => {
@@ -166,7 +175,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
     };
 
     const exportCSV = () => {
-        const headers = ['#', 'Nome', 'Email', 'Telefone', 'CPF', 'Cidade', 'Pago por', 'Status', 'Produto', 'Turma', 'Valor Pago', 'Data e Hora'];
+        const headers = ['#', 'Nome', 'Email', 'Telefone', 'CPF', 'Cidade', 'Pago por', 'Onde foi pago', 'Status', 'Produto', 'Turma', 'Valor Pago', 'Data e Hora'];
         const rows = filteredAndSortedLeads.map((l, index) => [
             String(index + 1),
             l.name || '',
@@ -175,6 +184,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
             l.cpf || '',
             l.city || '',
             l.payer_name || '',
+            l.payment_location || '',
             l.status || '',
             l.product_name || '',
             l.turma || '',
@@ -239,15 +249,150 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
         localStorage.setItem('vox_verified_leads', JSON.stringify(Array.from(newVerified)));
     };
 
+    const handleManualLeadSubmit = async () => {
+        if (!manualLead.name || !manualLead.product_id) {
+            alert('Nome e Produto são obrigatórios');
+            return;
+        }
+        try {
+            setIsSubmittingManualLead(true);
+            await onSaveManualLead?.(manualLead);
+            setManualLead({});
+            setShowManualLeadForm(false);
+        } catch (err) {
+            alert('Erro ao salvar: ' + (err instanceof Error ? err.message : 'Unknown error'));
+        } finally {
+            setIsSubmittingManualLead(false);
+        }
+    };
+
     return (
         <div className="animate-in fade-in duration-500">
             {/* Header */}
-            <div className="mb-8">
-                <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-2">Relatório de Vendas</h2>
-                <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">
-                    {filteredAndSortedLeads.length} registros • {stats.paidLeads.length} pagos
-                </p>
+            <div className="mb-8 flex items-center justify-between">
+                <div>
+                    <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-2">Relatório de Vendas</h2>
+                    <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">
+                        {filteredAndSortedLeads.length} registros • {stats.paidLeads.length} pagos
+                    </p>
+                </div>
+                {userRole === 'master' && (
+                    <button
+                        onClick={() => {
+                            setShowManualLeadForm(!showManualLeadForm);
+                            if (!showManualLeadForm) setManualLead({});
+                        }}
+                        className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-lg"
+                    >
+                        <UserPlus size={18} /> Adicionar Aluno
+                    </button>
+                )}
             </div>
+
+            {/* Manual Lead Form */}
+            {userRole === 'master' && showManualLeadForm && (
+                <div className="bg-blue-50 border-2 border-blue-200 p-8 rounded-2xl mb-8 animate-in slide-in-from-top-4">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-xl font-black text-gray-900 flex items-center gap-3">
+                            <UserPlus className="text-blue-600" size={24} />
+                            {manualLead.id ? 'Editar Aluno' : 'Adicionar Aluno Manualmente'}
+                        </h3>
+                        <button onClick={() => setShowManualLeadForm(false)} className="text-gray-400 hover:text-red-500 transition-all">
+                            <X size={24} />
+                        </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <input
+                            type="text"
+                            placeholder="Nome completo"
+                            value={manualLead.name || ''}
+                            onChange={(e) => setManualLead({ ...manualLead, name: e.target.value })}
+                            className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                            type="email"
+                            placeholder="Email"
+                            value={manualLead.email || ''}
+                            onChange={(e) => setManualLead({ ...manualLead, email: e.target.value })}
+                            className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                            type="tel"
+                            placeholder="Telefone"
+                            value={manualLead.phone || ''}
+                            onChange={(e) => setManualLead({ ...manualLead, phone: e.target.value })}
+                            className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                            type="text"
+                            placeholder="CPF"
+                            value={manualLead.cpf || ''}
+                            onChange={(e) => setManualLead({ ...manualLead, cpf: e.target.value })}
+                            className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Cidade"
+                            value={manualLead.city || ''}
+                            onChange={(e) => setManualLead({ ...manualLead, city: e.target.value })}
+                            className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <select
+                            value={manualLead.product_id || ''}
+                            onChange={(e) => {
+                                const checkout = allCheckouts.find(c => c.id === e.target.value);
+                                setManualLead({
+                                    ...manualLead,
+                                    product_id: e.target.value,
+                                    product_name: checkout?.productName,
+                                    turma: checkout?.turma
+                                });
+                            }}
+                            className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="">Selecione Produto</option>
+                            {allCheckouts.map(c => <option key={c.id} value={c.id}>{c.productName} ({c.turma || 'Geral'})</option>)}
+                        </select>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <select
+                            value={manualLead.status || 'Novo'}
+                            onChange={(e) => setManualLead({ ...manualLead, status: e.target.value as any })}
+                            className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="Novo">Novo</option>
+                            <option value="Pago">Pago</option>
+                            <option value="Pendente">Pendente</option>
+                            <option value="Sinal">Sinal</option>
+                            <option value="Abandonado">Abandonado</option>
+                        </select>
+                        <input
+                            type="text"
+                            placeholder="Valor Pago"
+                            value={manualLead.paid_amount || ''}
+                            onChange={(e) => setManualLead({ ...manualLead, paid_amount: e.target.value as any })}
+                            className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Onde foi pago"
+                            value={manualLead.payment_location || ''}
+                            onChange={(e) => setManualLead({ ...manualLead, payment_location: e.target.value })}
+                            className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <button
+                            onClick={handleManualLeadSubmit}
+                            disabled={isSubmittingManualLead}
+                            className="px-4 py-2.5 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {isSubmittingManualLead ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                            {isSubmittingManualLead ? 'Salvando...' : 'Salvar'}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -395,6 +540,16 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                             >
                                 Tabela
                             </button>
+                            <button
+                                onClick={() => setViewAll(!viewAll)}
+                                className={`flex-1 px-3 py-2.5 rounded-xl font-bold text-xs uppercase transition-all ${
+                                    viewAll
+                                        ? 'bg-purple-600 text-white'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                            >
+                                Ver TODOS
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -518,6 +673,18 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                         />
                                     </div>
 
+                                    {/* Onde foi pago */}
+                                    <div className="flex items-center gap-2 text-xs">
+                                        <span className="font-bold text-gray-500 uppercase">Local:</span>
+                                        <input
+                                            type="text"
+                                            value={lead.payment_location || ''}
+                                            onChange={(e) => onUpdateLeadField?.(lead.id, { payment_location: e.target.value })}
+                                            placeholder="Onde foi pago"
+                                            className="flex-1 px-2 py-1 text-xs font-bold text-gray-700 bg-gray-50 border border-gray-200 rounded"
+                                        />
+                                    </div>
+
                                     {/* Turma */}
                                     <div className="flex items-center gap-3 text-sm">
                                         <GraduationCap size={16} className="text-gray-400 flex-shrink-0" />
@@ -634,6 +801,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                     <th className="px-4 py-3 text-left font-black uppercase text-xs">Nome</th>
                                     <th className="px-4 py-3 text-left font-black uppercase text-xs">Contato</th>
                                     <th className="px-4 py-3 text-left font-black uppercase text-xs">Pago por</th>
+                                    <th className="px-4 py-3 text-left font-black uppercase text-xs">Local Pag.</th>
                                     <th className="px-4 py-3 text-left font-black uppercase text-xs">Produto</th>
                                     <th className="px-4 py-3 text-left font-black uppercase text-xs">Status</th>
                                     {userRole === 'master' && (
@@ -680,6 +848,15 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                                 value={lead.payer_name || ''}
                                                 onChange={(e) => onUpdateLeadField?.(lead.id, { payer_name: e.target.value })}
                                                 placeholder="Nome"
+                                                className="w-full px-2 py-1.5 text-xs font-bold text-gray-700 bg-gray-50 border border-gray-200 rounded-lg"
+                                            />
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <input
+                                                type="text"
+                                                value={lead.payment_location || ''}
+                                                onChange={(e) => onUpdateLeadField?.(lead.id, { payment_location: e.target.value })}
+                                                placeholder="Local"
                                                 className="w-full px-2 py-1.5 text-xs font-bold text-gray-700 bg-gray-50 border border-gray-200 rounded-lg"
                                             />
                                         </td>
