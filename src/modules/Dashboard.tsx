@@ -39,15 +39,31 @@ interface DashboardProps {
   leads: Lead[];
   coupons: Coupon[];
   expenses?: Expense[];
-  onUpdateStatus: (id: string, status: Lead['status']) => void;
-  onUpdatePaidAmount: (id: string, amount: string) => void;
-  onDeleteLead: (id: string) => void;
-  onSaveCheckout: (config: AppConfig) => void;
+  onLogout: () => void;
+  onViewSite: () => void;
+  isLoading: boolean;
+  totalRevenue: number;
+  totalLeadsCount: number;
+  dbStatus: 'online' | 'offline' | 'error';
+  onRetryDb: () => void;
   onDeleteCheckout: (id: string) => void;
-  onCheckIn: (leadId: string, checkedIn: boolean) => Promise<void>;
-  onUpdateLeadField: (id: string, fields: Record<string, any>) => Promise<void>;
+  onSaveConfig: (config: AppConfig) => void;
+  uploadService: (file: File) => Promise<string | null>;
+  isUploading: string | null;
+  onUpdateLeadStatus: (id: string, status: Lead['status']) => void;
+  onUpdateLeadPaidAmount: (id: string, amount: string) => void;
+  onDeleteLead: (id: string) => void;
   onSaveManualLead: (lead: Partial<Lead>) => Promise<void>;
+  onPrintLeads: () => void;
+  onReprintTicket: (lead: Lead) => void;
+  onSaveCoupon: (coupon: Coupon) => void;
+  onDeleteCoupon: (id: string) => void;
+  onToggleCouponActive: (id: string, isActive: boolean) => void;
+  onCheckIn: (leadId: string, checkedIn: boolean) => Promise<void>;
   onApplyCoupon: (code: string) => Promise<Coupon | null>;
+  isOnline: boolean;
+  pendingSyncCount: number;
+  onSync: () => void;
   savingId: string | null;
 }
 

@@ -1232,50 +1232,51 @@ export default function App() {
             </div>
           </div>
         }>
-          <Dashboard
-          userRole={userRole}
-          checkouts={allCheckouts}
-          leads={leads}
-          onLogout={() => {
-            localStorage.removeItem('vox_saved_role');
-            localStorage.removeItem('vox_remember_me');
-            localStorage.removeItem('vox_remember_email');
-            setUserRole('none');
-          }}
-          onViewSite={() => setUserRole('none')}
-          isLoading={isLoading}
-          totalRevenue={leads.filter(l => l.status === 'Pago').reduce((acc, curr) => acc + (curr.paid_amount || 0), 0)}
-          totalLeadsCount={leads.length}
-          dbStatus={dbStatus}
-          onRetryDb={fetchData}
-          onDeleteCheckout={handleDeleteCheckout}
-          onSaveConfig={handleSaveConfig}
-          uploadService={uploadFile}
-          isUploading={isUploading}
-          onUpdateLeadStatus={handleUpdateLeadStatus}
-          onUpdateLeadPaidAmount={handleUpdateLeadPaidAmount}
-          onDeleteLead={handleDeleteLead}
-          onSaveManualLead={handleSaveManualLead}
-          onPrintLeads={handlePrintLeads}
-          onReprintTicket={(lead) => {
-            const width = 800;
-            const height = 600;
-            const left = (screen.width - width) / 2;
-            const top = (screen.height - height) / 2;
-            const url = `${window.location.origin}/?mode=ticket&checkout=${lead.product_id || config.id}&cpf=${lead.cpf}`;
-            window.open(url, 'ReprintTicket', `width=${width},height=${height},top=${top},left=${left}`);
-          }}
-          savingId={savingId}
-          coupons={coupons}
-          expenses={expenses}
-          onSaveCoupon={handleSaveCoupon}
-          onDeleteCoupon={handleDeleteCoupon}
-          onToggleCouponActive={handleToggleCouponActive}
-          onCheckIn={handleCheckIn}
-          isOnline={isOnline}
-          pendingSyncCount={pendingSyncCount}
-          onSync={processPendingQueue}
-        />
+           <Dashboard
+           userRole={userRole}
+           checkouts={allCheckouts}
+           leads={leads}
+           onLogout={() => {
+             localStorage.removeItem('vox_saved_role');
+             localStorage.removeItem('vox_remember_me');
+             localStorage.removeItem('vox_remember_email');
+             setUserRole('none');
+           }}
+           onViewSite={() => setUserRole('none')}
+           isLoading={isLoading}
+           totalRevenue={leads.filter(l => l.status === 'Pago').reduce((acc, curr) => acc + (curr.paid_amount || 0), 0)}
+           totalLeadsCount={leads.length}
+           dbStatus={dbStatus}
+           onRetryDb={fetchData}
+           onDeleteCheckout={handleDeleteCheckout}
+           onSaveConfig={handleSaveConfig}
+           uploadService={uploadFile}
+           isUploading={isUploading}
+           onUpdateLeadStatus={handleUpdateLeadStatus}
+           onUpdateLeadPaidAmount={handleUpdateLeadPaidAmount}
+           onDeleteLead={handleDeleteLead}
+           onSaveManualLead={handleSaveManualLead}
+           onPrintLeads={handlePrintLeads}
+           onReprintTicket={(lead) => {
+             const width = 800;
+             const height = 600;
+             const left = (screen.width - width) / 2;
+             const top = (screen.height - height) / 2;
+             const url = `${window.location.origin}/?mode=ticket&checkout=${lead.product_id || config.id}&cpf=${lead.cpf}`;
+             window.open(url, 'ReprintTicket', `width=${width},height=${height},top=${top},left=${left}`);
+           }}
+           savingId={savingId}
+           coupons={coupons}
+           expenses={expenses}
+           onSaveCoupon={handleSaveCoupon}
+           onDeleteCoupon={handleDeleteCoupon}
+           onToggleCouponActive={handleToggleCouponActive}
+           onCheckIn={handleCheckIn}
+           isOnline={isOnline}
+           pendingSyncCount={pendingSyncCount}
+           onSync={processPendingQueue}
+           onApplyCoupon={handleValidateCoupon}
+         />
       </Suspense>
       </div>
     );
