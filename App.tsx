@@ -6,7 +6,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { useSupabase } from './src/services/useSupabase';
 import { useNotifications } from './src/services/useNotifications';
 import { usePullToRefresh } from './src/services/usePullToRefresh';
-import { AppConfig, Lead, CustomerData, UserRole, MultiTicketPurchase, Coupon } from './src/shared';
+import { AppConfig, Lead, CustomerData, UserRole, MultiTicketPurchase, Coupon, Expense } from './src/shared';
 // Lazy load Dashboard for code splitting
 const Dashboard = lazy(() => import('./src/modules/Dashboard').then(module => ({ default: module.Dashboard })));
 import { ClientView } from './src/modules/checkout/ClientView';
