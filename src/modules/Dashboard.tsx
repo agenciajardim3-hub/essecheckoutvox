@@ -91,6 +91,9 @@ const Dashboard: React.FC<DashboardProps> = ({
   onUpdateLeadField,
   onSaveManualLead,
   onApplyCoupon,
+  onSaveCoupon,
+  onDeleteCoupon,
+  onToggleCouponActive,
   savingId
 }) => {
   const [section, setSection] = useState<DashboardSection>('overview');
@@ -129,7 +132,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         return (
           <LeadsReport
             leads={allLeads}
-            checkouts={allCheckouts}
+            allCheckouts={allCheckouts}
             userRole={userRole}
             onUpdateStatus={onUpdateStatus}
             onDeleteLead={onDeleteLead}
@@ -159,8 +162,11 @@ const Dashboard: React.FC<DashboardProps> = ({
       case 'coupons':
         return (
           <CouponManager
-            checkouts={allCheckouts}
-            onApplyCoupon={onApplyCoupon}
+            allCheckouts={allCheckouts}
+            coupons={coupons || []}
+            onSave={async (c) => onSaveCoupon(c)}
+            onDelete={async (id) => onDeleteCoupon(id)}
+            onToggleActive={async (id, isActive) => onToggleCouponActive(id, isActive)}
           />
         );
       case 'checkin':
