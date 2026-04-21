@@ -37,7 +37,7 @@ interface DashboardProps {
   checkouts: AppConfig[];
   leads: Lead[];
   coupons: Coupon[];
-  expenses: Expense[];
+  expenses?: Expense[];
   onUpdateStatus: (id: string, status: Lead['status']) => void;
   onUpdatePaidAmount: (id: string, amount: string) => void;
   onDeleteLead: (id: string) => void;
@@ -64,7 +64,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   checkouts,
   leads,
   coupons,
-  expenses,
+  expenses = [],
   onUpdateStatus,
   onUpdatePaidAmount,
   onDeleteLead,
