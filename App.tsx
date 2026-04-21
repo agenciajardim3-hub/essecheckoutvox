@@ -3,17 +3,17 @@ import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from
 import { Loader2, RotateCw } from 'lucide-react';
 import { LocalNotifications } from '@capacitor/local-notifications';
 
-import { useSupabase } from './src/hooks/useSupabase';
-import { useNotifications } from './src/hooks/useNotifications';
-import { usePullToRefresh } from './src/hooks/usePullToRefresh';
-import { AppConfig, Lead, CustomerData, UserRole, MultiTicketPurchase, Coupon } from './src/types';
+import { useSupabase } from './src/services/useSupabase';
+import { useNotifications } from './src/services/useNotifications';
+import { usePullToRefresh } from './src/services/usePullToRefresh';
+import { AppConfig, Lead, CustomerData, UserRole, MultiTicketPurchase, Coupon, Expense } from './src/shared';
 // Lazy load Dashboard for code splitting
-const Dashboard = lazy(() => import('./src/components/dashboard/Dashboard').then(module => ({ default: module.Dashboard })));
-import { ClientView } from './src/components/client/ClientView';
-import { RegistrationSuccess } from './src/components/client/RegistrationSuccess';
-import { ThankYouPage } from './src/components/client/ThankYouPage';
-import { LoginPage } from './src/components/auth/LoginPage';
-import { SolicitacaoFormPage } from './src/components/client/SolicitacaoFormPage';
+const Dashboard = lazy(() => import('./src/modules/Dashboard'));
+import { ClientView } from './src/modules/checkout/ClientView';
+import { RegistrationSuccess } from './src/modules/checkout/RegistrationSuccess';
+import { ThankYouPage } from './src/modules/checkout/ThankYouPage';
+import { LoginPage } from './src/modules/auth/LoginPage';
+import { SolicitacaoFormPage } from './src/modules/checkout/SolicitacaoFormPage';
 
 export default function App() {
   const supabase = useSupabase();
@@ -23,6 +23,7 @@ export default function App() {
   // Global State
   const [allCheckouts, setAllCheckouts] = useState<AppConfig[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [userRole, setUserRole] = useState<UserRole>(() => {
     const savedRole = localStorage.getItem('vox_saved_role');
     const rememberMe = localStorage.getItem('vox_remember_me');
@@ -92,6 +93,7 @@ export default function App() {
   const isTicketMode = query.get('mode') === 'ticket';
   const isCertificateMode = query.get('mode') === 'certificate';
   const checkoutParam = query.get('checkout') || query.get('p') || '';
+  const variantParam = query.get('variant') || '';
   const utms = {
     source: query.get('utm_source') || 'direct',
     medium: query.get('utm_medium') || 'cpc',
@@ -128,11 +130,12 @@ export default function App() {
       const checkoutsData = checkoutData || [];
 
       // OPTIMIZATION: Only fetch leads/coupons for dashboard (not client checkout pages)
+      // EXCEPT: Always fetch for ticket/certificate modes which need lead data
       let leadsData: any = null;
       let couponsData: any = null;
 
-      if (!checkoutParam || userRole !== 'none') {
-        // Dashboard mode - fetch all leads and coupons
+      if (!checkoutParam || userRole !== 'none' || isTicketMode || isCertificateMode) {
+        // Dashboard mode or ticket/certificate mode - fetch all leads and coupons
         const leadsResult = await supabase.from('leads').select('*').order('created_at', { ascending: false });
         leadsData = leadsResult.data;
         if (leadsResult.error && leadsResult.error.code !== 'PGRST116') throw leadsResult.error;
@@ -201,6 +204,19 @@ export default function App() {
         setCoupons(mappedCoupons);
       }
 
+      // Fetch expenses
+      const { data: expensesData } = await supabase.from('expenses').select('*');
+      if (expensesData) {
+        setExpenses(expensesData.map(e => ({
+          id: e.id,
+          description: e.description,
+          amount: e.amount,
+          category: e.category,
+          date: e.date,
+          created_at: e.created_at
+        })));
+      }
+
       const matchedConfig = mappedCheckouts.find(c => c.slug === checkoutParam || c.id === checkoutParam);
       console.log('[DEBUG] checkoutParam:', checkoutParam);
       if (matchedConfig) {
@@ -243,10 +259,22 @@ export default function App() {
     if (checkoutParam && allCheckouts.length > 0) {
       const matched = allCheckouts.find(c => c.slug === checkoutParam || c.id === checkoutParam);
       if (matched) {
+        // Apply variant if present
+        if (variantParam && matched.variations) {
+          const variant = matched.variations.find(v => v.id === variantParam);
+          if (variant) {
+            setConfig({
+              ...matched,
+              productPrice: variant.price,
+              ticketAmount: variant.ticketAmount || 1,
+            });
+            return;
+          }
+        }
         setConfig(matched);
       }
     }
-  }, [checkoutParam, allCheckouts]);
+  }, [checkoutParam, allCheckouts, variantParam]);
 
   // Auto-load ticket when in ticket mode with CPF
   const ticketCpf = query.get('cpf');
@@ -1204,49 +1232,57 @@ export default function App() {
             </div>
           </div>
         }>
-          <Dashboard
-          userRole={userRole}
-          checkouts={allCheckouts}
-          leads={leads}
-          onLogout={() => {
-            localStorage.removeItem('vox_saved_role');
-            localStorage.removeItem('vox_remember_me');
-            localStorage.removeItem('vox_remember_email');
-            setUserRole('none');
-          }}
-          onViewSite={() => setUserRole('none')}
-          isLoading={isLoading}
-          totalRevenue={leads.filter(l => l.status === 'Pago').reduce((acc, curr) => acc + (curr.paid_amount || 0), 0)}
-          totalLeadsCount={leads.length}
-          dbStatus={dbStatus}
-          onRetryDb={fetchData}
-          onDeleteCheckout={handleDeleteCheckout}
-          onSaveConfig={handleSaveConfig}
-          uploadService={uploadFile}
-          isUploading={isUploading}
-          onUpdateLeadStatus={handleUpdateLeadStatus}
-          onUpdateLeadPaidAmount={handleUpdateLeadPaidAmount}
-          onDeleteLead={handleDeleteLead}
-          onSaveManualLead={handleSaveManualLead}
-          onPrintLeads={handlePrintLeads}
-          onReprintTicket={(lead) => {
-            const width = 800;
-            const height = 600;
-            const left = (screen.width - width) / 2;
-            const top = (screen.height - height) / 2;
-            const url = `${window.location.origin}/?mode=ticket&checkout=${lead.product_id || config.id}&cpf=${lead.cpf}`;
-            window.open(url, 'ReprintTicket', `width=${width},height=${height},top=${top},left=${left}`);
-          }}
-          savingId={savingId}
-          coupons={coupons}
-          onSaveCoupon={handleSaveCoupon}
-          onDeleteCoupon={handleDeleteCoupon}
-          onToggleCouponActive={handleToggleCouponActive}
-          onCheckIn={handleCheckIn}
-          isOnline={isOnline}
-          pendingSyncCount={pendingSyncCount}
-          onSync={processPendingQueue}
-        />
+           <Dashboard
+           userRole={userRole}
+           checkouts={allCheckouts}
+           leads={leads}
+           onLogout={() => {
+             localStorage.removeItem('vox_saved_role');
+             localStorage.removeItem('vox_remember_me');
+             localStorage.removeItem('vox_remember_email');
+             setUserRole('none');
+           }}
+           onViewSite={() => setUserRole('none')}
+           isLoading={isLoading}
+           totalRevenue={leads.filter(l => l.status === 'Pago').reduce((acc, curr) => acc + (curr.paid_amount || 0), 0)}
+           totalLeadsCount={leads.length}
+           dbStatus={dbStatus}
+           onRetryDb={fetchData}
+           onDeleteCheckout={handleDeleteCheckout}
+           onSaveConfig={handleSaveConfig}
+           uploadService={uploadFile}
+           isUploading={isUploading}
+           onUpdateLeadStatus={handleUpdateLeadStatus}
+           onUpdateLeadPaidAmount={handleUpdateLeadPaidAmount}
+           onDeleteLead={handleDeleteLead}
+           onSaveManualLead={handleSaveManualLead}
+           onPrintLeads={handlePrintLeads}
+           onReprintTicket={(lead) => {
+             const width = 800;
+             const height = 600;
+             const left = (screen.width - width) / 2;
+             const top = (screen.height - height) / 2;
+             const url = `${window.location.origin}/?mode=ticket&checkout=${lead.product_id || config.id}&cpf=${lead.cpf}`;
+             window.open(url, 'ReprintTicket', `width=${width},height=${height},top=${top},left=${left}`);
+           }}
+           savingId={savingId}
+           coupons={coupons}
+           expenses={expenses}
+           onSaveCoupon={handleSaveCoupon}
+           onDeleteCoupon={handleDeleteCoupon}
+           onToggleCouponActive={handleToggleCouponActive}
+           onCheckIn={handleCheckIn}
+           isOnline={isOnline}
+            pendingSyncCount={pendingSyncCount}
+            onSync={processPendingQueue}
+            onApplyCoupon={async (code: string) => {
+              const result = await handleValidateCoupon(code);
+              if (result.success && result.coupon) {
+                return result.coupon;
+              }
+              return null;
+            }}
+         />
       </Suspense>
       </div>
     );
