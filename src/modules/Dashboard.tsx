@@ -7,6 +7,7 @@ import { LeadsReport } from '../vendas/LeadsReport';
 import { TurmasDashboard } from '../turmas/TurmasDashboard';
 import { FinancialDashboard } from '../financeiro/FinancialDashboard';
 import { ExpenseManager } from '../financeiro/ExpenseManager';
+import { Expense } from '../../shared';
 import { CouponManager } from '../financeiro/CouponManager';
 import { ProductConfig } from '../config/ProductConfig';
 import { GlobalSettings } from '../config/GlobalSettings';
@@ -37,6 +38,7 @@ interface DashboardProps {
   checkouts: AppConfig[];
   leads: Lead[];
   coupons: Coupon[];
+  expenses: Expense[];
   onUpdateStatus: (id: string, status: Lead['status']) => void;
   onUpdatePaidAmount: (id: string, amount: string) => void;
   onDeleteLead: (id: string) => void;
@@ -63,6 +65,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   checkouts,
   leads,
   coupons,
+  expenses,
   onUpdateStatus,
   onUpdatePaidAmount,
   onDeleteLead,
@@ -132,10 +135,11 @@ const Dashboard: React.FC<DashboardProps> = ({
           <FinancialDashboard
             leads={allLeads}
             checkouts={allCheckouts}
+            expenses={expenses}
           />
         );
       case 'expenses':
-        return <ExpenseManager />;
+        return <ExpenseManager leads={allLeads} />;
       case 'coupons':
         return (
           <CouponManager

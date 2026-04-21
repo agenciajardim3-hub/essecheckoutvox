@@ -1,11 +1,12 @@
 
 import React, { useState, useMemo } from 'react';
-import { DollarSign, TrendingUp, Users, CreditCard, BarChart3, PieChart, ArrowUp, ArrowDown, Filter, Calendar, ChevronDown, Wallet, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
-import { Lead, AppConfig } from '../../shared';
+import { DollarSign, TrendingUp, Users, CreditCard, BarChart3, PieChart, ArrowUp, ArrowDown, Filter, Calendar, ChevronDown, Wallet, Clock, CheckCircle, XCircle, AlertTriangle, Minus, Plus } from 'lucide-react';
+import { Lead, AppConfig, Expense } from '../../shared';
 
 interface FinancialDashboardProps {
     leads: Lead[];
     checkouts: AppConfig[];
+    expenses?: Expense[];
 }
 
 export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, checkouts }) => {
@@ -44,6 +45,29 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
         return filtered;
     }, [leads, selectedProduct, dateRange]);
 
+    // Filter expenses based on selection
+    const filteredExpenses = useMemo(() => {
+        if (!expenses) return [];
+        let filtered = [...expenses];
+
+        if (selectedProduct !== 'all') {
+            // For expenses, we could add a product_id field, or filter by date
+            // For now, just filter by date range
+        }
+
+        if (dateRange !== 'all') {
+            const now = new Date();
+            const days = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90;
+            const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+            filtered = filtered.filter(e => {
+                const d = safeDate(e.date);
+                return d ? d >= cutoff : true;
+            });
+        }
+
+        return filtered;
+    }, [expenses, selectedProduct, dateRange]);
+
     // Financial metrics
     const metrics = useMemo(() => {
         const paid = filteredLeads.filter(l => l.status === 'Pago');
@@ -55,6 +79,9 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
         const pendingRevenue = pending.reduce((acc, l) => acc + (l.paid_amount || 0), 0);
         const sinalRevenue = sinal.reduce((acc, l) => acc + (l.paid_amount || 0), 0);
 
+        const totalExpenses = filteredExpenses.reduce((acc, e) => acc + (e.amount || 0), 0);
+        const netValue = totalRevenue - totalExpenses;
+
         // Ticket médio
         const averageTicket = paid.length > 0 ? totalRevenue / paid.length : 0;
 
@@ -63,6 +90,8 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
 
         return {
             totalRevenue,
+            totalExpenses,
+            netValue,
             pendingRevenue,
             sinalRevenue,
             totalLeads: filteredLeads.length,
@@ -74,7 +103,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
             averageTicket,
             conversionRate
         };
-    }, [filteredLeads]);
+    }, [filteredLeads, filteredExpenses]);
 
     // Payment methods breakdown
     const paymentMethods = useMemo(() => {
@@ -208,53 +237,43 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Total Revenue */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Receita Bruta */}
                 <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-[2rem] p-6 text-white shadow-xl shadow-emerald-200/50">
                     <div className="flex items-center gap-3 mb-4">
                         <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
-                            <DollarSign size={20} />
+                            <ArrowUp size={20} />
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest opacity-80">Receita Total</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest opacity-80">Receita Bruta</span>
                     </div>
                     <p className="text-3xl font-black tracking-tight">{formatCurrency(metrics.totalRevenue)}</p>
                     <p className="text-xs font-bold mt-2 opacity-70">{metrics.paidCount} vendas confirmadas</p>
                 </div>
 
-                {/* Ticket Médio */}
-                <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-lg">
+                {/* Total de Despesas */}
+                <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-[2rem] p-6 text-white shadow-xl shadow-red-200/50">
                     <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center">
-                            <TrendingUp size={20} className="text-blue-600" />
+                        <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
+                            <ArrowDown size={20} />
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Ticket Médio</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest opacity-80">Total de Despesas</span>
                     </div>
-                    <p className="text-3xl font-black tracking-tight text-gray-900">{formatCurrency(metrics.averageTicket)}</p>
-                    <p className="text-xs font-bold mt-2 text-gray-400">Valor médio por venda</p>
+                    <p className="text-3xl font-black tracking-tight">{formatCurrency(metrics.totalExpenses)}</p>
+                    <p className="text-xs font-bold mt-2 opacity-70">{filteredExpenses.length} despesas registradas</p>
                 </div>
 
-                {/* Conversion Rate */}
-                <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-lg">
+                {/* Valor Líquido */}
+                <div className={`rounded-[2rem] p-6 text-white shadow-xl ${metrics.netValue >= 0 ? 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-blue-200/50' : 'bg-gradient-to-br from-red-500 to-red-600 shadow-red-200/50'}`}>
                     <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-purple-50 rounded-2xl flex items-center justify-center">
-                            <BarChart3 size={20} className="text-purple-600" />
+                        <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
+                            <Wallet size={20} />
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Taxa Conversão</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest opacity-80">Valor Líquido</span>
                     </div>
-                    <p className="text-3xl font-black tracking-tight text-gray-900">{metrics.conversionRate.toFixed(1)}%</p>
-                    <p className="text-xs font-bold mt-2 text-gray-400">{metrics.paidCount} de {metrics.totalLeads} leads</p>
-                </div>
-
-                {/* Total Leads */}
-                <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-lg">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-amber-50 rounded-2xl flex items-center justify-center">
-                            <Users size={20} className="text-amber-600" />
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Total Leads</span>
-                    </div>
-                    <p className="text-3xl font-black tracking-tight text-gray-900">{metrics.totalLeads}</p>
-                    <p className="text-xs font-bold mt-2 text-gray-400">Cadastros realizados</p>
+                    <p className="text-3xl font-black tracking-tight">{formatCurrency(metrics.netValue)}</p>
+                    <p className="text-xs font-bold mt-2 opacity-70">
+                        {metrics.netValue >= 0 ? 'Lucro' : 'Prejuízo'} bruto
+                    </p>
                 </div>
             </div>
 

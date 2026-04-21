@@ -23,6 +23,7 @@ export default function App() {
   // Global State
   const [allCheckouts, setAllCheckouts] = useState<AppConfig[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [userRole, setUserRole] = useState<UserRole>(() => {
     const savedRole = localStorage.getItem('vox_saved_role');
     const rememberMe = localStorage.getItem('vox_remember_me');
@@ -201,6 +202,19 @@ export default function App() {
           expiresAt: c.expires_at
         }));
         setCoupons(mappedCoupons);
+      }
+
+      // Fetch expenses
+      const { data: expensesData } = await supabase.from('expenses').select('*');
+      if (expensesData) {
+        setExpenses(expensesData.map(e => ({
+          id: e.id,
+          description: e.description,
+          amount: e.amount,
+          category: e.category,
+          date: e.date,
+          created_at: e.created_at
+        })));
       }
 
       const matchedConfig = mappedCheckouts.find(c => c.slug === checkoutParam || c.id === checkoutParam);
@@ -1253,6 +1267,7 @@ export default function App() {
           }}
           savingId={savingId}
           coupons={coupons}
+          expenses={expenses}
           onSaveCoupon={handleSaveCoupon}
           onDeleteCoupon={handleDeleteCoupon}
           onToggleCouponActive={handleToggleCouponActive}
