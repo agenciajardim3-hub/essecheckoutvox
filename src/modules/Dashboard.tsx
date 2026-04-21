@@ -24,6 +24,7 @@ import { SignatureManager } from '../certificates/SignatureManager';
 import { RemarketingDashboard } from '../marketing/RemarketingDashboard';
 import { EmailMarketingDashboard } from '../marketing/EmailMarketingDashboard';
 import { SupportMaterials } from '../marketing/SupportMaterials';
+import { EmailSender } from '../marketing/EmailSender';
 
 import { 
   LayoutDashboard, Users, GraduationCap, DollarSign, 
@@ -54,7 +55,7 @@ type DashboardSection =
   | 'checkin' | 'scanner'
   | 'tickets' | 'ticket-sender' | 'ticket-logs'
   | 'certificates' | 'certificate-sender' | 'solicitacoes' | 'signatures'
-  | 'remarketing' | 'email-marketing' | 'support'
+  | 'remarketing' | 'email-marketing' | 'email-sender' | 'support'
   | 'products' | 'settings' | 'integrations' | 'views';
 
 const Dashboard: React.FC<DashboardProps> = ({
@@ -175,6 +176,8 @@ const Dashboard: React.FC<DashboardProps> = ({
         return <RemarketingDashboard checkouts={allCheckouts} />;
       case 'email-marketing':
         return <EmailMarketingDashboard />;
+      case 'email-sender':
+        return <EmailSender />;
       case 'support':
         return <SupportMaterials />;
       case 'products':
@@ -216,6 +219,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     { id: 'tickets', label: 'Ingressos', icon: Ticket },
     { id: 'certificates', label: 'Certificados', icon: Award },
     { id: 'remarketing', label: 'Marketing', icon: Zap },
+    { id: 'email-sender', label: 'Enviar Email', icon: Mail },
     { id: 'products', label: 'Produtos', icon: FolderOpen },
     { id: 'settings', label: 'Configurações', icon: Settings },
   ];
