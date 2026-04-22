@@ -9,6 +9,7 @@ import { TicketLogs } from './TicketLogs';
 import { CertificateGenerator } from './CertificateGenerator';
 import { CertificateSender } from './CertificateSender';
 import { TicketSender } from './TicketSender';
+import { CustomEmailSender } from './CustomEmailSender';
 import { IntegrationsStatus } from './IntegrationsStatus';
 import { TicketScanner } from './TicketScanner';
 import { CouponManager } from './CouponManager';
@@ -126,7 +127,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             console.error('Erro ao atualizar lead:', err);
         }
     };
-    const [setupTab, setSetupTab] = useState<'list' | 'product' | 'integrations' | 'leads' | 'tickets' | 'ticket_logs' | 'send_tickets' | 'certificates' | 'send_certificates' | 'scanner' | 'coupons' | 'overview' | 'checkin' | 'materials' | 'solicitacoes' | 'financeiro' | 'signatures' | 'views' | 'remarketing' | 'global_settings' | 'turmas' | 'email_marketing'>(
+    const [setupTab, setSetupTab] = useState<'list' | 'product' | 'integrations' | 'leads' | 'tickets' | 'ticket_logs' | 'send_tickets' | 'certificates' | 'send_certificates' | 'custom_email' | 'scanner' | 'coupons' | 'overview' | 'checkin' | 'materials' | 'solicitacoes' | 'financeiro' | 'signatures' | 'views' | 'remarketing' | 'global_settings' | 'turmas' | 'email_marketing'>(
         userRole === 'manager' ? 'scanner' : 'overview'
     );
     
@@ -189,6 +190,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         { id: 'scanner', label: 'Escanear', icon: QrCode, roles: ['master', 'manager'], category: 'operacoes' },
         { id: 'certificates', label: 'Certificados', icon: Award, roles: ['master'], category: 'operacoes' },
         { id: 'send_certificates', label: 'Enviar Certificados', icon: Mail, roles: ['master'], category: 'operacoes' },
+        { id: 'custom_email', label: 'Email Personalizado', icon: Send, roles: ['master'], category: 'operacoes' },
         { id: 'email_marketing', label: 'Email Marketing', icon: Send, roles: ['master'], category: 'operacoes' },
         { id: 'solicitacoes', label: 'Solicitações', icon: FileCheck, roles: ['master'], category: 'operacoes' },
         
@@ -611,6 +613,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 leads={leads}
                                 checkouts={checkouts}
                             />
+                        </div>
+                    )}
+
+                    {setupTab === 'custom_email' && (
+                        <div className="animate-in fade-in duration-500">
+                            <CustomEmailSender userRole={userRole} />
                         </div>
                     )}
 
