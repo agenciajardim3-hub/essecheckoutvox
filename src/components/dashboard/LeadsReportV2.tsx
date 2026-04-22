@@ -282,15 +282,10 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
 
     // Handle payment amount changes
     const handlePaidAmountChange = (value: string) => {
-        console.log('Valor digitado:', value, 'chars:', [...value].map((c, i) => `${i}:${c}(${c.charCodeAt(0)})`)); // DEBUG
         setManualLead({ ...manualLead, paid_amount: value as any });
     };
 
-    // Wrapper para onUpdatePaidAmount com log
-    const handleUpdatePaidAmountWithLog = (id: string, value: string) => {
-        console.log('Atualizando valor:', value); // DEBUG
-        onUpdatePaidAmount(id, value);
-    };
+    const handleManualLeadSubmit = async () => {
         if (!manualLead.name || !manualLead.product_id) {
             alert('Nome e Produto são obrigatórios');
             return;
