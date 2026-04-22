@@ -287,64 +287,48 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
     }, [allPaidLeads]);
     const maxMonthDay = Math.max(...salesByMonthDay, 1);
 
-    // Growth curve data
+    // Growth curve data - Cumulative registrations over time
     const growthData = useMemo(() => {
         const turmasToShow = selectedTurmas.length > 0 ? selectedTurmas : checkouts.slice(0, 3).map(c => c.id);
-        const curves: { id: string; name: string; color: string; points: { day: number; count: number }[] }[] = [];
+        const curves: { id: string; name: string; color: string; points: { dateStr: string; date: Date; cumulativeCount: number }[] }[] = [];
 
         turmasToShow.forEach((tid, idx) => {
             const checkout = checkouts.find(c => c.id === tid);
             if (!checkout) return;
-            
-            // Get event date or use current date as reference
-            let eventDate: Date;
-            if (checkout.eventDate) {
-                eventDate = safeDate(checkout.eventDate) || new Date();
-            } else {
-                // If no event date, use the latest lead date or current date
-                const turmaLeads = allPaidLeads.filter(l => l.product_id === tid);
-                if (turmaLeads.length > 0) {
-                    const dates = turmaLeads.map(l => safeDate(l.created_at || l.date)).filter(Boolean) as Date[];
-                    if (dates.length > 0) {
-                        eventDate = new Date(Math.max(...dates.map(d => d.getTime())) + 30 * 24 * 60 * 60 * 1000); // +30 days from latest
-                    } else {
-                        eventDate = new Date();
-                    }
-                } else {
-                    eventDate = new Date();
-                }
-            }
-            
-            const refDate = eventDate;
 
             // Get paid leads for this checkout
             const paidLeads = allPaidLeads.filter(l => l.product_id === tid);
-            
+
             if (paidLeads.length === 0) return;
 
-            // Calculate days remaining for each lead
-            const leadDays = paidLeads
+            // Extract and parse creation dates
+            const leadDates = paidLeads
                 .map(l => {
-                    // Use created_at first, then fall back to date
                     const d = safeDate(l.created_at || l.date);
-                    if (!d) return null;
-                    const diffTime = refDate.getTime() - d.getTime();
-                    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    return d ? { date: d, dateStr: d.toISOString().split('T')[0] } : null;
                 })
-                .filter((d): d is number => d !== null);
+                .filter((item): item is { date: Date; dateStr: string } => item !== null);
 
-            if (leadDays.length === 0) return;
+            if (leadDates.length === 0) return;
 
-            const maxDaysRemaining = Math.max(...leadDays, 1);
-            const points: { day: number; count: number }[] = [];
+            // Group by date and count occurrences
+            const dateGroups: Record<string, number> = {};
+            leadDates.forEach(({ dateStr }) => {
+                dateGroups[dateStr] = (dateGroups[dateStr] || 0) + 1;
+            });
 
-            // Generate points from max days to 0
-            const startDay = Math.max(maxDaysRemaining + 1, 1);
+            // Sort dates chronologically
+            const sortedDates = Object.keys(dateGroups).sort();
 
-            for (let day = startDay; day >= 0; day--) {
-                const count = leadDays.filter(ld => ld >= day).length;
-                points.push({ day, count });
-            }
+            // Build cumulative sum
+            const points: { dateStr: string; date: Date; cumulativeCount: number }[] = [];
+            let cumulativeCount = 0;
+
+            sortedDates.forEach(dateStr => {
+                cumulativeCount += dateGroups[dateStr];
+                const date = new Date(dateStr);
+                points.push({ dateStr, date, cumulativeCount });
+            });
 
             curves.push({
                 id: tid,
@@ -353,42 +337,64 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
                 points
             });
         });
-        
+
         return curves;
     }, [allPaidLeads, checkouts, selectedTurmas]);
-    // Adapt data for Recharts (Array of objects where each point corresponds to a day, and includes every turma count)
+    // Adapt data for Recharts (Array of objects with dates as x-axis, cumulative counts per product)
     const rechartsData = useMemo(() => {
         if (growthData.length === 0) return [];
-        let maxDay = 0;
+
+        // Collect all unique dates across all curves
+        const allDates = new Set<string>();
         growthData.forEach(curve => {
             curve.points.forEach(p => {
-                if (p.day > maxDay) maxDay = p.day;
+                allDates.add(p.dateStr);
             });
         });
 
-        const data = [];
-        // Start from maxDay down to 0 so the chart draws left to right
-        for (let day = maxDay; day >= 0; day--) {
-            const point: any = { day };
+        // Sort dates chronologically
+        const sortedDates = Array.from(allDates).sort();
+
+        // Build data array where each object represents a date
+        const data = sortedDates.map(dateStr => {
+            const point: any = { date: dateStr };
+
             growthData.forEach(curve => {
-                const p = curve.points.find(x => x.day === day);
-                point[curve.id] = p ? p.count : null;
+                // Find the cumulative count for this date
+                // If no data for this date, use the last known value
+                let cumulativeCount = 0;
+                for (const p of curve.points) {
+                    if (p.dateStr <= dateStr) {
+                        cumulativeCount = p.cumulativeCount;
+                    } else {
+                        break;
+                    }
+                }
+                point[curve.id] = cumulativeCount || null;
             });
-            data.push(point);
-        }
+
+            return point;
+        });
+
         return data;
     }, [growthData]);
 
     const CustomTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
+            // Format date label (YYYY-MM-DD) to readable format
+            const dateObj = new Date(label);
+            const formattedDate = !isNaN(dateObj.getTime())
+                ? dateObj.toLocaleDateString('pt-BR', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                : label;
+
             return (
                 <div className="bg-white p-4 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-gray-100">
-                    <p className="font-bold text-gray-800 text-sm mb-3">Dias Restantes: {label}</p>
+                    <p className="font-bold text-gray-800 text-sm mb-3">📅 {formattedDate}</p>
                     {payload.map((entry: any, index: number) => {
                         const curve = growthData.find(c => c.id === entry.dataKey);
                         return (
                             <p key={index} className="text-xs font-medium mb-1.5 flex items-center justify-between gap-4" style={{ color: entry.color }}>
-                                <span>{curve?.name}:</span> <span className="font-black text-sm">{entry.value} Alunos</span>
+                                <span>{curve?.name}:</span> <span className="font-black text-sm">{entry.value || 0} Alunos</span>
                             </p>
                         );
                     })}
@@ -1194,7 +1200,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
                             <h3 className="font-black text-sm text-gray-800">Curva de Crescimento (Matrículas Acumuladas)</h3>
                         </div>
                         <p className="text-[11px] text-gray-400 font-medium">
-                            Comparação da velocidade de vendas. Eixo X são os <strong>dias restantes</strong> para o dia da aula (0 = Dia da Aula).
+                            Crescimento acumulado de matrículas ao longo do tempo. Mostra o total de alunos em cada data de criação.
                         </p>
                     </div>
                     <div className="relative">
@@ -1229,11 +1235,12 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
                                 >
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                     <XAxis
-                                        dataKey="day"
+                                        dataKey="date"
                                         tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }}
                                         tickLine={false}
                                         axisLine={false}
                                         tickMargin={12}
+                                        interval={Math.max(0, Math.floor(rechartsData.length / 8) - 1)}
                                     />
                                     <YAxis
                                         tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 600 }}
