@@ -42,8 +42,9 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
     const [selectedStatus, setSelectedStatus] = useState('all');
     const [sortBy, setSortBy] = useState<SortBy>('date');
     const [currentPage, setCurrentPage] = useState(1);
-    const [viewAll, setViewAll] = useState(false);
-    const itemsPerPage = viewAll ? 10000 : 12;
+    const [itemsPerPageOption, setItemsPerPageOption] = useState<12 | 24 | 50 | 'todos'>(12);
+
+    const itemsPerPage = itemsPerPageOption === 'todos' ? 999999 : itemsPerPageOption;
 
     // Copy to clipboard states
     const [copiedNames, setCopiedNames] = useState(false);
@@ -110,13 +111,15 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
         return result;
     }, [leads, selectedProduct, selectedStatus, searchTerm, sortBy]);
 
-    // Paginação
+    // Paginação com memoização otimizada
     const paginatedLeads = useMemo(() => {
         const startIndex = (currentPage - 1) * itemsPerPage;
         return filteredAndSortedLeads.slice(startIndex, startIndex + itemsPerPage);
-    }, [filteredAndSortedLeads, currentPage]);
+    }, [filteredAndSortedLeads, currentPage, itemsPerPage]);
 
-    const totalPages = Math.ceil(filteredAndSortedLeads.length / itemsPerPage);
+    const totalPages = useMemo(() => {
+        return Math.ceil(filteredAndSortedLeads.length / itemsPerPage);
+    }, [filteredAndSortedLeads.length, itemsPerPage]);
 
     // Cálculos de estatísticas
     const stats = useMemo(() => {
@@ -597,17 +600,24 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                             >
                                 Tabela
                             </button>
-                            <button
-                                onClick={() => setViewAll(!viewAll)}
-                                className={`flex-1 px-3 py-2.5 rounded-xl font-bold text-xs uppercase transition-all ${
-                                    viewAll
-                                        ? 'bg-purple-600 text-white'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                            >
-                                Ver TODOS
-                            </button>
                         </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Itens por Página</label>
+                        <select
+                            value={itemsPerPageOption}
+                            onChange={(e) => {
+                                setItemsPerPageOption(e.target.value as any);
+                                setCurrentPage(1);
+                            }}
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm"
+                        >
+                            <option value={12}>12 itens</option>
+                            <option value={24}>24 itens</option>
+                            <option value={50}>50 itens</option>
+                            <option value="todos">Todos ({filteredAndSortedLeads.length})</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -1033,27 +1043,35 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
             )}
 
             {/* Paginação */}
-            {totalPages > 1 && (
+            {filteredAndSortedLeads.length > 0 && (
                 <div className="mt-6 flex items-center justify-between">
                     <div className="text-sm font-bold text-gray-600">
-                        Página {currentPage} de {totalPages} • {filteredAndSortedLeads.length} resultados
+                        {itemsPerPageOption === 'todos' ? (
+                            <span>Mostrando {filteredAndSortedLeads.length} resultado{filteredAndSortedLeads.length !== 1 ? 's' : ''}</span>
+                        ) : (
+                            <span>
+                                Página {currentPage} de {totalPages} • {filteredAndSortedLeads.length} resultado{filteredAndSortedLeads.length !== 1 ? 's' : ''}
+                            </span>
+                        )}
                     </div>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                            disabled={currentPage === 1}
-                            className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-bold text-xs uppercase disabled:opacity-50"
-                        >
-                            ← Anterior
-                        </button>
-                        <button
-                            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                            disabled={currentPage === totalPages}
-                            className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold text-xs uppercase disabled:opacity-50"
-                        >
-                            Próximo →
-                        </button>
-                    </div>
+                    {totalPages > 1 && itemsPerPageOption !== 'todos' && (
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                                disabled={currentPage === 1}
+                                className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-bold text-xs uppercase disabled:opacity-50"
+                            >
+                                ← Anterior
+                            </button>
+                            <button
+                                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                                disabled={currentPage === totalPages}
+                                className="px-4 py-2 rounded-lg bg-blue-600 text-white font-bold text-xs uppercase disabled:opacity-50"
+                            >
+                                Próximo →
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
 
