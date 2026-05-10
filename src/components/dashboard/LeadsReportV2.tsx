@@ -4,7 +4,7 @@ import {
     Download, Mail, MessageCircle, Eye, Edit2, Trash2, Check,
     AlertCircle, Calendar, MapPin, Phone, GraduationCap, Loader2,
     Copy, FileText, Printer, Smartphone, Send, Ticket, Award, UserCheck,
-    UserPlus, X
+    UserPlus, X, Wallet
 } from 'lucide-react';
 import { Lead, AppConfig, UserRole } from '../../types';
 
@@ -67,9 +67,27 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
         return new Set(saved ? JSON.parse(saved) : []);
     });
 
+    // Filter controls state
+    const [showFilters, setShowFilters] = useState(true);
+    const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | 'all' | 'custom'>('all');
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+
     // Filtrar e ordenar leads
     const filteredAndSortedLeads = useMemo(() => {
         let result = leads;
+
+        // Filtro por período
+        if (dateRange !== 'all') {
+            const now = new Date();
+            const days = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : dateRange === '90d' ? 90 : 0;
+            if (days > 0) {
+                const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+                result = result.filter(l => {
+                    const d = l.created_at ? new Date(l.created_at) : null;
+                    return d ? d >= cutoff : false;
+                });
+            }
+        }
 
         // Filtro por produto
         if (selectedProduct !== 'all') {
@@ -132,8 +150,21 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
             ? ((paidLeads.length / filteredAndSortedLeads.length) * 100).toFixed(1)
             : '0';
 
-        return { paidLeads, totalRevenue, pendingLeads, conversionRate };
-    }, [filteredAndSortedLeads]);
+        // Comparação com 30 dias atrás
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const last30DaysLeads = leads.filter(l => {
+            const d = l.created_at ? new Date(l.created_at) : null;
+            return d && d >= thirtyDaysAgo && d <= now;
+        });
+        const last30DaysPaid = last30DaysLeads.filter(l => l.status === 'Pago' || l.status === 'Aprovado');
+        const last30DaysRevenue = last30DaysPaid.reduce((sum, l) => sum + (l.paid_amount || 0), 0);
+
+        const revenueDelta = last30DaysRevenue > 0 ? ((totalRevenue - last30DaysRevenue) / last30DaysRevenue) * 100 : 0;
+        const ticketMedio = paidLeads.length > 0 ? totalRevenue / paidLeads.length : 0;
+
+        return { paidLeads, totalRevenue, pendingLeads, conversionRate, revenueDelta, ticketMedio };
+    }, [filteredAndSortedLeads, leads]);
 
     const getStatusColor = (status?: string) => {
         switch (status) {
@@ -312,6 +343,19 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
         }
     };
 
+    const handleDeleteWithConfirm = async (leadId: string) => {
+        setShowDeleteConfirm(leadId);
+    };
+
+    const confirmDelete = async (leadId: string) => {
+        await onDeleteLead(leadId);
+        setShowDeleteConfirm(null);
+    };
+
+    const handleUpdatePaidAmountWithLog = (leadId: string, value: string) => {
+        onUpdatePaidAmount(leadId, value);
+    };
+
     return (
         <div className="animate-in fade-in duration-500">
             {/* Header */}
@@ -338,118 +382,184 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                 )}
             </div>
 
-            {/* Manual Lead Form */}
+            {/* Manual Lead Form Modal */}
             {userRole === 'master' && showManualLeadForm && (
-                <div className="bg-blue-50 border-2 border-blue-200 p-8 rounded-2xl mb-8 animate-in slide-in-from-top-4">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-xl font-black text-gray-900 flex items-center gap-3">
-                            <UserPlus className="text-blue-600" size={24} />
-                            {editingLeadId ? 'Editar Aluno' : 'Adicionar Aluno Manualmente'}
-                        </h3>
-                        <button onClick={() => {
-                            setShowManualLeadForm(false);
-                            setManualLead({});
-                            setEditingLeadId(null);
-                        }} className="text-gray-400 hover:text-red-500 transition-all">
-                            <X size={24} />
-                        </button>
-                    </div>
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto animate-in zoom-in-95">
+                        <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 rounded-t-2xl">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                                    <UserPlus className="text-blue-600" size={20} />
+                                    {editingLeadId ? 'Editar Aluno' : 'Adicionar Aluno'}
+                                </h3>
+                                <button onClick={() => {
+                                    setShowManualLeadForm(false);
+                                    setManualLead({});
+                                    setEditingLeadId(null);
+                                }} className="text-gray-300 hover:text-gray-600 text-2xl font-bold transition-colors">
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <input
-                            type="text"
-                            placeholder="Nome completo"
-                            value={manualLead.name || ''}
-                            onChange={(e) => setManualLead({ ...manualLead, name: e.target.value })}
-                            className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <input
-                            type="email"
-                            placeholder="Email"
-                            value={manualLead.email || ''}
-                            onChange={(e) => setManualLead({ ...manualLead, email: e.target.value })}
-                            className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <input
-                            type="tel"
-                            placeholder="Telefone"
-                            value={manualLead.phone || ''}
-                            onChange={(e) => setManualLead({ ...manualLead, phone: e.target.value })}
-                            className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <input
-                            type="text"
-                            placeholder="CPF"
-                            value={manualLead.cpf || ''}
-                            onChange={(e) => setManualLead({ ...manualLead, cpf: e.target.value })}
-                            className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <input
-                            type="text"
-                            placeholder="Cidade"
-                            value={manualLead.city || ''}
-                            onChange={(e) => setManualLead({ ...manualLead, city: e.target.value })}
-                            className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <select
-                            value={manualLead.product_id || ''}
-                            onChange={(e) => {
-                                const checkout = allCheckouts.find(c => c.id === e.target.value);
-                                setManualLead({
-                                    ...manualLead,
-                                    product_id: e.target.value,
-                                    product_name: checkout?.productName,
-                                    turma: checkout?.turma
-                                });
-                            }}
-                            className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="">Selecione Produto</option>
-                            {allCheckouts.map(c => <option key={c.id} value={c.id}>{c.productName} ({c.turma || 'Geral'})</option>)}
-                        </select>
-                    </div>
+                        <div className="px-6 py-5 space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <input
+                                    type="text"
+                                    placeholder="Nome completo"
+                                    value={manualLead.name || ''}
+                                    onChange={(e) => setManualLead({ ...manualLead, name: e.target.value })}
+                                    className="px-4 py-2.5 border border-gray-200 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <input
+                                    type="email"
+                                    placeholder="Email"
+                                    value={manualLead.email || ''}
+                                    onChange={(e) => setManualLead({ ...manualLead, email: e.target.value })}
+                                    className="px-4 py-2.5 border border-gray-200 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        <select
-                            value={manualLead.status || 'Novo'}
-                            onChange={(e) => setManualLead({ ...manualLead, status: e.target.value as any })}
-                            className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="Novo">Novo</option>
-                            <option value="Pago">Pago</option>
-                            <option value="Pendente">Pendente</option>
-                            <option value="Sinal">Sinal</option>
-                            <option value="Abandonado">Abandonado</option>
-                        </select>
-                        <input
-                            type="text"
-                            placeholder="Ex: 100,50"
-                            value={manualLead.paid_amount || ''}
-                            onChange={(e) => handlePaidAmountChange(e.target.value)}
-                            className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <input
-                            type="text"
-                            placeholder="Pago por"
-                            value={manualLead.payer_name || ''}
-                            onChange={(e) => setManualLead({ ...manualLead, payer_name: e.target.value })}
-                            className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <input
-                            type="text"
-                            placeholder="Onde foi pago"
-                            value={manualLead.payment_location || ''}
-                            onChange={(e) => setManualLead({ ...manualLead, payment_location: e.target.value })}
-                            className="px-4 py-2.5 border border-gray-300 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <button
-                            onClick={handleManualLeadSubmit}
-                            disabled={isSubmittingManualLead}
-                            className="px-4 py-2.5 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                        >
-                            {isSubmittingManualLead ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                            {isSubmittingManualLead ? (editingLeadId ? 'Atualizando...' : 'Salvando...') : (editingLeadId ? 'Atualizar' : 'Salvar')}
-                        </button>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <input
+                                    type="tel"
+                                    placeholder="Telefone"
+                                    value={manualLead.phone || ''}
+                                    onChange={(e) => setManualLead({ ...manualLead, phone: e.target.value })}
+                                    className="px-4 py-2.5 border border-gray-200 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="CPF"
+                                    value={manualLead.cpf || ''}
+                                    onChange={(e) => setManualLead({ ...manualLead, cpf: e.target.value })}
+                                    className="px-4 py-2.5 border border-gray-200 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <input
+                                    type="text"
+                                    placeholder="Cidade"
+                                    value={manualLead.city || ''}
+                                    onChange={(e) => setManualLead({ ...manualLead, city: e.target.value })}
+                                    className="px-4 py-2.5 border border-gray-200 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <select
+                                    value={manualLead.product_id || ''}
+                                    onChange={(e) => {
+                                        const checkout = allCheckouts.find(c => c.id === e.target.value);
+                                        setManualLead({
+                                            ...manualLead,
+                                            product_id: e.target.value,
+                                            product_name: checkout?.productName,
+                                            turma: checkout?.turma
+                                        });
+                                    }}
+                                    className="px-4 py-2.5 border border-gray-200 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="">Selecione Produto</option>
+                                    {allCheckouts.map(c => <option key={c.id} value={c.id}>{c.productName}</option>)}
+                                </select>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <select
+                                    value={manualLead.status || 'Novo'}
+                                    onChange={(e) => setManualLead({ ...manualLead, status: e.target.value as any })}
+                                    className="px-4 py-2.5 border border-gray-200 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="Novo">Novo</option>
+                                    <option value="Pago">Pago</option>
+                                    <option value="Pendente">Pendente</option>
+                                    <option value="Sinal">Sinal</option>
+                                    <option value="Abandonado">Abandonado</option>
+                                </select>
+                                <input
+                                    type="text"
+                                    placeholder="Valor (Ex: 100,50)"
+                                    value={manualLead.paid_amount || ''}
+                                    onChange={(e) => handlePaidAmountChange(e.target.value)}
+                                    className="px-4 py-2.5 border border-gray-200 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <input
+                                    type="text"
+                                    placeholder="Pago por"
+                                    value={manualLead.payer_name || ''}
+                                    onChange={(e) => setManualLead({ ...manualLead, payer_name: e.target.value })}
+                                    className="px-4 py-2.5 border border-gray-200 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Onde foi pago"
+                                    value={manualLead.payment_location || ''}
+                                    onChange={(e) => setManualLead({ ...manualLead, payment_location: e.target.value })}
+                                    className="px-4 py-2.5 border border-gray-200 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 rounded-b-2xl flex gap-3 justify-end">
+                            <button
+                                onClick={() => {
+                                    setShowManualLeadForm(false);
+                                    setManualLead({});
+                                    setEditingLeadId(null);
+                                }}
+                                className="px-4 py-2 rounded-xl text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleManualLeadSubmit}
+                                disabled={isSubmittingManualLead}
+                                className="px-5 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {isSubmittingManualLead ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                                {isSubmittingManualLead ? (editingLeadId ? 'Atualizando...' : 'Salvando...') : (editingLeadId ? 'Atualizar' : 'Salvar')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteConfirm && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm animate-in zoom-in-95">
+                        <div className="p-6 border-b border-gray-100">
+                            <h3 className="text-lg font-black text-gray-900 flex items-center gap-3">
+                                <AlertCircle size={24} className="text-red-600" />
+                                Confirmar Exclusão
+                            </h3>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <p className="text-sm font-bold text-gray-700">
+                                Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.
+                            </p>
+                            <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-3">
+                                <AlertCircle size={18} className="text-red-600 flex-shrink-0 mt-0.5" />
+                                <p className="text-xs font-bold text-red-700">Esta operação é irreversível</p>
+                            </div>
+                        </div>
+                        <div className="p-6 border-t border-gray-100 flex gap-3 justify-end">
+                            <button
+                                onClick={() => setShowDeleteConfirm(null)}
+                                className="px-4 py-2 rounded-xl text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={() => confirmDelete(showDeleteConfirm)}
+                                className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 transition-all flex items-center gap-2"
+                            >
+                                <Trash2 size={14} />
+                                Deletar
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -461,6 +571,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                         <div>
                             <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Total de Leads</p>
                             <p className="text-3xl font-black text-gray-900">{filteredAndSortedLeads.length}</p>
+                            <p className="text-[11px] text-gray-400 font-medium mt-1">Leads registrados</p>
                         </div>
                         <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                             <Users size={24} className="text-blue-600" />
@@ -471,20 +582,14 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                 <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Pagos</p>
-                            <p className="text-3xl font-black text-emerald-600">{stats.paidLeads.length}</p>
-                        </div>
-                        <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-                            <Check size={24} className="text-emerald-600" />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                    <div className="flex items-center justify-between">
-                        <div>
                             <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Receita</p>
                             <p className="text-3xl font-black text-gray-900">R$ {(stats.totalRevenue / 1000).toFixed(1)}k</p>
+                            <div className="flex items-center gap-1 mt-1">
+                                <span className={`text-[11px] font-bold ${stats.revenueDelta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                    {stats.revenueDelta >= 0 ? '↑' : '↓'} {Math.abs(stats.revenueDelta).toFixed(0)}%
+                                </span>
+                                <span className="text-[10px] text-gray-400">vs 30d</span>
+                            </div>
                         </div>
                         <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
                             <DollarSign size={24} className="text-green-600" />
@@ -495,8 +600,22 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                 <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
                     <div className="flex items-center justify-between">
                         <div>
+                            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Ticket Médio</p>
+                            <p className="text-3xl font-black text-purple-600">R$ {stats.ticketMedio.toFixed(0)}</p>
+                            <p className="text-[11px] text-gray-400 font-medium mt-1">{stats.paidLeads.length} vendas</p>
+                        </div>
+                        <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                            <Wallet size={24} className="text-purple-600" />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                    <div className="flex items-center justify-between">
+                        <div>
                             <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Taxa Conversão</p>
                             <p className="text-3xl font-black text-orange-600">{stats.conversionRate}%</p>
+                            <p className="text-[11px] text-gray-400 font-medium mt-1">{stats.paidLeads.length}/{filteredAndSortedLeads.length}</p>
                         </div>
                         <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
                             <TrendingUp size={24} className="text-orange-600" />
@@ -505,178 +624,230 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                 </div>
             </div>
 
-            {/* Controles */}
-            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm mb-6">
-                {/* Busca */}
-                <div className="mb-6">
-                    <div className="relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input
-                            type="text"
-                            placeholder="Buscar por nome, email, telefone ou CPF..."
-                            value={searchTerm}
-                            onChange={(e) => {
-                                setSearchTerm(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm"
-                        />
-                    </div>
+            {/* Busca Principal */}
+            <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm mb-4 sticky top-0 z-30">
+                <div className="relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                        type="text"
+                        placeholder="Buscar por nome, email, telefone ou CPF..."
+                        value={searchTerm}
+                        onChange={(e) => {
+                            setSearchTerm(e.target.value);
+                            setCurrentPage(1);
+                        }}
+                        className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm"
+                    />
                 </div>
+            </div>
 
-                {/* Filtros */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
-                        <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Produto</label>
-                        <select
-                            value={selectedProduct}
-                            onChange={(e) => {
-                                setSelectedProduct(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm"
-                        >
-                            <option value="all">Todos os produtos</option>
-                            {allCheckouts.map(c => (
-                                <option key={c.id} value={c.id}>
-                                    {c.productName}
-                                </option>
-                            ))}
-                        </select>
+            {/* Filtros e Configurações (Collapse) */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm mb-6">
+                <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                >
+                    <div className="flex items-center gap-3">
+                        <Filter size={18} className="text-gray-600" />
+                        <span className="font-bold text-gray-800">Filtros & Configurações</span>
                     </div>
+                    <span className={`text-gray-400 transition-transform ${showFilters ? 'rotate-180' : ''}`}>
+                        ▼
+                    </span>
+                </button>
 
-                    <div>
-                        <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Status</label>
-                        <select
-                            value={selectedStatus}
-                            onChange={(e) => {
-                                setSelectedStatus(e.target.value);
-                                setCurrentPage(1);
-                            }}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm"
-                        >
-                            <option value="all">Todos os status</option>
-                            <option value="Pago">Pagos</option>
-                            <option value="Pendente">Pendentes</option>
-                            <option value="Abandonado">Abandonados</option>
-                            <option value="Cancelado">Cancelados</option>
-                        </select>
+                {showFilters && (
+                    <div className="border-t border-gray-100 p-6 space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Período</label>
+                                <select
+                                    value={dateRange}
+                                    onChange={(e) => {
+                                        setDateRange(e.target.value as any);
+                                        setCurrentPage(1);
+                                    }}
+                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm"
+                                >
+                                    <option value="all">Todos</option>
+                                    <option value="7d">Últimos 7d</option>
+                                    <option value="30d">Últimos 30d</option>
+                                    <option value="90d">Últimos 90d</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Produto</label>
+                                <select
+                                    value={selectedProduct}
+                                    onChange={(e) => {
+                                        setSelectedProduct(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm"
+                                >
+                                    <option value="all">Todos</option>
+                                    {allCheckouts.map(c => (
+                                        <option key={c.id} value={c.id}>
+                                            {c.productName}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Status</label>
+                                <select
+                                    value={selectedStatus}
+                                    onChange={(e) => {
+                                        setSelectedStatus(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm"
+                                >
+                                    <optgroup label="Confirmado">
+                                        <option value="Pago">Pago</option>
+                                        <option value="Aprovado">Aprovado</option>
+                                    </optgroup>
+                                    <optgroup label="Aguardando">
+                                        <option value="Novo">Novo</option>
+                                        <option value="Pendente">Pendente</option>
+                                        <option value="Sinal">Sinal</option>
+                                        <option value="Pagar no dia">Pagar no dia</option>
+                                    </optgroup>
+                                    <optgroup label="Finalizado">
+                                        <option value="Cancelado">Cancelado</option>
+                                        <option value="Devolvido">Devolvido</option>
+                                        <option value="Abandonado">Abandonado</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Ordenar por</label>
+                                <select
+                                    value={sortBy}
+                                    onChange={(e) => setSortBy(e.target.value as SortBy)}
+                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm"
+                                >
+                                    <option value="date">Data (Recente)</option>
+                                    <option value="name">Nome</option>
+                                    <option value="status">Status</option>
+                                    <option value="amount">Valor</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Visualização</label>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setViewMode('grid')}
+                                        className={`flex-1 px-2 py-2.5 rounded-xl font-bold text-xs uppercase transition-all ${
+                                            viewMode === 'grid'
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        Grid
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('table')}
+                                        className={`flex-1 px-2 py-2.5 rounded-xl font-bold text-xs uppercase transition-all ${
+                                            viewMode === 'table'
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        Tabela
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Itens/Página</label>
+                                <select
+                                    value={itemsPerPageOption}
+                                    onChange={(e) => {
+                                        setItemsPerPageOption(e.target.value as any);
+                                        setCurrentPage(1);
+                                    }}
+                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm"
+                                >
+                                    <option value={12}>12</option>
+                                    <option value={24}>24</option>
+                                    <option value={50}>50</option>
+                                    <option value="todos">Todos ({filteredAndSortedLeads.length})</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
+                )}
+            </div>
 
+            {/* Ferramentas Sticky */}
+            <div className="sticky top-16 z-20 bg-white rounded-2xl p-4 border border-gray-100 shadow-sm mb-6 backdrop-blur-sm bg-white/95">
+                <div className="space-y-3">
                     <div>
-                        <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Ordenar por</label>
-                        <select
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value as SortBy)}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm"
-                        >
-                            <option value="date">Data (Recente)</option>
-                            <option value="name">Nome</option>
-                            <option value="status">Status</option>
-                            <option value="amount">Valor</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Visualização</label>
-                        <div className="flex gap-2">
+                        <p className="text-xs font-bold text-gray-600 uppercase mb-2 tracking-widest">📋 Área de Transferência</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                             <button
-                                onClick={() => setViewMode('grid')}
-                                className={`flex-1 px-3 py-2.5 rounded-xl font-bold text-xs uppercase transition-all ${
-                                    viewMode === 'grid'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                onClick={copyAllNames}
+                                className={`px-3 py-2 rounded-xl font-bold text-xs uppercase transition-all border flex items-center justify-center gap-2 ${
+                                    copiedNames
+                                        ? 'bg-emerald-600 text-white border-emerald-600'
+                                        : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
                                 }`}
                             >
-                                Grid
+                                {copiedNames ? <Check size={14} /> : <Copy size={14} />}
+                                {copiedNames ? 'Copiado!' : 'Nomes'}
                             </button>
+
                             <button
-                                onClick={() => setViewMode('table')}
-                                className={`flex-1 px-3 py-2.5 rounded-xl font-bold text-xs uppercase transition-all ${
-                                    viewMode === 'table'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                onClick={copyAllPhones}
+                                className={`px-3 py-2 rounded-xl font-bold text-xs uppercase transition-all border flex items-center justify-center gap-2 ${
+                                    copiedPhones
+                                        ? 'bg-emerald-600 text-white border-emerald-600'
+                                        : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
                                 }`}
                             >
-                                Tabela
+                                {copiedPhones ? <Check size={14} /> : <Smartphone size={14} />}
+                                {copiedPhones ? 'Copiado!' : 'Telefones'}
+                            </button>
+
+                            <button
+                                onClick={copyAllEmails}
+                                className={`px-3 py-2 rounded-xl font-bold text-xs uppercase transition-all border flex items-center justify-center gap-2 ${
+                                    copiedEmails
+                                        ? 'bg-emerald-600 text-white border-emerald-600'
+                                        : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'
+                                }`}
+                            >
+                                {copiedEmails ? <Check size={14} /> : <Mail size={14} />}
+                                {copiedEmails ? 'Copiado!' : 'Emails'}
                             </button>
                         </div>
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Itens por Página</label>
-                        <select
-                            value={itemsPerPageOption}
-                            onChange={(e) => {
-                                setItemsPerPageOption(e.target.value as any);
-                                setCurrentPage(1);
-                            }}
-                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm"
-                        >
-                            <option value={12}>12 itens</option>
-                            <option value={24}>24 itens</option>
-                            <option value={50}>50 itens</option>
-                            <option value="todos">Todos ({filteredAndSortedLeads.length})</option>
-                        </select>
+                        <p className="text-xs font-bold text-gray-600 uppercase mb-2 tracking-widest">📁 Exportação</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <button
+                                onClick={exportCSV}
+                                className="px-3 py-2 rounded-xl font-bold text-xs uppercase transition-all border bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100 flex items-center justify-center gap-2"
+                            >
+                                <FileText size={14} />
+                                Exportar CSV
+                            </button>
+
+                            <button
+                                onClick={handlePrint}
+                                className="px-3 py-2 rounded-xl font-bold text-xs uppercase transition-all border bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 flex items-center justify-center gap-2"
+                            >
+                                <Printer size={14} />
+                                Imprimir
+                            </button>
+                        </div>
                     </div>
-                </div>
-            </div>
-
-            {/* Ferramentas e Ações em Massa */}
-            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm mb-6">
-                <p className="text-xs font-bold text-gray-600 uppercase mb-4 tracking-widest">Ferramentas</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                    <button
-                        onClick={copyAllNames}
-                        className={`px-4 py-3 rounded-xl font-bold text-xs uppercase transition-all shadow-sm border flex items-center justify-center gap-2 ${
-                            copiedNames
-                                ? 'bg-emerald-600 text-white border-emerald-600'
-                                : 'bg-gray-900 text-white border-gray-900 hover:bg-black'
-                        }`}
-                    >
-                        {copiedNames ? <Check size={16} /> : <Copy size={16} />}
-                        {copiedNames ? 'Copiado!' : 'Copiar Nomes'}
-                    </button>
-
-                    <button
-                        onClick={copyAllPhones}
-                        className={`px-4 py-3 rounded-xl font-bold text-xs uppercase transition-all shadow-sm border flex items-center justify-center gap-2 ${
-                            copiedPhones
-                                ? 'bg-emerald-600 text-white border-emerald-600'
-                                : 'bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700'
-                        }`}
-                    >
-                        {copiedPhones ? <Check size={16} /> : <Smartphone size={16} />}
-                        {copiedPhones ? 'Copiado!' : 'Copiar Telefones'}
-                    </button>
-
-                    <button
-                        onClick={copyAllEmails}
-                        className={`px-4 py-3 rounded-xl font-bold text-xs uppercase transition-all shadow-sm border flex items-center justify-center gap-2 ${
-                            copiedEmails
-                                ? 'bg-emerald-600 text-white border-emerald-600'
-                                : 'bg-violet-600 text-white border-violet-600 hover:bg-violet-700'
-                        }`}
-                    >
-                        {copiedEmails ? <Check size={16} /> : <Send size={16} />}
-                        {copiedEmails ? 'Copiado!' : 'Copiar Emails'}
-                    </button>
-
-                    <button
-                        onClick={exportCSV}
-                        className="px-4 py-3 rounded-xl font-bold text-xs uppercase transition-all shadow-sm border bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 flex items-center justify-center gap-2"
-                    >
-                        <FileText size={16} />
-                        Exportar CSV
-                    </button>
-
-                    <button
-                        onClick={handlePrint}
-                        className="px-4 py-3 rounded-xl font-bold text-xs uppercase transition-all shadow-sm border bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 flex items-center justify-center gap-2"
-                    >
-                        <Printer size={16} />
-                        Imprimir
-                    </button>
                 </div>
             </div>
 
@@ -692,14 +863,15 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                 <div className="absolute top-4 right-4 flex items-center gap-2">
                                     <button
                                         onClick={() => toggleVerified(lead.id)}
-                                        className={`w-8 h-8 rounded-full font-black text-xs transition-all flex items-center justify-center ${
+                                        className={`px-2 py-1 rounded-full font-black text-xs transition-all flex items-center justify-center gap-1 whitespace-nowrap ${
                                             verifiedLeads.has(lead.id)
                                                 ? 'bg-cyan-600 text-white'
                                                 : 'bg-gray-200 text-gray-400 hover:bg-gray-300'
                                         }`}
                                         title="Marcar como verificado"
                                     >
-                                        ✓
+                                        <Check size={14} />
+                                        {verifiedLeads.has(lead.id) ? 'Verif.' : ''}
                                     </button>
                                     <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-black text-xs">
                                         {leadNumber}
@@ -729,8 +901,8 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                     )}
 
                                     {/* Pago por */}
-                                    <div className="flex items-center gap-2 text-xs pt-1">
-                                        <span className="font-bold text-gray-500 uppercase">Pago por:</span>
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs pt-1">
+                                        <span className="font-bold text-gray-500 uppercase whitespace-nowrap">Pago por:</span>
                                         <input
                                             type="text"
                                             value={tempPayerNames[lead.id] !== undefined ? tempPayerNames[lead.id] : (lead.payer_name || '')}
@@ -741,8 +913,8 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                     </div>
 
                                     {/* Onde foi pago */}
-                                    <div className="flex items-center gap-2 text-xs">
-                                        <span className="font-bold text-gray-500 uppercase">Local:</span>
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs">
+                                        <span className="font-bold text-gray-500 uppercase whitespace-nowrap">Local:</span>
                                         <input
                                             type="text"
                                             value={tempPaymentLocations[lead.id] !== undefined ? tempPaymentLocations[lead.id] : (lead.payment_location || '')}
@@ -847,7 +1019,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                             </a>
                                         )}
                                         <button
-                                            onClick={() => onDeleteLead(lead.id)}
+                                            onClick={() => handleDeleteWithConfirm(lead.id)}
                                             disabled={savingId === lead.id}
                                             className="px-2 py-1.5 rounded-lg bg-red-50 text-red-600 font-bold text-[10px] uppercase hover:bg-red-100 transition-all disabled:opacity-50 flex items-center justify-center gap-1"
                                         >
@@ -893,17 +1065,17 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                     return (
                                     <tr key={lead.id} className="hover:bg-blue-50/30 transition-all">
                                         <td className="px-4 py-3 text-center">
-                                            <div className="flex items-center gap-2 justify-center">
+                                            <div className="flex items-center gap-2 justify-center flex-wrap">
                                                 <button
                                                     onClick={() => toggleVerified(lead.id)}
-                                                    className={`w-6 h-6 rounded-full font-black text-xs transition-all flex items-center justify-center ${
+                                                    className={`px-1.5 py-0.5 rounded-full font-black text-[10px] transition-all flex items-center justify-center gap-0.5 ${
                                                         verifiedLeads.has(lead.id)
                                                             ? 'bg-cyan-600 text-white'
                                                             : 'bg-gray-200 text-gray-400 hover:bg-gray-300'
                                                     }`}
                                                     title="Marcar como verificado"
                                                 >
-                                                    ✓
+                                                    <Check size={12} />
                                                 </button>
                                                 <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white font-black text-xs">
                                                     {leadNumber}
@@ -915,8 +1087,24 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                             {lead.city && <div className="text-xs text-gray-500">{lead.city}</div>}
                                         </td>
                                         <td className="px-4 py-3">
-                                            <div className="text-xs font-bold text-emerald-600">{lead.phone}</div>
-                                            <div className="text-xs text-gray-500 truncate">{lead.email}</div>
+                                            <div className="text-xs font-bold text-emerald-600 flex items-center gap-1.5">
+                                                {lead.phone}
+                                            </div>
+                                            <div className="text-xs text-gray-500 flex items-center gap-1.5 mt-1">
+                                                <span className="truncate flex-1">{lead.email}</span>
+                                                {lead.email && (
+                                                    <button
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(lead.email || '');
+                                                            alert('Email copiado!');
+                                                        }}
+                                                        className="flex-shrink-0 text-gray-400 hover:text-blue-600 transition-colors"
+                                                        title="Copiar email"
+                                                    >
+                                                        <Copy size={12} />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-4 py-3">
                                             <input
@@ -1020,7 +1208,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                                     </a>
                                                 )}
                                                 <button
-                                                    onClick={() => onDeleteLead(lead.id)}
+                                                    onClick={() => handleDeleteWithConfirm(lead.id)}
                                                     disabled={savingId === lead.id}
                                                     className="px-2 py-1 rounded-lg bg-red-50 text-red-600 font-bold text-[10px] uppercase hover:bg-red-100 transition-all disabled:opacity-50 flex items-center gap-1"
                                                     title="Apagar"
