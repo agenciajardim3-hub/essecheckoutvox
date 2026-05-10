@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, ScatterChart, Scatter, ComposedChart, Area, AreaChart } from 'recharts';
 import {
     Calendar, Users, DollarSign, TrendingUp, BarChart3, Eye, EyeOff,
     GraduationCap, Megaphone, Wallet, PieChart, ArrowUpRight,
@@ -416,6 +416,102 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
             return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
         } catch { return dateStr; }
     };
+
+    // NOVO: Distribuição de Receita por Turma (Pie Chart)
+    const revenueByTurma = useMemo(() => {
+        const data: { name: string; value: number; id: string }[] = [];
+        checkouts.forEach(checkout => {
+            const turmaRevenue = allPaidLeads
+                .filter(l => l.product_id === checkout.id)
+                .reduce((acc, l) => acc + (l.paid_amount || 0), 0);
+            if (turmaRevenue > 0) {
+                data.push({
+                    name: `${checkout.productName} ${checkout.turma ? `(${checkout.turma})` : ''}`,
+                    value: turmaRevenue,
+                    id: checkout.id
+                });
+            }
+        });
+        return data.sort((a, b) => b.value - a.value);
+    }, [allPaidLeads, checkouts]);
+
+    // NOVO: Ranking de Turmas (Bar Chart)
+    const turmaRanking = useMemo(() => {
+        return turmaTableData
+            .filter(t => t.totalPaid > 0)
+            .sort((a, b) => b.turmaRevenue - a.turmaRevenue)
+            .slice(0, 5)
+            .map(t => ({
+                name: `${t.checkout.productName}`,
+                turma: t.checkout.turma || '—',
+                revenue: t.turmaRevenue,
+                alunos: t.totalPaid,
+                taxa: t.conv
+            }));
+    }, [turmaTableData]);
+
+    // NOVO: Comparação Mês Atual vs Anterior
+    const previousMonthLeads = useMemo(() => {
+        const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        return allPaidLeads.filter(l => {
+            const d = safeDate(l.created_at || l.date);
+            return d && d.getMonth() === lastMonth.getMonth() && d.getFullYear() === lastMonth.getFullYear();
+        });
+    }, [allPaidLeads, now]);
+
+    const previousMonthData = useMemo(() => {
+        const alunos = previousMonthLeads.length;
+        const receita = previousMonthLeads.reduce((acc, l) => acc + (l.paid_amount || 0), 0);
+        return { alunos, receita };
+    }, [previousMonthLeads]);
+
+    // NOVO: Scatter Plot - Gasto × Receita por Turma
+    const scatterData = useMemo(() => {
+        return checkouts
+            .map(checkout => {
+                const turmaRevenue = allPaidLeads
+                    .filter(l => l.product_id === checkout.id)
+                    .reduce((acc, l) => acc + (l.paid_amount || 0), 0);
+                const exp = turmaExpenses[checkout.id] || { ...EMPTY_EXPENSES };
+                const trafego = getTrafegoTotal(exp);
+                const alunos = allPaidLeads.filter(l => l.product_id === checkout.id).length;
+                const conv = alunos > 0 ? (allPaidLeads.filter(l => l.product_id === checkout.id).length / leads.filter(l => l.product_id === checkout.id).length) * 100 : 0;
+
+                return {
+                    x: trafego,
+                    y: turmaRevenue,
+                    z: alunos,
+                    taxa: conv,
+                    name: checkout.productName,
+                    turma: checkout.turma
+                };
+            })
+            .filter(d => d.x > 0 && d.y > 0);
+    }, [allPaidLeads, leads, checkouts, turmaExpenses]);
+
+    // NOVO: Heatmap - Padrão por Dia do Mês × Método de Pagamento
+    const heatmapData = useMemo(() => {
+        const methods = ['Pix', 'Cartão', 'Boleto', 'Dinheiro', 'Outro'];
+        const days = Array(31).fill(null).map((_, i) => i + 1);
+
+        const matrix: Record<number, Record<string, number>> = {};
+        days.forEach(day => {
+            matrix[day] = {};
+            methods.forEach(method => {
+                matrix[day][method] = 0;
+            });
+        });
+
+        allPaidLeads.forEach(l => {
+            const d = safeDate(l.created_at || l.date);
+            if (!d) return;
+            const day = d.getDate();
+            const method = l.payment_method || 'Outro';
+            if (matrix[day]) matrix[day][method] = (matrix[day][method] || 0) + 1;
+        });
+
+        return { matrix, methods, days };
+    }, [allPaidLeads]);
 
     const latestPaid = useMemo(() => {
         if (allPaidLeads.length === 0) return null;
@@ -887,6 +983,267 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
                                     <p className="text-xs font-bold">Selecione turmas para ver crescimento</p>
                                 </div>
                             )}
+                        </div>
+                    </div>
+
+                    {/* PIE CHART: DISTRIBUIÇÃO DE RECEITA */}
+                    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <PieChart size={16} className="text-blue-500" />
+                                    <h3 className="font-black text-sm text-gray-800">Distribuição de Receita por Turma</h3>
+                                </div>
+                                <p className="text-[11px] text-gray-400 font-medium">Qual turma gera mais receita?</p>
+                            </div>
+                        </div>
+
+                        {revenueByTurma.length > 0 ? (
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <div className="lg:col-span-1 flex items-center justify-center">
+                                    <ResponsiveContainer width="100%" height={250}>
+                                        <PieChart>
+                                            <Pie
+                                                data={revenueByTurma}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={60}
+                                                outerRadius={90}
+                                                paddingAngle={2}
+                                                dataKey="value"
+                                            >
+                                                {revenueByTurma.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip formatter={(value) => formatCurrency(value as number)} />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div className="lg:col-span-2 space-y-3">
+                                    {revenueByTurma.map((item, idx) => {
+                                        const total = revenueByTurma.reduce((s, v) => s + v.value, 0);
+                                        const pct = (item.value / total) * 100;
+                                        return (
+                                            <div key={item.id}>
+                                                <div className="flex items-center justify-between mb-1.5">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
+                                                        <span className="text-xs font-bold text-gray-700">{item.name}</span>
+                                                    </div>
+                                                    <span className="text-xs font-bold text-gray-900">{pct.toFixed(1)}%</span>
+                                                </div>
+                                                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full rounded-full transition-all duration-700"
+                                                        style={{ width: `${pct}%`, backgroundColor: COLORS[idx % COLORS.length] }}
+                                                    />
+                                                </div>
+                                                <div className="text-[10px] text-gray-400 font-bold mt-1">{formatCurrency(item.value)}</div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-gray-300">
+                                <p className="text-xs font-bold">Nenhum dado de receita</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* BAR CHART: RANKING DE TURMAS */}
+                    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <BarChart3 size={16} className="text-emerald-500" />
+                                    <h3 className="font-black text-sm text-gray-800">Top 5 Turmas por Receita</h3>
+                                </div>
+                                <p className="text-[11px] text-gray-400 font-medium">Ranking de desempenho financeiro</p>
+                            </div>
+                        </div>
+
+                        {turmaRanking.length > 0 ? (
+                            <div className="w-full h-[300px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart
+                                        data={turmaRanking}
+                                        layout="vertical"
+                                        margin={{ top: 5, right: 30, left: 200, bottom: 5 }}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                        <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                                        <YAxis dataKey="name" type="category" tick={{ fill: '#94a3b8', fontSize: 11 }} width={190} />
+                                        <Tooltip formatter={(value) => formatCurrency(value as number)} contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
+                                        <Bar dataKey="revenue" fill="#10b981" radius={[0, 8, 8, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-gray-300">
+                                <p className="text-xs font-bold">Nenhum dado disponível</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* COMPARAÇÃO: MÊS ATUAL vs ANTERIOR */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Calendar size={16} className="text-blue-500" />
+                                <h3 className="font-black text-sm text-gray-800">Alunos</h3>
+                            </div>
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Mês Atual</p>
+                                    <p className="text-3xl font-black text-blue-600">{currentMonthData.alunos}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Mês Anterior</p>
+                                    <p className="text-2xl font-bold text-gray-600">{previousMonthData.alunos}</p>
+                                </div>
+                                <div className={`px-3 py-2 rounded-lg text-xs font-black text-center ${
+                                    currentMonthData.alunos >= previousMonthData.alunos
+                                        ? 'bg-emerald-100 text-emerald-700'
+                                        : 'bg-red-100 text-red-700'
+                                }`}>
+                                    {currentMonthData.alunos >= previousMonthData.alunos ? '↑' : '↓'} {Math.abs(currentMonthData.alunos - previousMonthData.alunos)} ({
+                                        previousMonthData.alunos > 0
+                                            ? (((currentMonthData.alunos - previousMonthData.alunos) / previousMonthData.alunos) * 100).toFixed(1)
+                                            : '0'
+                                    }%)
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                            <div className="flex items-center gap-2 mb-4">
+                                <DollarSign size={16} className="text-emerald-500" />
+                                <h3 className="font-black text-sm text-gray-800">Receita</h3>
+                            </div>
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Mês Atual</p>
+                                    <p className="text-3xl font-black text-emerald-600">{formatCurrency(currentMonthData.receita)}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Mês Anterior</p>
+                                    <p className="text-2xl font-bold text-gray-600">{formatCurrency(previousMonthData.receita)}</p>
+                                </div>
+                                <div className={`px-3 py-2 rounded-lg text-xs font-black text-center ${
+                                    currentMonthData.receita >= previousMonthData.receita
+                                        ? 'bg-emerald-100 text-emerald-700'
+                                        : 'bg-red-100 text-red-700'
+                                }`}>
+                                    {currentMonthData.receita >= previousMonthData.receita ? '↑' : '↓'} {formatCurrency(Math.abs(currentMonthData.receita - previousMonthData.receita))} ({
+                                        previousMonthData.receita > 0
+                                            ? (((currentMonthData.receita - previousMonthData.receita) / previousMonthData.receita) * 100).toFixed(1)
+                                            : '0'
+                                    }%)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* SCATTER PLOT: GASTO × RECEITA */}
+                    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <TrendingUp size={16} className="text-purple-500" />
+                                    <h3 className="font-black text-sm text-gray-800">Correlação: Gasto × Receita</h3>
+                                </div>
+                                <p className="text-[11px] text-gray-400 font-medium">Eficiência do investimento em tráfego por turma (tamanho = alunos, cor = taxa conversão)</p>
+                            </div>
+                        </div>
+
+                        {scatterData.length > 0 ? (
+                            <div className="w-full h-[350px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                        <XAxis dataKey="x" name="Gasto Tráfego" unit="R$" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                                        <YAxis dataKey="y" name="Receita" unit="R$" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                                        <Tooltip
+                                            cursor={{ strokeDasharray: '3 3' }}
+                                            content={({ active, payload }) => {
+                                                if (active && payload && payload[0]) {
+                                                    const data = payload[0].payload;
+                                                    return (
+                                                        <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-100 text-xs">
+                                                            <p className="font-bold text-gray-900">{data.name}</p>
+                                                            <p className="text-gray-600">Gasto: {formatCurrency(data.x)}</p>
+                                                            <p className="text-gray-600">Receita: {formatCurrency(data.y)}</p>
+                                                            <p className="text-gray-600">Alunos: {data.z}</p>
+                                                            <p className="text-gray-600">Taxa Conv: {data.taxa.toFixed(1)}%</p>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            }}
+                                        />
+                                        <Scatter name="Turmas" data={scatterData} fill="#8884d8">
+                                            {scatterData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} opacity={0.6} />
+                                            ))}
+                                        </Scatter>
+                                    </ScatterChart>
+                                </ResponsiveContainer>
+                            </div>
+                        ) : (
+                            <div className="text-center py-8 text-gray-300">
+                                <p className="text-xs font-bold">Nenhum dado de gasto de tráfego</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* HEATMAP: PADRÃO MENSAL (DIA × MÉTODO) */}
+                    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <BarChart3 size={16} className="text-orange-500" />
+                                    <h3 className="font-black text-sm text-gray-800">Padrão Mensal: Dia × Método de Pagamento</h3>
+                                </div>
+                                <p className="text-[11px] text-gray-400 font-medium">Intensidade = quantidade de vendas</p>
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <div className="inline-block min-w-full">
+                                <div className="flex gap-1 pb-2">
+                                    <div className="w-16 flex-shrink-0" />
+                                    {heatmapData.methods.map(method => (
+                                        <div key={method} className="w-12 text-center text-[9px] font-bold text-gray-600 flex-shrink-0">
+                                            {method}
+                                        </div>
+                                    ))}
+                                </div>
+                                {heatmapData.days.map(day => {
+                                    const maxDay = Math.max(...heatmapData.days.map(d => Math.max(...heatmapData.methods.map(m => heatmapData.matrix[d]?.[m] || 0))));
+                                    return (
+                                        <div key={day} className="flex gap-1 pb-2 items-center">
+                                            <div className="w-16 text-right text-[9px] font-bold text-gray-500 flex-shrink-0">Dia {day}</div>
+                                            {heatmapData.methods.map(method => {
+                                                const value = heatmapData.matrix[day]?.[method] || 0;
+                                                const intensity = maxDay > 0 ? value / maxDay : 0;
+                                                const color = intensity === 0 ? '#f3f4f6' : `rgba(99, 102, 241, ${0.2 + intensity * 0.8})`;
+                                                return (
+                                                    <div
+                                                        key={`${day}-${method}`}
+                                                        className="w-12 h-8 rounded-lg flex items-center justify-center text-[9px] font-bold flex-shrink-0 transition-all"
+                                                        style={{ backgroundColor: color, color: intensity > 0.5 ? '#fff' : '#666' }}
+                                                        title={`${method}: ${value} vendas`}
+                                                    >
+                                                        {value > 0 ? value : '—'}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
 
