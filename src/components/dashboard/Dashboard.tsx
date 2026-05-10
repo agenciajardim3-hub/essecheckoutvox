@@ -171,36 +171,41 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     const allNavItems = [
         // Vendas & Gestão
-        { id: 'overview', label: 'Visão Geral', icon: BarChart3, roles: ['master'], category: 'vendas' },
-        { id: 'leads', label: 'Relatório Vendas', icon: ClipboardList, roles: ['master', 'manager'], category: 'vendas' },
-        { id: 'turmas', label: 'Turmas', icon: Calendar, roles: ['master', 'manager'], category: 'vendas' },
-        { id: 'checkin', label: 'Check-in', icon: UserCheck, roles: ['master', 'manager'], category: 'vendas' },
-        { id: 'ticket_logs', label: 'Ingressos', icon: ListFilter, roles: ['master', 'manager'], category: 'vendas' },
-        { id: 'views', label: 'Visualizações', icon: Eye, roles: ['master'], category: 'vendas' },
-        { id: 'remarketing', label: 'Remarketing', icon: MessageCircle, roles: ['master'], category: 'vendas' },
-        
+        { id: 'overview', label: 'Visão Geral', icon: BarChart3, roles: ['master'], category: 'vendas', group: 'dashboard' },
+        { id: 'leads', label: 'Relatório Vendas', icon: ClipboardList, roles: ['master', 'manager'], category: 'vendas', group: 'relatorios' },
+        { id: 'turmas', label: 'Turmas', icon: Calendar, roles: ['master', 'manager'], category: 'vendas', group: 'gestao' },
+        { id: 'checkin', label: 'Check-in', icon: UserCheck, roles: ['master', 'manager'], category: 'vendas', group: 'gestao' },
+        { id: 'views', label: 'Visualizações', icon: Eye, roles: ['master'], category: 'vendas', group: 'relatorios' },
+        { id: 'ticket_logs', label: 'Histórico de Ingressos', icon: ListFilter, roles: ['master', 'manager'], category: 'vendas', group: 'relatorios' },
+
         // Produtos
-        { id: 'list', label: 'Checkouts', icon: ListChecks, roles: ['master', 'manager'], category: 'produtos' },
-        { id: 'product', label: 'Novo Checkout', icon: Plus, roles: ['master'], category: 'produtos' },
-        { id: 'materials', label: 'Materiais', icon: FileText, roles: ['master'], category: 'produtos' },
-        { id: 'coupons', label: 'Cupons', icon: Tag, roles: ['master'], category: 'produtos' },
-        
-        // Operações
-        { id: 'tickets', label: 'Gerar Ingresso', icon: Ticket, roles: ['master'], category: 'operacoes' },
-        { id: 'send_tickets', label: 'Enviar Ingressos', icon: Send, roles: ['master'], category: 'operacoes' },
-        { id: 'scanner', label: 'Escanear', icon: QrCode, roles: ['master', 'manager'], category: 'operacoes' },
-        { id: 'certificates', label: 'Certificados', icon: Award, roles: ['master'], category: 'operacoes' },
-        { id: 'send_certificates', label: 'Enviar Certificados', icon: Mail, roles: ['master'], category: 'operacoes' },
-        { id: 'custom_email', label: 'Email Personalizado', icon: Send, roles: ['master'], category: 'operacoes' },
-        { id: 'automacao', label: 'Automação WhatsApp', icon: Smartphone, roles: ['master'], category: 'operacoes' },
-        { id: 'email_marketing', label: 'Email Marketing', icon: Send, roles: ['master'], category: 'operacoes' },
-        { id: 'solicitacoes', label: 'Solicitações', icon: FileCheck, roles: ['master'], category: 'operacoes' },
-        
+        { id: 'list', label: 'Checkouts', icon: ListChecks, roles: ['master', 'manager'], category: 'produtos', group: 'setup' },
+        { id: 'product', label: 'Novo Checkout', icon: Plus, roles: ['master'], category: 'produtos', group: 'setup' },
+        { id: 'materials', label: 'Materiais de Apoio', icon: FileText, roles: ['master'], category: 'produtos', group: 'recursos' },
+        { id: 'coupons', label: 'Cupons', icon: Tag, roles: ['master'], category: 'produtos', group: 'setup' },
+
+        // Operações - INGRESSOS
+        { id: 'tickets', label: '1️⃣ Gerar Ingresso', icon: Ticket, roles: ['master'], category: 'operacoes', group: 'ingressos' },
+        { id: 'send_tickets', label: '2️⃣ Enviar Ingressos', icon: Send, roles: ['master'], category: 'operacoes', group: 'ingressos' },
+
+        // Operações - CERTIFICADOS
+        { id: 'certificates', label: '1️⃣ Gerar Certificado', icon: Award, roles: ['master'], category: 'operacoes', group: 'certificados' },
+        { id: 'send_certificates', label: '2️⃣ Enviar Certificados', icon: Mail, roles: ['master'], category: 'operacoes', group: 'certificados' },
+
+        // Operações - COMUNICAÇÕES
+        { id: 'custom_email', label: 'Email Personalizado', icon: Mail, roles: ['master'], category: 'operacoes', group: 'comunicacoes' },
+        { id: 'automacao', label: 'Automação WhatsApp', icon: Smartphone, roles: ['master'], category: 'operacoes', group: 'comunicacoes' },
+        { id: 'email_marketing', label: 'Email Marketing', icon: Send, roles: ['master'], category: 'operacoes', group: 'comunicacoes' },
+        { id: 'solicitacoes', label: 'Pedidos de Certificado', icon: FileCheck, roles: ['master'], category: 'operacoes', group: 'comunicacoes' },
+
+        // Operações - OUTRAS
+        { id: 'scanner', label: 'Escanear QR Code', icon: QrCode, roles: ['master', 'manager'], category: 'operacoes', group: 'outras' },
+
         // Administrativo
-        { id: 'financeiro', label: 'Financeiro', icon: Wallet, roles: ['master'], category: 'adm' },
-        { id: 'signatures', label: 'Assinaturas', icon: Signature, roles: ['master'], category: 'adm' },
-        { id: 'global_settings', label: 'Rastreamento', icon: Settings, roles: ['master'], category: 'adm' },
-        { id: 'integrations', label: 'Sistema', icon: Terminal, roles: ['master'], category: 'adm' }
+        { id: 'financeiro', label: 'Financeiro', icon: Wallet, roles: ['master'], category: 'adm', group: 'relatorios' },
+        { id: 'signatures', label: 'Assinaturas', icon: Signature, roles: ['master'], category: 'adm', group: 'setup' },
+        { id: 'global_settings', label: 'Google Analytics & Pixel', icon: Settings, roles: ['master'], category: 'adm', group: 'integracao' },
+        { id: 'integrations', label: 'Sistema', icon: Terminal, roles: ['master'], category: 'adm', group: 'integracao' }
     ];
 
     const navItems = userRole === 'manager' ? allNavItems.filter(item => item.id === 'checkin') : allNavItems.filter(item => item.roles.includes(userRole));
