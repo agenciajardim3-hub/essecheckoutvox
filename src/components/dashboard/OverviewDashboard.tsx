@@ -469,13 +469,13 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
     const scatterData = useMemo(() => {
         return checkouts
             .map(checkout => {
-                const turmaRevenue = allPaidLeads
-                    .filter(l => l.product_id === checkout.id)
-                    .reduce((acc, l) => acc + (l.paid_amount || 0), 0);
+                const turmaAllLeads = allPaidLeads.filter(l => l.product_id === checkout.id);
+                const turmaRevenue = turmaAllLeads.reduce((acc, l) => acc + (l.paid_amount || 0), 0);
                 const exp = turmaExpenses[checkout.id] || { ...EMPTY_EXPENSES };
                 const trafego = getTrafegoTotal(exp);
-                const alunos = allPaidLeads.filter(l => l.product_id === checkout.id).length;
-                const conv = alunos > 0 ? (allPaidLeads.filter(l => l.product_id === checkout.id).length / leads.filter(l => l.product_id === checkout.id).length) * 100 : 0;
+                const alunos = turmaAllLeads.length;
+                const totalLeads = leads.filter(l => l.product_id === checkout.id).length;
+                const conv = totalLeads > 0 ? (alunos / totalLeads) * 100 : 0;
 
                 return {
                     x: trafego,
@@ -486,7 +486,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
                     turma: checkout.turma
                 };
             })
-            .filter(d => d.x > 0 && d.y > 0);
+            .filter(d => d.y > 0);
     }, [allPaidLeads, leads, checkouts, turmaExpenses]);
 
     // NOVO: Heatmap - Padrão por Dia do Mês × Método de Pagamento
@@ -987,18 +987,18 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
                     </div>
 
                     {/* PIE CHART: DISTRIBUIÇÃO DE RECEITA */}
-                    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <PieChart size={16} className="text-blue-500" />
-                                    <h3 className="font-black text-sm text-gray-800">Distribuição de Receita por Turma</h3>
+                    {revenueByTurma.length > 0 && (
+                        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <PieChart size={16} className="text-blue-500" />
+                                        <h3 className="font-black text-sm text-gray-800">Distribuição de Receita por Turma</h3>
+                                    </div>
+                                    <p className="text-[11px] text-gray-400 font-medium">Qual turma gera mais receita?</p>
                                 </div>
-                                <p className="text-[11px] text-gray-400 font-medium">Qual turma gera mais receita?</p>
                             </div>
-                        </div>
 
-                        {revenueByTurma.length > 0 ? (
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                 <div className="lg:col-span-1 flex items-center justify-center">
                                     <ResponsiveContainer width="100%" height={250}>
@@ -1029,9 +1029,9 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
                                                 <div className="flex items-center justify-between mb-1.5">
                                                     <div className="flex items-center gap-2">
                                                         <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                                                        <span className="text-xs font-bold text-gray-700">{item.name}</span>
+                                                        <span className="text-xs font-bold text-gray-700 truncate">{item.name}</span>
                                                     </div>
-                                                    <span className="text-xs font-bold text-gray-900">{pct.toFixed(1)}%</span>
+                                                    <span className="text-xs font-bold text-gray-900 whitespace-nowrap ml-2">{pct.toFixed(1)}%</span>
                                                 </div>
                                                 <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                                                     <div
@@ -1045,26 +1045,22 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
                                     })}
                                 </div>
                             </div>
-                        ) : (
-                            <div className="text-center py-8 text-gray-300">
-                                <p className="text-xs font-bold">Nenhum dado de receita</p>
-                            </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
 
                     {/* BAR CHART: RANKING DE TURMAS */}
-                    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <BarChart3 size={16} className="text-emerald-500" />
-                                    <h3 className="font-black text-sm text-gray-800">Top 5 Turmas por Receita</h3>
+                    {turmaRanking.length > 0 && (
+                        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <BarChart3 size={16} className="text-emerald-500" />
+                                        <h3 className="font-black text-sm text-gray-800">Top 5 Turmas por Receita</h3>
+                                    </div>
+                                    <p className="text-[11px] text-gray-400 font-medium">Ranking de desempenho financeiro</p>
                                 </div>
-                                <p className="text-[11px] text-gray-400 font-medium">Ranking de desempenho financeiro</p>
                             </div>
-                        </div>
 
-                        {turmaRanking.length > 0 ? (
                             <div className="w-full h-[300px]">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart
@@ -1080,12 +1076,8 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
-                        ) : (
-                            <div className="text-center py-8 text-gray-300">
-                                <p className="text-xs font-bold">Nenhum dado disponível</p>
-                            </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
 
                     {/* COMPARAÇÃO: MÊS ATUAL vs ANTERIOR */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1147,18 +1139,18 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
                     </div>
 
                     {/* SCATTER PLOT: GASTO × RECEITA */}
-                    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <TrendingUp size={16} className="text-purple-500" />
-                                    <h3 className="font-black text-sm text-gray-800">Correlação: Gasto × Receita</h3>
+                    {scatterData.length > 0 && (
+                        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <TrendingUp size={16} className="text-purple-500" />
+                                        <h3 className="font-black text-sm text-gray-800">Correlação: Gasto × Receita</h3>
+                                    </div>
+                                    <p className="text-[11px] text-gray-400 font-medium">Eficiência do investimento em tráfego por turma (tamanho = alunos, cor = taxa conversão)</p>
                                 </div>
-                                <p className="text-[11px] text-gray-400 font-medium">Eficiência do investimento em tráfego por turma (tamanho = alunos, cor = taxa conversão)</p>
                             </div>
-                        </div>
 
-                        {scatterData.length > 0 ? (
                             <div className="w-full h-[350px]">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
@@ -1191,12 +1183,8 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
                                     </ScatterChart>
                                 </ResponsiveContainer>
                             </div>
-                        ) : (
-                            <div className="text-center py-8 text-gray-300">
-                                <p className="text-xs font-bold">Nenhum dado de gasto de tráfego</p>
-                            </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
 
                     {/* HEATMAP: PADRÃO MENSAL (DIA × MÉTODO) */}
                     <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
@@ -1220,9 +1208,9 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
                                         </div>
                                     ))}
                                 </div>
-                                {heatmapData.days.map(day => {
-                                    const maxDay = Math.max(...heatmapData.days.map(d => Math.max(...heatmapData.methods.map(m => heatmapData.matrix[d]?.[m] || 0))));
-                                    return (
+                                {useMemo(() => {
+                                    const maxDay = Math.max(...heatmapData.days.map(d => Math.max(...heatmapData.methods.map(m => heatmapData.matrix[d]?.[m] || 0))), 1);
+                                    return heatmapData.days.map(day => (
                                         <div key={day} className="flex gap-1 pb-2 items-center">
                                             <div className="w-16 text-right text-[9px] font-bold text-gray-500 flex-shrink-0">Dia {day}</div>
                                             {heatmapData.methods.map(method => {
@@ -1241,8 +1229,8 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
                                                 );
                                             })}
                                         </div>
-                                    );
-                                })}
+                                    ));
+                                }, [heatmapData])}
                             </div>
                         </div>
                     </div>
