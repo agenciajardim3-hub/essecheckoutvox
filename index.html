@@ -196,17 +196,112 @@
         !function(f,b,e,v,n,t,s)
         {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
         n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        if(!f._fbq)f._fbq=n;n.push=n.loaded=!0;n.version='2.0';
         n.queue=[];t=b.createElement(e);t.async=!0;
         t.src=v;s=b.getElementsByTagName(e)[0];
         s.parentNode.insertBefore(t,s)}(window, document,'script',
         'https://connect.facebook.net/en_US/fbevents.js');
     </script>
 
-    <!-- Correção: garante que o PDF do certificado capture assinatura/logo externas -->
+    <!-- Correção robusta: força assinatura/logo no PDF do certificado -->
     <script>
         (function () {
             const originalOpen = window.open;
+
+            const certificatePdfPatch = `
+<script>
+(function () {
+  function loadScript(src) {
+    return new Promise(function(resolve, reject) {
+      if (window.html2pdf) return resolve();
+      var script = document.createElement('script');
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
+
+  function waitForImage(img) {
+    img.setAttribute('crossorigin', 'anonymous');
+    if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+    return new Promise(function(resolve) {
+      img.onload = resolve;
+      img.onerror = resolve;
+      setTimeout(resolve, 15000);
+    });
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise(function(resolve, reject) {
+      var reader = new FileReader();
+      reader.onloadend = function() { resolve(reader.result); };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function inlineImage(img) {
+    try {
+      img.setAttribute('crossorigin', 'anonymous');
+      if (!img.src || img.src.indexOf('data:') === 0) return;
+      var response = await fetch(img.src, { mode: 'cors', cache: 'force-cache' });
+      if (!response.ok) throw new Error('image fetch failed');
+      var blob = await response.blob();
+      var dataUrl = await blobToDataUrl(blob);
+      img.src = dataUrl;
+      await waitForImage(img);
+    } catch (error) {
+      console.warn('Não foi possível embutir imagem no certificado:', img.src, error);
+      await waitForImage(img);
+    }
+  }
+
+  async function prepareCertificateImages(element) {
+    var images = Array.from(element.querySelectorAll('img'));
+    for (var i = 0; i < images.length; i++) {
+      await inlineImage(images[i]);
+    }
+  }
+
+  window.downloadPDF = async function() {
+    var element = document.querySelector('.certificate-wrapper');
+    if (!element) {
+      alert('Certificado não encontrado para baixar.');
+      return;
+    }
+
+    var rawName = document.title.replace('Certificado - ', '').trim() || 'certificado';
+    var fileName = 'Certificado_' + rawName.replace(/\\s+/g, '_') + '.pdf';
+
+    try {
+      await prepareCertificateImages(element);
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js');
+
+      var opt = {
+        margin: 0,
+        filename: fileName,
+        image: { type: 'jpeg', quality: 1 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          allowTaint: false,
+          imageTimeout: 15000,
+          logging: false,
+          backgroundColor: '#ffffff'
+        },
+        jsPDF: { orientation: 'landscape', unit: 'px', format: [1122, 794], hotfixes: ['px_scaling'] }
+      };
+
+      await window.html2pdf().set(opt).from(element).save(fileName);
+    } catch (error) {
+      console.error('Erro ao gerar PDF com assinatura:', error);
+      alert('Não consegui baixar automaticamente com a assinatura. Vou abrir a impressão para você salvar como PDF.');
+      window.print();
+    }
+  };
+})();
+<\/script>`;
 
             window.open = function (...args) {
                 const openedWindow = originalOpen.apply(window, args);
@@ -219,36 +314,17 @@
                     const originalWrite = openedWindow.document.write.bind(openedWindow.document);
 
                     openedWindow.document.write = function (html) {
-                        if (typeof html === 'string' && html.includes('downloadPDF()') && html.includes('certificate-wrapper')) {
-                            const waitForImagesScript = `
-            function waitForCertificateImages(element) {
-              const images = Array.from(element.querySelectorAll('img'));
-              if (!images.length) return Promise.resolve();
-              return Promise.all(images.map(function(img) {
-                img.setAttribute('crossorigin', 'anonymous');
-                if (img.complete && img.naturalWidth > 0) return Promise.resolve();
-                return new Promise(function(resolve) {
-                  img.onload = resolve;
-                  img.onerror = resolve;
-                  setTimeout(resolve, 15000);
-                });
-              }));
-            }
-`;
-
+                        if (typeof html === 'string' && html.includes('certificate-wrapper')) {
                             html = html
                                 .replace(/<img src=\"([^\"]+)\" class=\"signature-img\" \/>/g, '<img src="$1" class="signature-img" crossorigin="anonymous" />')
                                 .replace(/<img src=\"([^\"]+)\" style=\"height: 80px; margin-bottom: 20px; object-fit: contain;\" \/>/g, '<img src="$1" style="height: 80px; margin-bottom: 20px; object-fit: contain;" crossorigin="anonymous" />')
-                                .replace('function downloadPDF() {', waitForImagesScript + '\n            function downloadPDF() {')
-                                .replace('script.onload = function() {', 'script.onload = async function() {')
-                                .replace('html2canvas: { scale: 2 },', 'html2canvas: { scale: 2, useCORS: true, allowTaint: false, imageTimeout: 15000 },')
-                                .replace('try {\n                  const worker = html2pdf().set(opt);', 'try {\n                  await waitForCertificateImages(element);\n                  const worker = html2pdf().set(opt);');
+                                .replace('</body>', certificatePdfPatch + '\n</body>');
                         }
 
                         return originalWrite(html);
                     };
                 } catch (error) {
-                    console.warn('Certificate PDF patch skipped:', error);
+                    console.warn('Certificate PDF robust patch skipped:', error);
                 }
 
                 return openedWindow;
