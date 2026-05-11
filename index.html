@@ -139,6 +139,59 @@
         'https://connect.facebook.net/en_US/fbevents.js');
     </script>
 
+    <!-- Correção: garante que o PDF do certificado capture assinatura/logo externas -->
+    <script>
+        (function () {
+            const originalOpen = window.open;
+
+            window.open = function (...args) {
+                const openedWindow = originalOpen.apply(window, args);
+
+                try {
+                    if (!openedWindow || !openedWindow.document || !openedWindow.document.write) {
+                        return openedWindow;
+                    }
+
+                    const originalWrite = openedWindow.document.write.bind(openedWindow.document);
+
+                    openedWindow.document.write = function (html) {
+                        if (typeof html === 'string' && html.includes('downloadPDF()') && html.includes('certificate-wrapper')) {
+                            const waitForImagesScript = `
+            function waitForCertificateImages(element) {
+              const images = Array.from(element.querySelectorAll('img'));
+              if (!images.length) return Promise.resolve();
+              return Promise.all(images.map(function(img) {
+                img.setAttribute('crossorigin', 'anonymous');
+                if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+                return new Promise(function(resolve) {
+                  img.onload = resolve;
+                  img.onerror = resolve;
+                  setTimeout(resolve, 15000);
+                });
+              }));
+            }
+`;
+
+                            html = html
+                                .replace(/<img src=\"([^\"]+)\" class=\"signature-img\" \/>/g, '<img src="$1" class="signature-img" crossorigin="anonymous" />')
+                                .replace(/<img src=\"([^\"]+)\" style=\"height: 80px; margin-bottom: 20px; object-fit: contain;\" \/>/g, '<img src="$1" style="height: 80px; margin-bottom: 20px; object-fit: contain;" crossorigin="anonymous" />')
+                                .replace('function downloadPDF() {', waitForImagesScript + '\n            function downloadPDF() {')
+                                .replace('script.onload = function() {', 'script.onload = async function() {')
+                                .replace('html2canvas: { scale: 2 },', 'html2canvas: { scale: 2, useCORS: true, allowTaint: false, imageTimeout: 15000 },')
+                                .replace('try {\n                  const worker = html2pdf().set(opt);', 'try {\n                  await waitForCertificateImages(element);\n                  const worker = html2pdf().set(opt);');
+                        }
+
+                        return originalWrite(html);
+                    };
+                } catch (error) {
+                    console.warn('Certificate PDF patch skipped:', error);
+                }
+
+                return openedWindow;
+            };
+        })();
+    </script>
+
 </head>
 <body>
     <div id="root"></div>
