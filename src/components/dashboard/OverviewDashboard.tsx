@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, ScatterChart, Scatter, ComposedChart, Area, AreaChart } from 'recharts';
 import {
     Calendar, Users, DollarSign, TrendingUp, BarChart3, Eye, EyeOff,
@@ -350,7 +350,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
         return data;
     }, [growthData]);
 
-    const CustomTooltip = ({ active, payload, label }: any) => {
+    const CustomTooltip = useCallback(({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
             const dateObj = new Date(label);
             const formattedDate = !isNaN(dateObj.getTime())
@@ -372,7 +372,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
             );
         }
         return null;
-    };
+    }, [growthData]);
 
     const turmaTableData = useMemo(() => {
         return checkouts.map(checkout => {
