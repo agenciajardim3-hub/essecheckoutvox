@@ -453,12 +453,13 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
 
     // NOVO: Comparação Mês Atual vs Anterior
     const previousMonthLeads = useMemo(() => {
+        const now = new Date();
         const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         return allPaidLeads.filter(l => {
             const d = safeDate(l.created_at || l.date);
             return d && d.getMonth() === lastMonth.getMonth() && d.getFullYear() === lastMonth.getFullYear();
         });
-    }, [allPaidLeads, now]);
+    }, [allPaidLeads]);
 
     const previousMonthData = useMemo(() => {
         const alunos = previousMonthLeads.length;
