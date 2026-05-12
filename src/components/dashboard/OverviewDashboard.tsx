@@ -220,13 +220,14 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
 
     const allPaidLeads = useMemo(() => leads.filter(l => l.status === 'Pago'), [leads]);
 
-    const now = new Date();
+    // Current month leads
     const currentMonthLeads = useMemo(() => {
+        const now = new Date();
         return allPaidLeads.filter(l => {
             const d = safeDate(l.created_at || l.date);
             return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
         });
-    }, [allPaidLeads, now]);
+    }, [allPaidLeads]);
 
     const currentMonthData = useMemo(() => {
         const turmasSet = new Set(currentMonthLeads.map(l => l.product_id).filter(Boolean));
