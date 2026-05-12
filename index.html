@@ -18,112 +18,29 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        *, *::before, *::after {
-            box-sizing: border-box;
-        }
-
-        html,
-        body {
-            width: 100%;
-            min-height: 100%;
-            overflow-x: hidden;
-            -webkit-text-size-adjust: 100%;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
-        }
-
-        img, svg, video, canvas {
-            max-width: 100%;
-        }
-
-        input, select, textarea, button {
-            font-family: inherit;
-        }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { width: 100%; min-height: 100%; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        img, svg, video, canvas { max-width: 100%; }
+        input, select, textarea, button { font-family: inherit; }
 
         @media (max-width: 640px) {
-            body {
-                background-color: #f1f5f9;
-            }
-
-            #root {
-                width: 100%;
-                overflow-x: hidden;
-            }
-
-            /* Checkout mobile: reduz exageros visuais sem perder identidade */
-            #root > div {
-                padding-left: 12px !important;
-                padding-right: 12px !important;
-            }
-
-            form {
-                padding: 24px 18px !important;
-                gap: 18px !important;
-            }
-
-            form > div {
-                max-width: 100%;
-            }
-
-            input,
-            textarea,
-            select {
-                font-size: 16px !important;
-                min-height: 50px;
-            }
-
-            label {
-                line-height: 1.25 !important;
-            }
-
-            button,
-            a {
-                -webkit-tap-highlight-color: transparent;
-            }
-
-            button[type="submit"] {
-                padding-top: 20px !important;
-                padding-bottom: 20px !important;
-                border-radius: 28px !important;
-                font-size: 19px !important;
-                line-height: 1.15 !important;
-                gap: 10px !important;
-                text-align: center;
-                white-space: normal;
-            }
-
-            button[type="submit"] svg {
-                width: 26px !important;
-                height: 26px !important;
-                flex-shrink: 0;
-            }
-
-            .rounded-\[4rem\] {
-                border-radius: 32px !important;
-            }
-
-            .rounded-\[3rem\] {
-                border-radius: 28px !important;
-            }
-
-            .rounded-\[2\.5rem\] {
-                border-radius: 24px !important;
-            }
-
-            .rounded-\[2rem\] {
-                border-radius: 22px !important;
-            }
-
-            .tracking-widest {
-                letter-spacing: 0.08em !important;
-            }
-
-            .shadow-2xl {
-                box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12) !important;
-            }
+            body { background-color: #f1f5f9; }
+            #root { width: 100%; overflow-x: hidden; }
+            #root > div { padding-left: 12px !important; padding-right: 12px !important; }
+            form { padding: 24px 18px !important; gap: 18px !important; }
+            form > div { max-width: 100%; }
+            input, textarea, select { font-size: 16px !important; min-height: 50px; }
+            label { line-height: 1.25 !important; }
+            button, a { -webkit-tap-highlight-color: transparent; }
+            button[type="submit"] { padding-top: 20px !important; padding-bottom: 20px !important; border-radius: 28px !important; font-size: 19px !important; line-height: 1.15 !important; gap: 10px !important; text-align: center; white-space: normal; }
+            button[type="submit"] svg { width: 26px !important; height: 26px !important; flex-shrink: 0; }
+            .rounded-\[4rem\] { border-radius: 32px !important; }
+            .rounded-\[3rem\] { border-radius: 28px !important; }
+            .rounded-\[2\.5rem\] { border-radius: 24px !important; }
+            .rounded-\[2rem\] { border-radius: 22px !important; }
+            .tracking-widest { letter-spacing: 0.08em !important; }
+            .shadow-2xl { box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12) !important; }
         }
     </style>
     
@@ -144,11 +61,8 @@
                 var hasComma = cleaned.indexOf(',') !== -1;
                 var hasDot = cleaned.indexOf('.') !== -1;
 
-                if (hasComma && hasDot) {
-                    cleaned = cleaned.replace(/\./g, '').replace(',', '.');
-                } else if (hasComma) {
-                    cleaned = cleaned.replace(',', '.');
-                }
+                if (hasComma && hasDot) cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+                else if (hasComma) cleaned = cleaned.replace(',', '.');
 
                 var parsed = Number(cleaned);
                 return Number.isFinite(parsed) ? parsed : 0;
@@ -156,16 +70,10 @@
 
             function normalizePaidAmountInPayload(payload) {
                 if (!payload || typeof payload !== 'object') return payload;
-
-                if (Array.isArray(payload)) {
-                    return payload.map(normalizePaidAmountInPayload);
-                }
+                if (Array.isArray(payload)) return payload.map(normalizePaidAmountInPayload);
 
                 var next = Object.assign({}, payload);
-                if (Object.prototype.hasOwnProperty.call(next, 'paid_amount')) {
-                    next.paid_amount = normalizeMoneyValue(next.paid_amount);
-                }
-
+                if (Object.prototype.hasOwnProperty.call(next, 'paid_amount')) next.paid_amount = normalizeMoneyValue(next.paid_amount);
                 return next;
             }
 
@@ -196,14 +104,14 @@
         !function(f,b,e,v,n,t,s)
         {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
         n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-        if(!f._fbq)f._fbq=n;n.push=n.loaded=!0;n.version='2.0';
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
         n.queue=[];t=b.createElement(e);t.async=!0;
         t.src=v;s=b.getElementsByTagName(e)[0];
         s.parentNode.insertBefore(t,s)}(window, document,'script',
         'https://connect.facebook.net/en_US/fbevents.js');
     </script>
 
-    <!-- Correção robusta: força assinatura/logo no PDF do certificado -->
+    <!-- Correção robusta: força assinatura/logo no PDF do certificado + botão Salvar PDF Direto -->
     <script>
         (function () {
             const originalOpen = window.open;
@@ -259,12 +167,10 @@
 
   async function prepareCertificateImages(element) {
     var images = Array.from(element.querySelectorAll('img'));
-    for (var i = 0; i < images.length; i++) {
-      await inlineImage(images[i]);
-    }
+    for (var i = 0; i < images.length; i++) await inlineImage(images[i]);
   }
 
-  window.downloadPDF = async function() {
+  async function saveCertificatePdfDirect() {
     var element = document.querySelector('.certificate-wrapper');
     if (!element) {
       alert('Certificado não encontrado para baixar.');
@@ -274,7 +180,15 @@
     var rawName = document.title.replace('Certificado - ', '').trim() || 'certificado';
     var fileName = 'Certificado_' + rawName.replace(/\\s+/g, '_') + '.pdf';
 
+    var directButton = document.getElementById('save-pdf-direct-button');
+    var oldText = directButton ? directButton.innerHTML : '';
+
     try {
+      if (directButton) {
+        directButton.disabled = true;
+        directButton.innerHTML = '⏳ Salvando...';
+      }
+
       await prepareCertificateImages(element);
       await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js');
 
@@ -295,11 +209,35 @@
 
       await window.html2pdf().set(opt).from(element).save(fileName);
     } catch (error) {
-      console.error('Erro ao gerar PDF com assinatura:', error);
+      console.error('Erro ao salvar PDF direto com assinatura:', error);
       alert('Não consegui baixar automaticamente com a assinatura. Vou abrir a impressão para você salvar como PDF.');
       window.print();
+    } finally {
+      if (directButton) {
+        directButton.disabled = false;
+        directButton.innerHTML = oldText || '💾 Salvar PDF Direto';
+      }
     }
-  };
+  }
+
+  window.downloadPDF = saveCertificatePdfDirect;
+  window.savePDFDirect = saveCertificatePdfDirect;
+
+  function injectDirectButton() {
+    var controls = document.querySelector('.controls');
+    if (!controls || document.getElementById('save-pdf-direct-button')) return;
+
+    var button = document.createElement('button');
+    button.id = 'save-pdf-direct-button';
+    button.className = 'btn btn-download';
+    button.type = 'button';
+    button.innerHTML = '💾 Salvar PDF Direto';
+    button.onclick = saveCertificatePdfDirect;
+    controls.insertBefore(button, controls.firstChild);
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectDirectButton);
+  else injectDirectButton();
 })();
 <\/script>`;
 
@@ -307,9 +245,7 @@
                 const openedWindow = originalOpen.apply(window, args);
 
                 try {
-                    if (!openedWindow || !openedWindow.document || !openedWindow.document.write) {
-                        return openedWindow;
-                    }
+                    if (!openedWindow || !openedWindow.document || !openedWindow.document.write) return openedWindow;
 
                     const originalWrite = openedWindow.document.write.bind(openedWindow.document);
 
@@ -324,7 +260,7 @@
                         return originalWrite(html);
                     };
                 } catch (error) {
-                    console.warn('Certificate PDF robust patch skipped:', error);
+                    console.warn('Certificate PDF direct save patch skipped:', error);
                 }
 
                 return openedWindow;
