@@ -5,6 +5,10 @@ interface CustomEmailSenderProps {
     userRole: string;
 }
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://emdsgvuqrhpjdgrgaslo.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtZHNndnVxcmhwamRncmdhc2xvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NjcyMTIsImV4cCI6MjA4MzU0MzIxMn0.Emfi9OyHn9SrrY4AugAVGzLSm2YkBzAKwsZ1XGQ5DD0';
+const SEND_EMAIL_ENDPOINT = `${SUPABASE_URL}/functions/v1/send-ticket-email`;
+
 export const CustomEmailSender: React.FC<CustomEmailSenderProps> = ({ userRole }) => {
     const [recipientEmail, setRecipientEmail] = useState('');
     const [subject, setSubject] = useState('');
@@ -13,7 +17,7 @@ export const CustomEmailSender: React.FC<CustomEmailSenderProps> = ({ userRole }
     const [successMessage, setSuccessMessage] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
 
-    const testEmail = import.meta.env.VITE_TEST_EMAIL || 'noreply@seu-dominio.com';
+    const testEmail = import.meta.env.VITE_TEST_EMAIL || 'rodrigomesquita58@gmail.com';
 
     const sendEmail = async (email: string, isTest: boolean = false) => {
         if (!subject.trim() || !htmlBody.trim()) {
@@ -31,30 +35,37 @@ export const CustomEmailSender: React.FC<CustomEmailSenderProps> = ({ userRole }
         setSuccessMessage('');
 
         try {
-            const targetEmail = isTest ? testEmail : email;
+            const targetEmail = isTest ? testEmail : email.trim();
 
-            const response = await fetch(
-                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-                    },
-                    body: JSON.stringify({
-                        email: targetEmail,
-                        name: isTest ? 'Teste' : 'Destinatário',
-                        subject: subject,
-                        body: htmlBody,
-                        type: 'custom'
-                    })
-                }
-            );
+            const response = await fetch(SEND_EMAIL_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'apikey': SUPABASE_ANON_KEY
+                },
+                body: JSON.stringify({
+                    to: targetEmail,
+                    name: isTest ? 'Teste' : 'Destinatário',
+                    subject,
+                    productName: 'Vox Marketing Academy',
+                    message: htmlBody,
+                    ticketUrl: '',
+                    certificateUrl: ''
+                })
+            });
 
-            const result = await response.json();
+            const responseText = await response.text();
+            let result: any = {};
 
-            if (!response.ok) {
-                throw new Error(result.message || 'Erro ao enviar email');
+            try {
+                result = responseText ? JSON.parse(responseText) : {};
+            } catch {
+                throw new Error(`Resposta inválida da função: ${responseText.slice(0, 120)}`);
+            }
+
+            if (!response.ok || result.error) {
+                throw new Error(result.error || result.message || 'Erro ao enviar email');
             }
 
             setSuccessMessage(
@@ -89,7 +100,6 @@ export const CustomEmailSender: React.FC<CustomEmailSenderProps> = ({ userRole }
             </div>
 
             <div className="space-y-4 mb-6">
-                {/* Destinatário */}
                 <div>
                     <label className="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-widest">
                         Email do Destinatário
@@ -103,7 +113,6 @@ export const CustomEmailSender: React.FC<CustomEmailSenderProps> = ({ userRole }
                     />
                 </div>
 
-                {/* Assunto */}
                 <div>
                     <label className="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-widest">
                         Assunto
@@ -117,7 +126,6 @@ export const CustomEmailSender: React.FC<CustomEmailSenderProps> = ({ userRole }
                     />
                 </div>
 
-                {/* Corpo HTML */}
                 <div>
                     <label className="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-widest">
                         Corpo do Email (HTML)
@@ -134,7 +142,6 @@ export const CustomEmailSender: React.FC<CustomEmailSenderProps> = ({ userRole }
                     </p>
                 </div>
 
-                {/* Mensagens de Status */}
                 {successMessage && (
                     <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-start gap-3">
                         <Check size={18} className="text-emerald-600 flex-shrink-0 mt-0.5" />
@@ -150,7 +157,6 @@ export const CustomEmailSender: React.FC<CustomEmailSenderProps> = ({ userRole }
                 )}
             </div>
 
-            {/* Botões de Ação */}
             <div className="flex gap-3">
                 <button
                     onClick={() => sendEmail('', true)}
