@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { Settings, Smartphone, MessageCircle, Check, AlertCircle, Loader2, Eye, EyeOff, Send, Mail, Plus, Trash2, Pencil, Zap } from 'lucide-react';
+import { Settings, Smartphone, MessageCircle, Check, AlertCircle, Loader2, Eye, EyeOff, Send, Mail, Plus, Trash2, Pencil, Zap, Users, User } from 'lucide-react';
 
 type AutomationChannel = 'whatsapp' | 'email' | 'ambos';
 type AutomationTrigger = 'payment_approved' | 'registration_created' | 'before_event' | 'after_event' | 'manual';
+type RecipientMode = 'all' | 'turma' | 'person';
 
 type AutomationRule = {
   id: string;
@@ -10,6 +11,11 @@ type AutomationRule = {
   channel: AutomationChannel;
   trigger: AutomationTrigger;
   delayMinutes: number;
+  recipientMode: RecipientMode;
+  targetTurma: string;
+  targetName: string;
+  targetEmail: string;
+  targetPhone: string;
   subject: string;
   body: string;
   active: boolean;
@@ -26,6 +32,11 @@ const defaultRules: AutomationRule[] = [
     channel: 'whatsapp',
     trigger: 'payment_approved',
     delayMinutes: 0,
+    recipientMode: 'all',
+    targetTurma: '',
+    targetName: '',
+    targetEmail: '',
+    targetPhone: '',
     subject: 'Pagamento confirmado',
     body: 'Olá {nome}!\n\nSeu pagamento para {produto} foi confirmado.\n\nValor: R$ {valor}\n\nObrigado por confiar na Vox Marketing Academy! 🙏',
     active: false,
@@ -36,6 +47,11 @@ const defaultRules: AutomationRule[] = [
     channel: 'ambos',
     trigger: 'payment_approved',
     delayMinutes: 5,
+    recipientMode: 'all',
+    targetTurma: '',
+    targetName: '',
+    targetEmail: '',
+    targetPhone: '',
     subject: 'Obrigado pela sua inscrição',
     body: 'Olá {nome}!\n\nObrigado pela sua inscrição no {produto}.\n\nEstamos felizes em ter você com a gente. Em breve você receberá mais informações.',
     active: false,
@@ -56,10 +72,34 @@ const channelLabels: Record<AutomationChannel, string> = {
   ambos: 'Email + WhatsApp',
 };
 
+const recipientLabels: Record<RecipientMode, string> = {
+  all: 'Todos os clientes do gatilho',
+  turma: 'Somente uma turma',
+  person: 'Somente uma pessoa',
+};
+
+const normalizeRule = (rule: any): AutomationRule => ({
+  id: rule.id || crypto.randomUUID(),
+  name: rule.name || 'Automação sem nome',
+  channel: rule.channel || 'ambos',
+  trigger: rule.trigger || 'payment_approved',
+  delayMinutes: Number(rule.delayMinutes) || 0,
+  recipientMode: rule.recipientMode || 'all',
+  targetTurma: rule.targetTurma || '',
+  targetName: rule.targetName || '',
+  targetEmail: rule.targetEmail || '',
+  targetPhone: rule.targetPhone || '',
+  subject: rule.subject || 'Mensagem Vox Marketing Academy',
+  body: rule.body || 'Olá {nome}!\n\nDigite aqui sua mensagem personalizada para {produto}.',
+  active: Boolean(rule.active),
+});
+
 const loadRules = (): AutomationRule[] => {
   try {
     const saved = localStorage.getItem('vox_automation_rules');
-    return saved ? JSON.parse(saved) : defaultRules;
+    if (!saved) return defaultRules;
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed.map(normalizeRule) : defaultRules;
   } catch {
     return defaultRules;
   }
@@ -96,6 +136,11 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ userRo
       channel: 'ambos',
       trigger: 'payment_approved',
       delayMinutes: 0,
+      recipientMode: 'all',
+      targetTurma: '',
+      targetName: '',
+      targetEmail: '',
+      targetPhone: '',
       subject: 'Mensagem Vox Marketing Academy',
       body: 'Olá {nome}!\n\nDigite aqui sua mensagem personalizada para {produto}.',
       active: false,
@@ -141,8 +186,30 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ userRo
     }
   };
 
+  const validateRule = (rule: AutomationRule) => {
+    if (!rule.name.trim()) return 'Informe o nome da automação.';
+    if (!rule.body.trim()) return 'Informe o corpo da mensagem.';
+    if ((rule.channel === 'email' || rule.channel === 'ambos') && !rule.subject.trim()) return 'Informe o assunto do email.';
+    if (rule.recipientMode === 'turma' && !rule.targetTurma.trim()) return 'Informe a turma que deve receber esta automação.';
+    if (rule.recipientMode === 'person') {
+      if (!rule.targetName.trim()) return 'Informe o nome da pessoa.';
+      if ((rule.channel === 'email' || rule.channel === 'ambos') && !rule.targetEmail.trim()) return 'Informe o email da pessoa.';
+      if ((rule.channel === 'whatsapp' || rule.channel === 'ambos') && !rule.targetPhone.trim()) return 'Informe o WhatsApp da pessoa.';
+    }
+    return '';
+  };
+
   const handleSaveRules = () => {
+    if (editingRule) {
+      const validation = validateRule(editingRule);
+      if (validation) {
+        setErrorMessage(validation);
+        return;
+      }
+    }
+
     localStorage.setItem('vox_automation_rules', JSON.stringify(rules));
+    setErrorMessage('');
     setSuccessMessage('✅ Automações salvas com sucesso!');
     setTimeout(() => setSuccessMessage(''), 3000);
   };
@@ -153,14 +220,21 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ userRo
       return;
     }
 
+    const validation = validateRule(editingRule);
+    if (validation) {
+      setErrorMessage(validation);
+      return;
+    }
+
     setIsTesting(true);
     setErrorMessage('');
     setSuccessMessage('');
 
     try {
+      const previewName = editingRule.recipientMode === 'person' && editingRule.targetName ? editingRule.targetName : 'João Teste';
       const testMessage = editingRule.body
-        .replaceAll('{nome}', 'João Teste')
-        .replaceAll('{produto}', 'Curso Premium')
+        .replaceAll('{nome}', previewName)
+        .replaceAll('{produto}', editingRule.targetTurma || 'Curso Premium')
         .replaceAll('{valor}', '199,90')
         .replaceAll('{link_ingresso}', 'https://payvoxmarketingacademy.online/?mode=ticket')
         .replaceAll('{link_certificado}', 'https://payvoxmarketingacademy.online/?mode=certificate');
@@ -168,11 +242,16 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ userRo
       console.log('Teste de automação:', {
         channel: editingRule.channel,
         trigger: editingRule.trigger,
+        recipientMode: editingRule.recipientMode,
+        targetTurma: editingRule.targetTurma,
+        targetName: editingRule.targetName,
+        targetEmail: editingRule.targetEmail,
+        targetPhone: editingRule.targetPhone,
         subject: editingRule.subject,
         body: testMessage,
       });
 
-      setSuccessMessage(`✅ Teste preparado para ${channelLabels[editingRule.channel]}. Confira o console/log do navegador.`);
+      setSuccessMessage(`✅ Teste preparado para ${channelLabels[editingRule.channel]} (${recipientLabels[editingRule.recipientMode]}).`);
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       setErrorMessage(`Erro ao testar: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
@@ -270,6 +349,7 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ userRo
                     <div className="min-w-0">
                       <p className="font-black text-sm text-gray-900 truncate">{rule.name}</p>
                       <p className="text-[10px] font-bold text-gray-500 mt-1">{channelLabels[rule.channel]} • {triggerLabels[rule.trigger]}</p>
+                      <p className="text-[10px] font-bold text-blue-500 mt-1">{recipientLabels[rule.recipientMode]}</p>
                     </div>
                     <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-lg ${rule.active ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-200 text-gray-500'}`}>{rule.active ? 'Ativa' : 'Off'}</span>
                   </div>
@@ -319,6 +399,40 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ userRo
                 <Input label="Atraso em minutos" type="number" value={String(editingRule.delayMinutes)} onChange={(value) => updateRule(editingRule.id, { delayMinutes: Number(value) || 0 })} placeholder="0" />
               </div>
 
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Users size={18} className="text-blue-600" />
+                  <h4 className="font-black text-gray-900">Destinatários</h4>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-widest">Enviar para</label>
+                  <select value={editingRule.recipientMode} onChange={(e) => updateRule(editingRule.id, { recipientMode: e.target.value as RecipientMode })} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm bg-white">
+                    <option value="all">Todos os clientes que entrarem no gatilho</option>
+                    <option value="turma">Somente uma turma específica</option>
+                    <option value="person">Somente uma pessoa específica</option>
+                  </select>
+                </div>
+
+                {editingRule.recipientMode === 'turma' && (
+                  <Input label="Turma que receberá" value={editingRule.targetTurma} onChange={(value) => updateRule(editingRule.id, { targetTurma: value })} placeholder="Ex: São Carlos - 30 de Maio" />
+                )}
+
+                {editingRule.recipientMode === 'person' && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Input label="Nome da pessoa" value={editingRule.targetName} onChange={(value) => updateRule(editingRule.id, { targetName: value })} placeholder="Ex: Rodrigo" />
+                    <Input label="Email da pessoa" value={editingRule.targetEmail} onChange={(value) => updateRule(editingRule.id, { targetEmail: value })} placeholder="email@exemplo.com" />
+                    <Input label="WhatsApp da pessoa" value={editingRule.targetPhone} onChange={(value) => updateRule(editingRule.id, { targetPhone: value })} placeholder="5511999999999" />
+                  </div>
+                )}
+
+                <div className="bg-white border border-slate-100 rounded-xl p-3 text-xs text-gray-500 font-bold">
+                  {editingRule.recipientMode === 'all' && 'Esta automação será aplicada para todos os clientes que cumprirem o gatilho escolhido.'}
+                  {editingRule.recipientMode === 'turma' && 'Esta automação será aplicada apenas para clientes da turma informada.'}
+                  {editingRule.recipientMode === 'person' && 'Esta automação será usada apenas para a pessoa informada acima.'}
+                </div>
+              </div>
+
               {(editingRule.channel === 'email' || editingRule.channel === 'ambos') && (
                 <Input label="Assunto do email" value={editingRule.subject} onChange={(value) => updateRule(editingRule.id, { subject: value })} placeholder="Ex: Obrigado pela sua inscrição" />
               )}
@@ -340,8 +454,8 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ userRo
                 <p className="text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Prévia</p>
                 <div className="text-sm text-gray-700 whitespace-pre-wrap">
                   {editingRule.body
-                    .replaceAll('{nome}', 'João Teste')
-                    .replaceAll('{produto}', 'Curso Premium')
+                    .replaceAll('{nome}', editingRule.recipientMode === 'person' && editingRule.targetName ? editingRule.targetName : 'João Teste')
+                    .replaceAll('{produto}', editingRule.targetTurma || 'Curso Premium')
                     .replaceAll('{valor}', '199,90')
                     .replaceAll('{link_ingresso}', 'https://payvoxmarketingacademy.online/?mode=ticket')
                     .replaceAll('{link_certificado}', 'https://payvoxmarketingacademy.online/?mode=certificate')}
