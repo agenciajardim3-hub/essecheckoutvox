@@ -269,7 +269,8 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
     }, [allPaidLeads]);
     const maxMonthDay = Math.max(...salesByMonthDay, 1);
 
-    const growthData = useMemo(() => {
+    // Disabled temporarily - causes infinite re-renders
+    // const growthData = useMemo(() => {
         const turmasToShow = selectedTurmas.length > 0 ? selectedTurmas : checkouts.slice(0, 3).map(c => c.id);
         const curves: { id: string; name: string; color: string; points: { dateStr: string; date: Date; cumulativeCount: number }[] }[] = [];
 
@@ -316,8 +317,9 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
 
         return curves;
     }, [allPaidLeads, checkouts, selectedTurmas]);
+    // });
 
-    const rechartsData = useMemo(() => {
+    // const rechartsData = useMemo(() => {
         if (growthData.length === 0) return [];
 
         const allDates = new Set<string>();
@@ -412,11 +414,11 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
     const barChartMargin = useMemo(() => ({ top: 5, right: 30, left: 200, bottom: 5 }), []);
     const scatterChartMargin = useMemo(() => ({ top: 20, right: 20, bottom: 20, left: 20 }), []);
 
-    React.useEffect(() => {
-        if (selectedTurmas.length === 0 && checkouts.length > 0) {
-            setSelectedTurmas(checkouts.slice(0, 3).map(c => c.id));
-        }
-    }, [checkouts]);
+    // React.useEffect(() => {
+    //     if (selectedTurmas.length === 0 && checkouts.length > 0) {
+    //         setSelectedTurmas(checkouts.slice(0, 3).map(c => c.id));
+    //     }
+    // }, [checkouts]);
 
     const toggleTurma = (id: string) => {
         setSelectedTurmas(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]);
