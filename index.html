@@ -24,6 +24,48 @@
         img, svg, video, canvas { max-width: 100%; }
         input, select, textarea, button { font-family: inherit; }
 
+        body.vox-certificate-page {
+            background: #eef1f5 !important;
+        }
+
+        body.vox-certificate-page #root {
+            min-height: 100vh;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 42px 24px 140px;
+            background: #eef1f5 !important;
+        }
+
+        body.vox-certificate-page #root > div {
+            width: min(1122px, calc(100vw - 48px)) !important;
+            min-height: auto !important;
+            aspect-ratio: 1122 / 794;
+            background: #ffffff !important;
+            border-radius: 24px !important;
+            box-shadow: 0 26px 70px rgba(15, 23, 42, 0.16) !important;
+            overflow: hidden !important;
+            position: relative;
+            padding: 0 !important;
+            margin: 0 auto !important;
+            transform-origin: center center;
+        }
+
+        body.vox-certificate-page #root > div > div:first-child {
+            width: 100% !important;
+            height: 100% !important;
+            background: #ffffff !important;
+            border-radius: 24px !important;
+            overflow: hidden !important;
+        }
+
+        body.vox-certificate-page main,
+        body.vox-certificate-page section,
+        body.vox-certificate-page article {
+            background: transparent !important;
+        }
+
         .vox-download-panel {
             position: fixed;
             right: 18px;
@@ -62,13 +104,35 @@
         .vox-download-btn:hover { transform: translateY(-1px); }
 
         @media print {
+            body.vox-certificate-page,
+            body.vox-certificate-page #root {
+                background: #ffffff !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                min-height: auto !important;
+            }
+
+            body.vox-certificate-page #root > div {
+                width: 100vw !important;
+                height: 100vh !important;
+                aspect-ratio: auto !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+            }
+
+            body.vox-certificate-page #root > div > div:first-child {
+                border-radius: 0 !important;
+            }
+
             .vox-download-panel { display: none !important; }
+            @page { size: landscape; margin: 0; }
         }
 
         @media (max-width: 640px) {
             body { background-color: #f1f5f9; }
             #root { width: 100%; overflow-x: hidden; }
-            #root > div { padding-left: 12px !important; padding-right: 12px !important; }
+            body:not(.vox-certificate-page) #root > div { padding-left: 12px !important; padding-right: 12px !important; }
             form { padding: 24px 18px !important; gap: 18px !important; }
             form > div { max-width: 100%; }
             input, textarea, select { font-size: 16px !important; min-height: 50px; }
@@ -84,6 +148,16 @@
             .shadow-2xl { box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12) !important; }
             .vox-download-panel { left: 12px; right: 12px; bottom: 12px; max-width: none; }
             .vox-download-btn { width: 100%; padding: 17px 18px; }
+
+            body.vox-certificate-page #root {
+                align-items: flex-start;
+                padding: 24px 10px 150px;
+            }
+
+            body.vox-certificate-page #root > div {
+                width: calc(100vw - 20px) !important;
+                border-radius: 18px !important;
+            }
         }
     </style>
     
@@ -340,8 +414,15 @@
                 return params.get('mode') === 'certificate';
             }
 
+            function markCertificatePage() {
+                if (isCertificatePage()) {
+                    document.body.classList.add('vox-certificate-page');
+                }
+            }
+
             function injectDownloadButton() {
                 if (!isCertificatePage()) return;
+                document.body.classList.add('vox-certificate-page');
                 if (document.getElementById('vox-download-panel')) return;
 
                 const params = new URLSearchParams(window.location.search);
@@ -370,13 +451,21 @@
                 document.body.appendChild(panel);
             }
 
+            markCertificatePage();
+
             if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', injectDownloadButton);
+                document.addEventListener('DOMContentLoaded', function () {
+                    markCertificatePage();
+                    injectDownloadButton();
+                });
             } else {
                 injectDownloadButton();
             }
 
-            new MutationObserver(injectDownloadButton).observe(document.documentElement, {
+            new MutationObserver(function () {
+                markCertificatePage();
+                injectDownloadButton();
+            }).observe(document.documentElement, {
                 childList: true,
                 subtree: true
             });
