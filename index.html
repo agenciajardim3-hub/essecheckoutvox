@@ -6,126 +6,91 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Checkout Seguro | Rodrigo Mesquita</title>
     
-    <!-- Performance: Preconnect to external domains -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://emdsgvuqrhpjdgrgaslo.supabase.co">
     <link rel="preconnect" href="https://cdn.tailwindcss.com">
-    
-    <!-- Performance: DNS prefetch for Pixel -->
     <link rel="dns-prefetch" href="https://connect.facebook.net">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        *, *::before, *::after {
-            box-sizing: border-box;
-        }
-
-        html,
-        body {
-            width: 100%;
-            min-height: 100%;
-            overflow-x: hidden;
-            -webkit-text-size-adjust: 100%;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
-        }
-
-        img, svg, video, canvas {
-            max-width: 100%;
-        }
-
-        input, select, textarea, button {
-            font-family: inherit;
-        }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { width: 100%; min-height: 100%; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        img, svg, video, canvas { max-width: 100%; }
+        input, select, textarea, button { font-family: inherit; }
 
         @media (max-width: 640px) {
-            body {
-                background-color: #f1f5f9;
-            }
-
-            #root {
-                width: 100%;
-                overflow-x: hidden;
-            }
-
-            /* Checkout mobile: reduz exageros visuais sem perder identidade */
-            #root > div {
-                padding-left: 12px !important;
-                padding-right: 12px !important;
-            }
-
-            form {
-                padding: 24px 18px !important;
-                gap: 18px !important;
-            }
-
-            form > div {
-                max-width: 100%;
-            }
-
-            input,
-            textarea,
-            select {
-                font-size: 16px !important;
-                min-height: 50px;
-            }
-
-            label {
-                line-height: 1.25 !important;
-            }
-
-            button,
-            a {
-                -webkit-tap-highlight-color: transparent;
-            }
-
-            button[type="submit"] {
-                padding-top: 20px !important;
-                padding-bottom: 20px !important;
-                border-radius: 28px !important;
-                font-size: 19px !important;
-                line-height: 1.15 !important;
-                gap: 10px !important;
-                text-align: center;
-                white-space: normal;
-            }
-
-            button[type="submit"] svg {
-                width: 26px !important;
-                height: 26px !important;
-                flex-shrink: 0;
-            }
-
-            .rounded-\[4rem\] {
-                border-radius: 32px !important;
-            }
-
-            .rounded-\[3rem\] {
-                border-radius: 28px !important;
-            }
-
-            .rounded-\[2\.5rem\] {
-                border-radius: 24px !important;
-            }
-
-            .rounded-\[2rem\] {
-                border-radius: 22px !important;
-            }
-
-            .tracking-widest {
-                letter-spacing: 0.08em !important;
-            }
-
-            .shadow-2xl {
-                box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12) !important;
-            }
+            body { background-color: #f1f5f9; }
+            #root { width: 100%; overflow-x: hidden; }
+            #root > div { padding-left: 12px !important; padding-right: 12px !important; }
+            form { padding: 24px 18px !important; gap: 18px !important; }
+            form > div { max-width: 100%; }
+            input, textarea, select { font-size: 16px !important; min-height: 50px; }
+            label { line-height: 1.25 !important; }
+            button, a { -webkit-tap-highlight-color: transparent; }
+            button[type="submit"] { padding-top: 20px !important; padding-bottom: 20px !important; border-radius: 28px !important; font-size: 19px !important; line-height: 1.15 !important; gap: 10px !important; text-align: center; white-space: normal; }
+            button[type="submit"] svg { width: 26px !important; height: 26px !important; flex-shrink: 0; }
+            .rounded-\[4rem\] { border-radius: 32px !important; }
+            .rounded-\[3rem\] { border-radius: 28px !important; }
+            .rounded-\[2\.5rem\] { border-radius: 24px !important; }
+            .rounded-\[2rem\] { border-radius: 22px !important; }
+            .tracking-widest { letter-spacing: 0.08em !important; }
+            .shadow-2xl { box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12) !important; }
         }
     </style>
+
+    <!-- Email fix: redireciona envios para a Edge Function correta -->
+    <script>
+        (function () {
+            const SEND_EMAIL_URL = 'https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email';
+
+            function normalizeEmailPayload(payload) {
+                payload = payload || {};
+                const message = payload.html || payload.body || payload.message || payload.corpo || payload.content || '';
+                return {
+                    to: payload.to || payload.email || payload.recipient || payload.destinatario,
+                    name: payload.name || payload.nome || '',
+                    subject: payload.subject || payload.assunto || 'Mensagem Vox Marketing Academy',
+                    productName: payload.productName || payload.produto || 'Vox Marketing Academy',
+                    ticketUrl: payload.ticketUrl || payload.url || '',
+                    certificateUrl: payload.certificateUrl || '',
+                    message: typeof message === 'string' ? message : String(message || '')
+                };
+            }
+
+            function isEmailRequest(url, method, body) {
+                if (method !== 'POST' || !body || typeof body !== 'string') return false;
+                if (String(url).includes('functions/v1/send-ticket-email')) return false;
+                const u = String(url || '').toLowerCase();
+                const b = body.toLowerCase();
+                return u.includes('email') || u.includes('mail') ||
+                    ((b.includes('"to"') || b.includes('"email"') || b.includes('destinatario')) &&
+                    (b.includes('subject') || b.includes('assunto') || b.includes('message') || b.includes('html') || b.includes('corpo')));
+            }
+
+            const originalFetch = window.fetch;
+            window.fetch = function (input, init) {
+                try {
+                    const url = typeof input === 'string' ? input : (input && input.url) || '';
+                    const method = (init && init.method ? init.method : '').toUpperCase();
+                    const body = init && init.body;
+                    if (isEmailRequest(url, method, body)) {
+                        input = SEND_EMAIL_URL;
+                        init = Object.assign({}, init, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(normalizeEmailPayload(JSON.parse(body)))
+                        });
+                    }
+                } catch (error) {
+                    console.warn('Email interceptor skipped:', error);
+                }
+                return originalFetch.apply(this, arguments.length > 1 ? [input, init] : [input]);
+            };
+        })();
+    </script>
     
     <!-- Meta Pixel Code -->
     <script>
@@ -143,17 +108,11 @@
     <script>
         (function () {
             const originalOpen = window.open;
-
             window.open = function (...args) {
                 const openedWindow = originalOpen.apply(window, args);
-
                 try {
-                    if (!openedWindow || !openedWindow.document || !openedWindow.document.write) {
-                        return openedWindow;
-                    }
-
+                    if (!openedWindow || !openedWindow.document || !openedWindow.document.write) return openedWindow;
                     const originalWrite = openedWindow.document.write.bind(openedWindow.document);
-
                     openedWindow.document.write = function (html) {
                         if (typeof html === 'string' && html.includes('downloadPDF()') && html.includes('certificate-wrapper')) {
                             const waitForImagesScript = `
@@ -171,7 +130,6 @@
               }));
             }
 `;
-
                             html = html
                                 .replace(/<img src=\"([^\"]+)\" class=\"signature-img\" \/>/g, '<img src="$1" class="signature-img" crossorigin="anonymous" />')
                                 .replace(/<img src=\"([^\"]+)\" style=\"height: 80px; margin-bottom: 20px; object-fit: contain;\" \/>/g, '<img src="$1" style="height: 80px; margin-bottom: 20px; object-fit: contain;" crossorigin="anonymous" />')
@@ -180,13 +138,11 @@
                                 .replace('html2canvas: { scale: 2 },', 'html2canvas: { scale: 2, useCORS: true, allowTaint: false, imageTimeout: 15000 },')
                                 .replace('try {\n                  const worker = html2pdf().set(opt);', 'try {\n                  await waitForCertificateImages(element);\n                  const worker = html2pdf().set(opt);');
                         }
-
                         return originalWrite(html);
                     };
                 } catch (error) {
                     console.warn('Certificate PDF patch skipped:', error);
                 }
-
                 return openedWindow;
             };
         })();
@@ -195,7 +151,6 @@
 </head>
 <body>
     <div id="root"></div>
-    <!-- Esta linha é essencial para o Vercel carregar o app -->
     <script type="module" src="./index.tsx"></script>
 </body>
 </html>
