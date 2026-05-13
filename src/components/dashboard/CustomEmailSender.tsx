@@ -5,9 +5,8 @@ interface CustomEmailSenderProps {
     userRole: string;
 }
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://emdsgvuqrhpjdgrgaslo.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtZHNndnVxcmhwamRncmdhc2xvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NjcyMTIsImV4cCI6MjA4MzU0MzIxMn0.Emfi9OyHn9SrrY4AugAVGzLSm2YkBzAKwsZ1XGQ5DD0';
-const SEND_EMAIL_ENDPOINT = `${SUPABASE_URL}/functions/v1/send-ticket-email`;
+const SEND_EMAIL_ENDPOINT = 'https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email';
 
 export const CustomEmailSender: React.FC<CustomEmailSenderProps> = ({ userRole }) => {
     const [recipientEmail, setRecipientEmail] = useState('');
@@ -61,7 +60,7 @@ export const CustomEmailSender: React.FC<CustomEmailSenderProps> = ({ userRole }
             try {
                 result = responseText ? JSON.parse(responseText) : {};
             } catch {
-                throw new Error(`Resposta inválida da função: ${responseText.slice(0, 120)}`);
+                throw new Error(`Resposta inválida da função. Endpoint chamado: ${SEND_EMAIL_ENDPOINT}. Resposta: ${responseText.slice(0, 120)}`);
             }
 
             if (!response.ok || result.error) {
