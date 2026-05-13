@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Mail, Settings, Send, Loader2, Check, AlertCircle } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Mail, Settings, Send, Loader2, Check, AlertCircle, Clock, XCircle } from 'lucide-react';
 import { Lead, AppConfig } from '../../types';
 
 interface EmailMarketingDashboardProps {
@@ -16,12 +16,30 @@ type EmailConfig = {
   smtp_from_email: string;
 };
 
+type SentLog = {
+  id: string;
+  date: string;
+  email: string;
+  name: string;
+  subject: string;
+  status: 'success' | 'error';
+  message: string;
+};
+
 const SEND_EMAIL_ENDPOINT = 'https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email';
 const SUPABASE_ANON_KEY =
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.VITE_SUPABASE_KEY ||
   '';
+
+const loadSentLogs = (): SentLog[] => {
+  try {
+    return JSON.parse(localStorage.getItem('vox_email_sent_logs') || '[]');
+  } catch {
+    return [];
+  }
+};
 
 export const EmailMarketingDashboard: React.FC<EmailMarketingDashboardProps> = ({ leads }) => {
   const [activeTab, setActiveTab] = useState<'send' | 'config'>('send');
@@ -33,6 +51,7 @@ export const EmailMarketingDashboard: React.FC<EmailMarketingDashboardProps> = (
   const [sendingStatus, setSendingStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [sendingMessage, setSendingMessage] = useState('');
   const [configSaved, setConfigSaved] = useState(false);
+  const [sentLogs, setSentLogs] = useState<SentLog[]>(loadSentLogs);
 
   const [emailConfig, setEmailConfig] = useState<EmailConfig>(() => {
     const saved = localStorage.getItem('vox_email_config');
@@ -49,6 +68,31 @@ export const EmailMarketingDashboard: React.FC<EmailMarketingDashboardProps> = (
   const turmas = Array.from(new Set(leads.filter((lead) => lead.turma).map((lead) => lead.turma)));
   const filteredLeads = selectedTurma ? leads.filter((lead) => lead.turma === selectedTurma) : leads;
 
+  const sentStats = useMemo(() => {
+    const success = sentLogs.filter((log) => log.status === 'success').length;
+    const errors = sentLogs.filter((log) => log.status === 'error').length;
+    return { success, errors, total: sentLogs.length };
+  }, [sentLogs]);
+
+  const pushLog = (log: Omit<SentLog, 'id' | 'date'>) => {
+    const nextLog: SentLog = {
+      id: crypto.randomUUID(),
+      date: new Date().toLocaleString('pt-BR'),
+      ...log,
+    };
+    setSentLogs((previous) => {
+      const next = [nextLog, ...previous].slice(0, 80);
+      localStorage.setItem('vox_email_sent_logs', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const clearLogs = () => {
+    if (!confirm('Limpar histórico de e-mails enviados?')) return;
+    localStorage.removeItem('vox_email_sent_logs');
+    setSentLogs([]);
+  };
+
   const saveConfig = () => {
     localStorage.setItem('vox_email_config', JSON.stringify(emailConfig));
     setConfigSaved(true);
@@ -57,19 +101,18 @@ export const EmailMarketingDashboard: React.FC<EmailMarketingDashboardProps> = (
 
   const sendOneEmail = async (lead: Lead) => {
     if (!lead.email) throw new Error(`Lead ${lead.name || lead.id} está sem email`);
-    if (!SUPABASE_ANON_KEY) {
-      throw new Error('Falta configurar a variável VITE_SUPABASE_ANON_KEY na Hostinger. Sem ela o Supabase recusa o envio.');
-    }
 
     const personalizedBody = emailBody.replaceAll('{name}', lead.name || 'aluno');
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+    if (SUPABASE_ANON_KEY) {
+      headers.Authorization = `Bearer ${SUPABASE_ANON_KEY}`;
+      headers.apikey = SUPABASE_ANON_KEY;
+    }
 
     const response = await fetch(SEND_EMAIL_ENDPOINT, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-        'apikey': SUPABASE_ANON_KEY
-      },
+      headers,
       body: JSON.stringify({
         to: lead.email,
         name: lead.name || 'Aluno',
@@ -93,6 +136,8 @@ export const EmailMarketingDashboard: React.FC<EmailMarketingDashboardProps> = (
     if (!response.ok || result.error) {
       throw new Error(result.error || result.message || `Erro ao enviar para ${lead.email}`);
     }
+
+    return result;
   };
 
   const handleSendEmails = async () => {
@@ -112,44 +157,69 @@ export const EmailMarketingDashboard: React.FC<EmailMarketingDashboardProps> = (
     setSendingStatus('sending');
     setSendingMessage('Enviando emails pelo Supabase...');
 
-    try {
-      const leadsToSend = leads.filter((lead) => selectedLeads.includes(lead.id) && lead.email);
-      if (leadsToSend.length === 0) throw new Error('Nenhum destinatário selecionado possui email válido');
+    const leadsToSend = leads.filter((lead) => selectedLeads.includes(lead.id) && lead.email);
+    if (leadsToSend.length === 0) {
+      setSendingStatus('error');
+      setSendingMessage('Nenhum destinatário selecionado possui email válido');
+      setIsSending(false);
+      return;
+    }
 
-      let sent = 0;
-      for (const lead of leadsToSend) {
+    let sent = 0;
+    let failed = 0;
+
+    for (const lead of leadsToSend) {
+      try {
         await sendOneEmail(lead);
         sent += 1;
-        setSendingMessage(`Enviando... ${sent}/${leadsToSend.length}`);
+        pushLog({
+          email: lead.email || '',
+          name: lead.name || 'Aluno',
+          subject: emailSubject,
+          status: 'success',
+          message: 'Enviado com sucesso',
+        });
+      } catch (error) {
+        failed += 1;
+        const errorMessage = error instanceof Error ? error.message : 'Erro ao enviar';
+        pushLog({
+          email: lead.email || '',
+          name: lead.name || 'Aluno',
+          subject: emailSubject,
+          status: 'error',
+          message: errorMessage,
+        });
       }
 
+      setSendingMessage(`Enviando... ${sent + failed}/${leadsToSend.length} | Sucesso: ${sent} | Falhas: ${failed}`);
+    }
+
+    if (sent > 0) {
       setSendingStatus('success');
-      setSendingMessage(`✓ ${sent} email(s) enviado(s) com sucesso!`);
+      setSendingMessage(`✓ ${sent} email(s) enviado(s) com sucesso${failed > 0 ? ` e ${failed} falharam` : ''}.`);
       setSelectedLeads([]);
       setEmailSubject('');
       setEmailBody('');
-      setTimeout(() => setSendingStatus('idle'), 4000);
-    } catch (error) {
-      console.error('Erro ao enviar emails:', error);
+    } else {
       setSendingStatus('error');
-      setSendingMessage(error instanceof Error ? error.message : 'Erro ao enviar emails');
-    } finally {
-      setIsSending(false);
+      setSendingMessage(`Nenhum email foi enviado. Falhas: ${failed}.`);
     }
+
+    setIsSending(false);
   };
 
   return (
     <div className="animate-in fade-in duration-500">
       <div className="mb-8">
         <h2 className="text-3xl font-black text-gray-900 tracking-tight">Email Marketing</h2>
-        <p className="text-gray-400 text-sm font-bold mt-1 uppercase tracking-widest">Gerencie e dispare campanhas de email</p>
+        <p className="text-gray-400 text-sm font-bold mt-1 uppercase tracking-widest">Gerencie, dispare e acompanhe campanhas de email</p>
       </div>
 
-      <div className="flex gap-4 mb-8 border-b border-gray-200">
-        <button onClick={() => setActiveTab('send')} className={`px-6 py-4 font-black text-sm uppercase transition-all ${activeTab === 'send' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
+      <div className="flex gap-4 mb-8 border-b border-gray-200 overflow-x-auto">
+        <button onClick={() => setActiveTab('send')} className={`px-6 py-4 font-black text-sm uppercase transition-all whitespace-nowrap ${activeTab === 'send' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
           <Send size={16} className="inline mr-2" /> Enviar Emails
         </button>
-        <button onClick={() => setActiveTab('config')} className={`px-6 py-4 font-black text-sm uppercase transition-all ${activeTab === 'config' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
+        <button onClick={() => setActiveTab('config')} className={`px-6 py-4 font-black text-sm uppercase transition-all whitespace-nowrap ${activeTab === 'config' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-400 hover:text-gray-600'}`}>
           <Settings size={16} className="inline mr-2" /> Configuração
         </button>
       </div>
@@ -198,22 +268,13 @@ export const EmailMarketingDashboard: React.FC<EmailMarketingDashboardProps> = (
                 <li>4. Porta recomendada: 465 com SSL/TLS</li>
               </ol>
             </div>
-
-            <div className="bg-amber-50 rounded-3xl p-8 border border-amber-200">
-              <h4 className="font-black text-lg text-amber-900 mb-4">⚠️ Importante</h4>
-              <ul className="space-y-2 text-sm text-amber-800 font-bold">
-                <li>• Não use Outlook como login SMTP da Hostinger</li>
-                <li>• O erro com DOCTYPE era rota inexistente do frontend</li>
-                <li>• O disparo agora vai direto para o Supabase</li>
-              </ul>
-            </div>
           </div>
         </div>
       )}
 
       {activeTab === 'send' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          <div className="xl:col-span-2">
             <div className="bg-white rounded-3xl p-8 border border-gray-100">
               <h3 className="text-xl font-black text-gray-900 mb-6">Compor Email</h3>
 
@@ -242,10 +303,8 @@ export const EmailMarketingDashboard: React.FC<EmailMarketingDashboardProps> = (
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="space-y-6">
-            <div className="bg-white rounded-3xl p-6 border border-gray-100">
+            <div className="bg-white rounded-3xl p-6 border border-gray-100 mt-6">
               <h4 className="font-black text-gray-900 mb-4 flex items-center gap-2"><Mail size={18} className="text-blue-600" /> Filtrar por Turma</h4>
               <select value={selectedTurma} onChange={(e) => setSelectedTurma(e.target.value)} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm">
                 <option value="">Todas as turmas ({leads.length})</option>
@@ -253,7 +312,7 @@ export const EmailMarketingDashboard: React.FC<EmailMarketingDashboardProps> = (
               </select>
             </div>
 
-            <div className="bg-white rounded-3xl p-6 border border-gray-100">
+            <div className="bg-white rounded-3xl p-6 border border-gray-100 mt-6">
               <h4 className="font-black text-gray-900 mb-4">Destinatários ({selectedLeads.length} selecionados)</h4>
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {filteredLeads.length === 0 ? <p className="text-sm text-gray-400 text-center py-6">Nenhum lead encontrado</p> : filteredLeads.map((lead) => (
@@ -274,9 +333,51 @@ export const EmailMarketingDashboard: React.FC<EmailMarketingDashboardProps> = (
               )}
             </div>
 
-            <button onClick={handleSendEmails} disabled={isSending || selectedLeads.length === 0 || !emailSubject || !emailBody} className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-2xl font-black text-sm uppercase hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+            <button onClick={handleSendEmails} disabled={isSending || selectedLeads.length === 0 || !emailSubject || !emailBody} className="w-full mt-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-4 rounded-2xl font-black text-sm uppercase hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
               {isSending ? <><Loader2 size={18} className="animate-spin" /> Enviando...</> : <><Send size={18} /> Enviar Emails</>}
             </button>
+          </div>
+
+          <div className="xl:col-span-1 space-y-4">
+            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h3 className="font-black text-gray-900">E-mails enviados</h3>
+                  <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Sucesso e falhas</p>
+                </div>
+                <Clock size={20} className="text-gray-400" />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 mb-5">
+                <div className="bg-gray-50 rounded-2xl p-3 text-center"><p className="text-xl font-black text-gray-900">{sentStats.total}</p><p className="text-[9px] font-black uppercase text-gray-400">Total</p></div>
+                <div className="bg-emerald-50 rounded-2xl p-3 text-center"><p className="text-xl font-black text-emerald-700">{sentStats.success}</p><p className="text-[9px] font-black uppercase text-emerald-600">Enviados</p></div>
+                <div className="bg-red-50 rounded-2xl p-3 text-center"><p className="text-xl font-black text-red-700">{sentStats.errors}</p><p className="text-[9px] font-black uppercase text-red-600">Falhas</p></div>
+              </div>
+
+              <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
+                {sentLogs.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400 text-sm font-bold">Nenhum envio registrado ainda.</div>
+                ) : sentLogs.map((log) => (
+                  <div key={log.id} className={`p-3 rounded-2xl border ${log.status === 'success' ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+                    <div className="flex items-start gap-2">
+                      {log.status === 'success' ? <Check size={16} className="text-emerald-600 mt-0.5" /> : <XCircle size={16} className="text-red-600 mt-0.5" />}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-black text-gray-900 truncate">{log.name}</p>
+                        <p className="text-[11px] font-bold text-gray-500 truncate">{log.email}</p>
+                        <p className="text-[10px] font-bold text-gray-400 mt-1">{log.date}</p>
+                        <p className={`text-[11px] font-bold mt-1 ${log.status === 'success' ? 'text-emerald-700' : 'text-red-700'}`}>{log.message}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {sentLogs.length > 0 && (
+                <button onClick={clearLogs} className="w-full mt-4 px-4 py-3 rounded-xl bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-600 text-xs font-black uppercase transition-all">
+                  Limpar histórico
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
