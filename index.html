@@ -18,111 +18,29 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        *, *::before, *::after {
-            box-sizing: border-box;
-        }
-
-        html,
-        body {
-            width: 100%;
-            min-height: 100%;
-            overflow-x: hidden;
-            -webkit-text-size-adjust: 100%;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
-        }
-
-        img, svg, video, canvas {
-            max-width: 100%;
-        }
-
-        input, select, textarea, button {
-            font-family: inherit;
-        }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { width: 100%; min-height: 100%; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        img, svg, video, canvas { max-width: 100%; }
+        input, select, textarea, button { font-family: inherit; }
 
         @media (max-width: 640px) {
-            body {
-                background-color: #f1f5f9;
-            }
-
-            #root {
-                width: 100%;
-                overflow-x: hidden;
-            }
-
-            #root > div {
-                padding-left: 12px !important;
-                padding-right: 12px !important;
-            }
-
-            form {
-                padding: 24px 18px !important;
-                gap: 18px !important;
-            }
-
-            form > div {
-                max-width: 100%;
-            }
-
-            input,
-            textarea,
-            select {
-                font-size: 16px !important;
-                min-height: 50px;
-            }
-
-            label {
-                line-height: 1.25 !important;
-            }
-
-            button,
-            a {
-                -webkit-tap-highlight-color: transparent;
-            }
-
-            button[type="submit"] {
-                padding-top: 20px !important;
-                padding-bottom: 20px !important;
-                border-radius: 28px !important;
-                font-size: 19px !important;
-                line-height: 1.15 !important;
-                gap: 10px !important;
-                text-align: center;
-                white-space: normal;
-            }
-
-            button[type="submit"] svg {
-                width: 26px !important;
-                height: 26px !important;
-                flex-shrink: 0;
-            }
-
-            .rounded-\[4rem\] {
-                border-radius: 32px !important;
-            }
-
-            .rounded-\[3rem\] {
-                border-radius: 28px !important;
-            }
-
-            .rounded-\[2\.5rem\] {
-                border-radius: 24px !important;
-            }
-
-            .rounded-\[2rem\] {
-                border-radius: 22px !important;
-            }
-
-            .tracking-widest {
-                letter-spacing: 0.08em !important;
-            }
-
-            .shadow-2xl {
-                box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12) !important;
-            }
+            body { background-color: #f1f5f9; }
+            #root { width: 100%; overflow-x: hidden; }
+            #root > div { padding-left: 12px !important; padding-right: 12px !important; }
+            form { padding: 24px 18px !important; gap: 18px !important; }
+            form > div { max-width: 100%; }
+            input, textarea, select { font-size: 16px !important; min-height: 50px; }
+            label { line-height: 1.25 !important; }
+            button, a { -webkit-tap-highlight-color: transparent; }
+            button[type="submit"] { padding-top: 20px !important; padding-bottom: 20px !important; border-radius: 28px !important; font-size: 19px !important; line-height: 1.15 !important; gap: 10px !important; text-align: center; white-space: normal; }
+            button[type="submit"] svg { width: 26px !important; height: 26px !important; flex-shrink: 0; }
+            .rounded-\[4rem\] { border-radius: 32px !important; }
+            .rounded-\[3rem\] { border-radius: 28px !important; }
+            .rounded-\[2\.5rem\] { border-radius: 24px !important; }
+            .rounded-\[2rem\] { border-radius: 22px !important; }
+            .tracking-widest { letter-spacing: 0.08em !important; }
+            .shadow-2xl { box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12) !important; }
         }
     </style>
     
@@ -138,9 +56,59 @@
         'https://connect.facebook.net/en_US/fbevents.js');
     </script>
 
-    <!-- Ajustes visuais temporários de menu -->
+    <!-- Ajustes visuais de menu e abas de certificados -->
     <script>
         (function () {
+            function clickButtonByText(text) {
+                const buttons = Array.from(document.querySelectorAll('button'));
+                const found = buttons.find(function (button) {
+                    return button.textContent && button.textContent.includes(text);
+                });
+                if (found) found.click();
+            }
+
+            function makeCertButton(text, active, onClick) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.textContent = text;
+                button.className = 'vox-cert-tab ' + (active ? 'active' : '');
+                button.onclick = onClick;
+                return button;
+            }
+
+            function injectCertificateTabs() {
+                const main = document.querySelector('main');
+                if (!main) return;
+
+                const pageText = main.textContent || '';
+                const isIndividualPage = pageText.includes('Emissão de Certificados') || pageText.includes('Gere reconhecimento oficial para seus alunos');
+                const isMassPage = pageText.includes('Certificados em Massa') || pageText.includes('Gerar Certificados em Massa');
+
+                if (!isIndividualPage && !isMassPage) {
+                    const existing = document.getElementById('vox-certificate-tabs');
+                    if (existing) existing.remove();
+                    return;
+                }
+
+                if (document.getElementById('vox-certificate-tabs')) return;
+
+                const wrapper = document.createElement('div');
+                wrapper.id = 'vox-certificate-tabs';
+                wrapper.style.cssText = 'display:flex;gap:10px;align-items:center;justify-content:flex-start;margin:0 0 24px 0;background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:8px;box-shadow:0 10px 25px rgba(15,23,42,.06);width:max-content;max-width:100%;';
+
+                wrapper.appendChild(makeCertButton('Individual', isIndividualPage, function () {
+                    clickButtonByText('Gerar Certificado');
+                }));
+
+                wrapper.appendChild(makeCertButton('Em Massa', isMassPage, function () {
+                    clickButtonByText('Certificados em Massa');
+                    setTimeout(function () { clickButtonByText('Enviar Certificados'); }, 80);
+                }));
+
+                const target = main.querySelector('.max-w-7xl') || main.firstElementChild || main;
+                target.insertBefore(wrapper, target.firstChild);
+            }
+
             function renameMenus() {
                 try {
                     document.querySelectorAll('button').forEach(function (button) {
@@ -162,10 +130,30 @@
                             });
                         }
                     });
+
+                    injectCertificateTabs();
                 } catch (error) {
-                    console.warn('Não foi possível renomear menus:', error);
+                    console.warn('Não foi possível ajustar menus:', error);
                 }
             }
+
+            const style = document.createElement('style');
+            style.textContent = `
+                .vox-cert-tab {
+                    padding: 12px 22px;
+                    border-radius: 14px;
+                    font-size: 12px;
+                    font-weight: 900;
+                    text-transform: uppercase;
+                    letter-spacing: .08em;
+                    color: #64748b;
+                    background: transparent;
+                    transition: all .2s ease;
+                }
+                .vox-cert-tab:hover { background: #f1f5f9; color: #111827; }
+                .vox-cert-tab.active { background: #2563eb; color: #fff; box-shadow: 0 10px 22px rgba(37,99,235,.18); }
+            `;
+            document.head.appendChild(style);
 
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', renameMenus);
@@ -183,7 +171,6 @@
 </head>
 <body>
     <div id="root"></div>
-    <!-- Esta linha é essencial para o Vercel/Hostinger carregar o app -->
     <script type="module" src="./index.tsx"></script>
 </body>
 </html>
