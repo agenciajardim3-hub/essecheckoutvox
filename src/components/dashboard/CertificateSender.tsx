@@ -18,6 +18,7 @@ type GeneratedCertificate = {
     date: string;
     hours: string;
     instructorName: string;
+    signatureUrl: string;
     certificateUrl: string;
     certificateHtml: string;
     status: 'generated' | 'sent' | 'error';
@@ -39,6 +40,16 @@ const escapeHtml = (value: string) => String(value || '')
     .replace(/>/g, '&gt;')
     .replace(/\"/g, '&quot;')
     .replace(/'/g, '&#039;');
+
+const getSavedSignature = () => {
+    try {
+        const saved = localStorage.getItem('vox_selected_signature') || '';
+        if (saved.startsWith('http') || saved.startsWith('data:')) return saved;
+        return '';
+    } catch {
+        return '';
+    }
+};
 
 const getOfficialCertificateHtml = (certificate: Omit<GeneratedCertificate, 'certificateHtml'>) => `
 <!DOCTYPE html>
@@ -198,6 +209,13 @@ const getOfficialCertificateHtml = (certificate: Omit<GeneratedCertificate, 'cer
       width: 300px;
       margin-bottom: 30px;
     }
+    .signature-img {
+      height: 80px;
+      max-width: 280px;
+      object-fit: contain;
+      margin-bottom: -10px;
+      display: inline-block;
+    }
     .signature-text {
       font-family: 'Great Vibes', cursive;
       font-size: 56px;
@@ -261,7 +279,7 @@ const getOfficialCertificateHtml = (certificate: Omit<GeneratedCertificate, 'cer
           <div class="medal"><div class="medal-inner"><div class="medal-star">★</div></div></div>
         </div>
         <div class="signature-box">
-          <div class="signature-text">${escapeHtml(certificate.instructorName || 'Rodrigo Jardim')}</div>
+          ${certificate.signatureUrl ? `<img src="${escapeHtml(certificate.signatureUrl)}" class="signature-img" />` : `<div class="signature-text">${escapeHtml(certificate.instructorName || 'Rodrigo Jardim')}</div>`}
           <div class="signature-line"></div>
         </div>
       </div>
@@ -271,6 +289,8 @@ const getOfficialCertificateHtml = (certificate: Omit<GeneratedCertificate, 'cer
 </html>`;
 
 const createCertificate = (lead: Lead, selectedTurma: string): GeneratedCertificate => {
+    const savedSignature = getSavedSignature();
+
     const base = {
         id: crypto.randomUUID(),
         leadId: lead.id,
@@ -282,9 +302,10 @@ const createCertificate = (lead: Lead, selectedTurma: string): GeneratedCertific
         date: new Date().toLocaleDateString('pt-BR'),
         hours: '8',
         instructorName: 'Rodrigo Jardim',
+        signatureUrl: savedSignature,
         certificateUrl: `${window.location.origin}/?mode=certificate&checkout=${encodeURIComponent(lead.product_id || '')}&cpf=${encodeURIComponent(lead.cpf || '')}`,
         status: 'generated' as const,
-        message: 'Certificado gerado com o layout oficial',
+        message: savedSignature ? 'Certificado gerado com a assinatura salva' : 'Certificado gerado sem assinatura salva',
     };
 
     return {
@@ -342,9 +363,15 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
         if (!selectedTurma) return alert('Selecione uma turma');
         if (turmaLeads.length === 0) return alert('Nenhum aluno pago com email e CPF nesta turma');
 
+        const savedSignature = getSavedSignature();
+        if (!savedSignature) {
+            const continueWithoutSignature = confirm('Não encontrei assinatura salva em Assinaturas. Deseja gerar mesmo assim sem imagem de assinatura?');
+            if (!continueWithoutSignature) return;
+        }
+
         setIsGenerating(true);
         setSendingStatus('generating');
-        setStatusMessage('Gerando certificados em massa com o layout oficial...');
+        setStatusMessage('Gerando certificados em massa com assinatura salva...');
         setGeneratedCertificates([]);
         setSelectedCertificate(null);
         setSentCount(0);
@@ -355,7 +382,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
             setGeneratedCertificates(generated);
             setSelectedCertificate(generated[0] || null);
             setSendingStatus('completed');
-            setStatusMessage(`✓ ${generated.length} certificado(s) gerado(s) com o mesmo layout oficial do certificado individual.`);
+            setStatusMessage(`✓ ${generated.length} certificado(s) gerado(s) ${savedSignature ? 'com a assinatura salva.' : 'sem assinatura salva.'}`);
         } catch (error) {
             console.error('Erro ao gerar certificados em massa:', error);
             setSendingStatus('error');
@@ -383,7 +410,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
         const htmlMessage = `
             <p>Olá <strong>${escapeHtml(certificate.name)}</strong>,</p>
             <p>Parabéns pela conclusão do curso <strong>${escapeHtml(certificate.productName)}</strong>!</p>
-            <p>Seu certificado foi gerado com o layout oficial da Vox Marketing Academy.</p>
+            <p>Seu certificado foi gerado com o layout oficial da Vox Marketing Academy${certificate.signatureUrl ? ' e com a assinatura salva.' : '.'}</p>
             <p style="font-size:13px;color:#6b7280;">Abaixo está uma prévia do certificado. Para salvar em PDF, use o botão abrir/imprimir dentro do sistema.</p>
             <div style="max-width:900px;overflow:auto;border:1px solid #e5e7eb;border-radius:18px;margin-top:18px;">
               ${certificate.certificateHtml.replace(/<script[\s\S]*?<\/script>/gi, '')}
@@ -466,7 +493,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
                 <div>
                     <h2 className="text-2xl font-black text-gray-900">Certificados em Massa</h2>
                     <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">
-                        Gere em massa usando o mesmo layout oficial do certificado individual
+                        Gere em massa usando o mesmo layout oficial e a assinatura salva
                     </p>
                 </div>
                 <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center">
@@ -543,7 +570,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
                             <div className="bg-gray-50 rounded-2xl p-4">
                                 <div className="flex items-center justify-between gap-4 mb-3">
-                                    <div className="text-xs font-bold text-gray-600 uppercase tracking-widest">Certificados gerados com layout oficial</div>
+                                    <div className="text-xs font-bold text-gray-600 uppercase tracking-widest">Certificados gerados com assinatura</div>
                                     <div className="text-[10px] font-black text-gray-500 bg-white border border-gray-200 px-3 py-1 rounded-full">Enviados: {sentCount} | Falhas: {failedCount}</div>
                                 </div>
                                 <div className="space-y-2 max-h-[520px] overflow-y-auto">
@@ -554,7 +581,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
                                                 <div className="flex-1 min-w-0">
                                                     <div className="font-bold text-gray-900 text-sm truncate">{cert.name}</div>
                                                     <div className="text-xs text-gray-500 truncate">{cert.email}</div>
-                                                    <div className="text-[10px] text-purple-600 font-bold mt-1">Mesmo layout do certificado individual</div>
+                                                    <div className="text-[10px] text-purple-600 font-bold mt-1">{cert.signatureUrl ? 'Com assinatura salva' : 'Sem assinatura salva'}</div>
                                                     {cert.message && <div className="text-[10px] text-gray-500 font-bold mt-1">{cert.message}</div>}
                                                 </div>
                                                 <div className={`text-[10px] font-black px-2 py-1 rounded-lg flex-shrink-0 ${cert.status === 'sent' ? 'text-emerald-600 bg-emerald-50' : cert.status === 'error' ? 'text-red-600 bg-red-50' : 'text-purple-600 bg-purple-50'}`}>
@@ -593,7 +620,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
                                         <div>
                                             <Eye size={42} className="text-slate-600 mx-auto mb-4" />
                                             <p className="text-white font-black">Nenhum certificado selecionado</p>
-                                            <p className="text-slate-400 text-sm font-bold mt-2">Clique em “Visualizar” para conferir o certificado com o layout oficial.</p>
+                                            <p className="text-slate-400 text-sm font-bold mt-2">Clique em “Visualizar” para conferir o certificado com a assinatura salva.</p>
                                         </div>
                                     </div>
                                 )}
@@ -609,9 +636,9 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
                     <div className="text-sm text-amber-800">
                         <div className="font-bold mb-2">ℹ️ Como funciona:</div>
                         <ul className="space-y-1 text-xs list-disc list-inside">
-                            <li>Agora o certificado em massa usa o mesmo HTML/layout do certificado individual.</li>
-                            <li>A prévia não abre mais uma página diferente: ela renderiza o certificado oficial direto no painel.</li>
-                            <li>O botão Abrir abre o certificado oficial em nova aba para imprimir ou salvar em PDF.</li>
+                            <li>O certificado em massa agora busca a assinatura salva na área Assinaturas.</li>
+                            <li>Se existir uma assinatura salva, ela aparece como imagem no certificado.</li>
+                            <li>Se não existir assinatura salva, o sistema avisa antes de gerar.</li>
                         </ul>
                     </div>
                 </div>
