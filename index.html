@@ -1,480 +1,378 @@
-
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Checkout Seguro | Rodrigo Mesquita</title>
-    
-    <!-- Performance: Preconnect to external domains -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://emdsgvuqrhpjdgrgaslo.supabase.co">
-    <link rel="preconnect" href="https://cdn.tailwindcss.com">
-    
-    <!-- Performance: DNS prefetch for Pixel -->
-    <link rel="dns-prefetch" href="https://connect.facebook.net">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
-        *, *::before, *::after { box-sizing: border-box; }
-        html, body { width: 100%; min-height: 100%; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        img, svg, video, canvas { max-width: 100%; }
-        input, select, textarea, button { font-family: inherit; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Checkout Seguro | Rodrigo Mesquita</title>
 
-        body.vox-certificate-page {
-            background: #eef1f5 !important;
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://emdsgvuqrhpjdgrgaslo.supabase.co" />
+  <link rel="preconnect" href="https://cdn.tailwindcss.com" />
+  <link rel="dns-prefetch" href="https://connect.facebook.net" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { width: 100%; min-height: 100%; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+    img, svg, video, canvas { max-width: 100%; }
+    input, select, textarea, button { font-family: inherit; }
+
+    body.vox-certificate-page { background: #eef1f5 !important; }
+    body.vox-certificate-page #root {
+      min-height: 100vh;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 42px 24px 140px;
+      background: #eef1f5 !important;
+    }
+    body.vox-certificate-page #root > div {
+      width: min(1122px, calc(100vw - 48px)) !important;
+      min-height: auto !important;
+      aspect-ratio: 1122 / 794;
+      background: #ffffff !important;
+      border-radius: 24px !important;
+      box-shadow: 0 26px 70px rgba(15, 23, 42, 0.16) !important;
+      overflow: hidden !important;
+      position: relative;
+      padding: 0 !important;
+      margin: 0 auto !important;
+      transform-origin: center center;
+    }
+    body.vox-certificate-page #root > div > div:first-child {
+      width: 100% !important;
+      height: 100% !important;
+      background: #ffffff !important;
+      border-radius: 24px !important;
+      overflow: hidden !important;
+    }
+    body.vox-certificate-page main,
+    body.vox-certificate-page section,
+    body.vox-certificate-page article { background: transparent !important; }
+
+    .vox-signature-img {
+      height: 82px !important;
+      max-width: 285px !important;
+      object-fit: contain !important;
+      display: inline-block !important;
+      margin-bottom: -10px !important;
+    }
+
+    .vox-download-panel {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 999999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 340px;
+    }
+    .vox-download-hint {
+      background: #ffffff;
+      border: 1px solid #dbeafe;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
+      border-radius: 18px;
+      padding: 14px 16px;
+      color: #1f2937;
+      font-size: 13px;
+      line-height: 1.4;
+      font-weight: 700;
+    }
+    .vox-download-btn {
+      border: 0;
+      border-radius: 18px;
+      padding: 16px 22px;
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      color: #ffffff;
+      font-size: 14px;
+      line-height: 1.1;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      cursor: pointer;
+      box-shadow: 0 18px 35px rgba(37, 99, 235, 0.28);
+    }
+    .vox-download-btn:hover { transform: translateY(-1px); }
+
+    .vox-cert-tab {
+      padding: 12px 22px;
+      border-radius: 14px;
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #64748b;
+      background: transparent;
+      transition: all .2s ease;
+    }
+    .vox-cert-tab:hover { background: #f1f5f9; color: #111827; }
+    .vox-cert-tab.active { background: #2563eb; color: #fff; box-shadow: 0 10px 22px rgba(37,99,235,.18); }
+
+    @media print {
+      body.vox-certificate-page,
+      body.vox-certificate-page #root {
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        min-height: auto !important;
+      }
+      body.vox-certificate-page #root > div {
+        width: 100vw !important;
+        height: 100vh !important;
+        aspect-ratio: auto !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+      }
+      body.vox-certificate-page #root > div > div:first-child { border-radius: 0 !important; }
+      .vox-download-panel { display: none !important; }
+      @page { size: landscape; margin: 0; }
+    }
+
+    @media (max-width: 640px) {
+      body { background-color: #f1f5f9; }
+      #root { width: 100%; overflow-x: hidden; }
+      body:not(.vox-certificate-page) #root > div { padding-left: 12px !important; padding-right: 12px !important; }
+      input, textarea, select { font-size: 16px !important; min-height: 50px; }
+      button, a { -webkit-tap-highlight-color: transparent; }
+      .vox-download-panel { left: 12px; right: 12px; bottom: 12px; max-width: none; }
+      .vox-download-btn { width: 100%; padding: 17px 18px; }
+      body.vox-certificate-page #root { align-items: flex-start; padding: 24px 10px 150px; }
+      body.vox-certificate-page #root > div { width: calc(100vw - 20px) !important; border-radius: 18px !important; }
+    }
+  </style>
+
+  <script>
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window, document,'script','https://connect.facebook.net/en_US/fbevents.js');
+  </script>
+
+  <script>
+    (function () {
+      function clickButtonByText(text) {
+        const found = Array.from(document.querySelectorAll('button')).find((button) => button.textContent && button.textContent.includes(text));
+        if (found) found.click();
+      }
+
+      function makeCertButton(text, active, onClick) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = text;
+        button.className = 'vox-cert-tab ' + (active ? 'active' : '');
+        button.onclick = onClick;
+        return button;
+      }
+
+      function injectCertificateTabs() {
+        const main = document.querySelector('main');
+        if (!main) return;
+        const pageText = main.textContent || '';
+        const isIndividualPage = pageText.includes('Emissão de Certificados') || pageText.includes('Gere reconhecimento oficial para seus alunos');
+        const isMassPage = pageText.includes('Certificados em Massa') || pageText.includes('Gerar Certificados em Massa');
+        if (!isIndividualPage && !isMassPage) {
+          const existing = document.getElementById('vox-certificate-tabs');
+          if (existing) existing.remove();
+          return;
         }
+        if (document.getElementById('vox-certificate-tabs')) return;
+        const wrapper = document.createElement('div');
+        wrapper.id = 'vox-certificate-tabs';
+        wrapper.style.cssText = 'display:flex;gap:10px;align-items:center;justify-content:flex-start;margin:0 0 24px 0;background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:8px;box-shadow:0 10px 25px rgba(15,23,42,.06);width:max-content;max-width:100%;';
+        wrapper.appendChild(makeCertButton('Individual', isIndividualPage, () => clickButtonByText('Gerar Certificado')));
+        wrapper.appendChild(makeCertButton('Em Massa', isMassPage, () => {
+          clickButtonByText('Certificados em Massa');
+          setTimeout(() => clickButtonByText('Enviar Certificados'), 80);
+        }));
+        const target = main.querySelector('.max-w-7xl') || main.firstElementChild || main;
+        target.insertBefore(wrapper, target.firstChild);
+      }
 
-        body.vox-certificate-page #root {
-            min-height: 100vh;
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 42px 24px 140px;
-            background: #eef1f5 !important;
+      function renameMenus() {
+        try {
+          document.querySelectorAll('button').forEach((button) => {
+            if (!button.textContent) return;
+            if (button.textContent.includes('Automação WhatsApp')) {
+              button.childNodes.forEach((node) => {
+                if (node.nodeType === Node.TEXT_NODE && node.textContent.includes('Automação WhatsApp')) node.textContent = node.textContent.replace('Automação WhatsApp', 'Automação');
+              });
+            }
+            if (button.textContent.includes('2️⃣ Enviar Certificados')) {
+              button.childNodes.forEach((node) => {
+                if (node.nodeType === Node.TEXT_NODE && node.textContent.includes('2️⃣ Enviar Certificados')) node.textContent = node.textContent.replace('2️⃣ Enviar Certificados', '2️⃣ Certificados em Massa');
+              });
+            }
+          });
+          injectCertificateTabs();
+        } catch (error) {
+          console.warn('Não foi possível ajustar menus:', error);
         }
+      }
 
-        body.vox-certificate-page #root > div {
-            width: min(1122px, calc(100vw - 48px)) !important;
-            min-height: auto !important;
-            aspect-ratio: 1122 / 794;
-            background: #ffffff !important;
-            border-radius: 24px !important;
-            box-shadow: 0 26px 70px rgba(15, 23, 42, 0.16) !important;
-            overflow: hidden !important;
-            position: relative;
-            padding: 0 !important;
-            margin: 0 auto !important;
-            transform-origin: center center;
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', renameMenus);
+      else renameMenus();
+      new MutationObserver(renameMenus).observe(document.documentElement, { childList: true, subtree: true });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      const originalFetch = window.fetch;
+
+      function escapeMail(value) {
+        return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+      }
+
+      function getSavedSignature() {
+        try {
+          const saved = localStorage.getItem('vox_selected_signature') || '';
+          return (saved.startsWith('http') || saved.startsWith('data:')) ? saved : '';
+        } catch (_) {
+          return '';
         }
+      }
 
-        body.vox-certificate-page #root > div > div:first-child {
-            width: 100% !important;
-            height: 100% !important;
-            background: #ffffff !important;
-            border-radius: 24px !important;
-            overflow: hidden !important;
+      function addParams(url, signatureUrl) {
+        try {
+          if (!url) return '';
+          const parsed = new URL(url, window.location.origin);
+          parsed.searchParams.set('download', '1');
+          if (signatureUrl) parsed.searchParams.set('sig', signatureUrl);
+          return parsed.toString();
+        } catch (_) {
+          return url || '';
         }
+      }
 
-        body.vox-certificate-page main,
-        body.vox-certificate-page section,
-        body.vox-certificate-page article {
-            background: transparent !important;
-        }
-
-        .vox-download-panel {
-            position: fixed;
-            right: 18px;
-            bottom: 18px;
-            z-index: 999999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            max-width: 340px;
-        }
-        .vox-download-hint {
-            background: #ffffff;
-            border: 1px solid #dbeafe;
-            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
-            border-radius: 18px;
-            padding: 14px 16px;
-            color: #1f2937;
-            font-size: 13px;
-            line-height: 1.4;
-            font-weight: 700;
-        }
-        .vox-download-btn {
-            border: 0;
-            border-radius: 18px;
-            padding: 16px 22px;
-            background: linear-gradient(135deg, #2563eb, #7c3aed);
-            color: #ffffff;
-            font-size: 14px;
-            line-height: 1.1;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: .04em;
-            cursor: pointer;
-            box-shadow: 0 18px 35px rgba(37, 99, 235, 0.28);
-        }
-        .vox-download-btn:hover { transform: translateY(-1px); }
-
-        @media print {
-            body.vox-certificate-page,
-            body.vox-certificate-page #root {
-                background: #ffffff !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                min-height: auto !important;
-            }
-
-            body.vox-certificate-page #root > div {
-                width: 100vw !important;
-                height: 100vh !important;
-                aspect-ratio: auto !important;
-                border-radius: 0 !important;
-                box-shadow: none !important;
-                margin: 0 !important;
-            }
-
-            body.vox-certificate-page #root > div > div:first-child {
-                border-radius: 0 !important;
-            }
-
-            .vox-download-panel { display: none !important; }
-            @page { size: landscape; margin: 0; }
-        }
-
-        @media (max-width: 640px) {
-            body { background-color: #f1f5f9; }
-            #root { width: 100%; overflow-x: hidden; }
-            body:not(.vox-certificate-page) #root > div { padding-left: 12px !important; padding-right: 12px !important; }
-            form { padding: 24px 18px !important; gap: 18px !important; }
-            form > div { max-width: 100%; }
-            input, textarea, select { font-size: 16px !important; min-height: 50px; }
-            label { line-height: 1.25 !important; }
-            button, a { -webkit-tap-highlight-color: transparent; }
-            button[type="submit"] { padding-top: 20px !important; padding-bottom: 20px !important; border-radius: 28px !important; font-size: 19px !important; line-height: 1.15 !important; gap: 10px !important; text-align: center; white-space: normal; }
-            button[type="submit"] svg { width: 26px !important; height: 26px !important; flex-shrink: 0; }
-            .rounded-\[4rem\] { border-radius: 32px !important; }
-            .rounded-\[3rem\] { border-radius: 28px !important; }
-            .rounded-\[2\.5rem\] { border-radius: 24px !important; }
-            .rounded-\[2rem\] { border-radius: 22px !important; }
-            .tracking-widest { letter-spacing: 0.08em !important; }
-            .shadow-2xl { box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12) !important; }
-            .vox-download-panel { left: 12px; right: 12px; bottom: 12px; max-width: none; }
-            .vox-download-btn { width: 100%; padding: 17px 18px; }
-
-            body.vox-certificate-page #root {
-                align-items: flex-start;
-                padding: 24px 10px 150px;
-            }
-
-            body.vox-certificate-page #root > div {
-                width: calc(100vw - 20px) !important;
-                border-radius: 18px !important;
-            }
-        }
-    </style>
-    
-    <!-- Meta Pixel Code -->
-    <script>
-        !function(f,b,e,v,n,t,s)
-        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-        n.queue=[];t=b.createElement(e);t.async=!0;
-        t.src=v;s=b.getElementsByTagName(e)[0];
-        s.parentNode.insertBefore(t,s)}(window, document,'script',
-        'https://connect.facebook.net/en_US/fbevents.js');
-    </script>
-
-    <!-- Ajustes visuais de menu e abas de certificados -->
-    <script>
-        (function () {
-            function clickButtonByText(text) {
-                const buttons = Array.from(document.querySelectorAll('button'));
-                const found = buttons.find(function (button) {
-                    return button.textContent && button.textContent.includes(text);
-                });
-                if (found) found.click();
-            }
-
-            function makeCertButton(text, active, onClick) {
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.textContent = text;
-                button.className = 'vox-cert-tab ' + (active ? 'active' : '');
-                button.onclick = onClick;
-                return button;
-            }
-
-            function injectCertificateTabs() {
-                const main = document.querySelector('main');
-                if (!main) return;
-
-                const pageText = main.textContent || '';
-                const isIndividualPage = pageText.includes('Emissão de Certificados') || pageText.includes('Gere reconhecimento oficial para seus alunos');
-                const isMassPage = pageText.includes('Certificados em Massa') || pageText.includes('Gerar Certificados em Massa');
-
-                if (!isIndividualPage && !isMassPage) {
-                    const existing = document.getElementById('vox-certificate-tabs');
-                    if (existing) existing.remove();
-                    return;
-                }
-
-                if (document.getElementById('vox-certificate-tabs')) return;
-
-                const wrapper = document.createElement('div');
-                wrapper.id = 'vox-certificate-tabs';
-                wrapper.style.cssText = 'display:flex;gap:10px;align-items:center;justify-content:flex-start;margin:0 0 24px 0;background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:8px;box-shadow:0 10px 25px rgba(15,23,42,.06);width:max-content;max-width:100%;';
-
-                wrapper.appendChild(makeCertButton('Individual', isIndividualPage, function () {
-                    clickButtonByText('Gerar Certificado');
-                }));
-
-                wrapper.appendChild(makeCertButton('Em Massa', isMassPage, function () {
-                    clickButtonByText('Certificados em Massa');
-                    setTimeout(function () { clickButtonByText('Enviar Certificados'); }, 80);
-                }));
-
-                const target = main.querySelector('.max-w-7xl') || main.firstElementChild || main;
-                target.insertBefore(wrapper, target.firstChild);
-            }
-
-            function renameMenus() {
-                try {
-                    document.querySelectorAll('button').forEach(function (button) {
-                        if (!button.textContent) return;
-
-                        if (button.textContent.includes('Automação WhatsApp')) {
-                            button.childNodes.forEach(function (node) {
-                                if (node.nodeType === Node.TEXT_NODE && node.textContent.includes('Automação WhatsApp')) {
-                                    node.textContent = node.textContent.replace('Automação WhatsApp', 'Automação');
-                                }
-                            });
-                        }
-
-                        if (button.textContent.includes('2️⃣ Enviar Certificados')) {
-                            button.childNodes.forEach(function (node) {
-                                if (node.nodeType === Node.TEXT_NODE && node.textContent.includes('2️⃣ Enviar Certificados')) {
-                                    node.textContent = node.textContent.replace('2️⃣ Enviar Certificados', '2️⃣ Certificados em Massa');
-                                }
-                            });
-                        }
-                    });
-
-                    injectCertificateTabs();
-                } catch (error) {
-                    console.warn('Não foi possível ajustar menus:', error);
-                }
-            }
-
-            const style = document.createElement('style');
-            style.textContent = `
-                .vox-cert-tab {
-                    padding: 12px 22px;
-                    border-radius: 14px;
-                    font-size: 12px;
-                    font-weight: 900;
-                    text-transform: uppercase;
-                    letter-spacing: .08em;
-                    color: #64748b;
-                    background: transparent;
-                    transition: all .2s ease;
-                }
-                .vox-cert-tab:hover { background: #f1f5f9; color: #111827; }
-                .vox-cert-tab.active { background: #2563eb; color: #fff; box-shadow: 0 10px 22px rgba(37,99,235,.18); }
-            `;
-            document.head.appendChild(style);
-
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', renameMenus);
-            } else {
-                renameMenus();
-            }
-
-            new MutationObserver(renameMenus).observe(document.documentElement, {
-                childList: true,
-                subtree: true
-            });
-        })();
-    </script>
-
-    <!-- Melhorar HTML do e-mail de certificado antes de enviar ao Supabase -->
-    <script>
-        (function () {
-            const originalFetch = window.fetch;
-
-            function escapeMail(value) {
-                return String(value || '')
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/"/g, '&quot;')
-                    .replace(/'/g, '&#039;');
-            }
-
-            function withDownloadParam(url) {
-                try {
-                    if (!url) return '';
-                    const parsed = new URL(url, window.location.origin);
-                    parsed.searchParams.set('download', '1');
-                    return parsed.toString();
-                } catch {
-                    return url || '';
-                }
-            }
-
-            function buildCertificateEmail(payload) {
-                const name = escapeMail(payload.name || 'aluno');
-                const product = escapeMail(payload.productName || 'Curso Vox Marketing Academy');
-                const certificateUrl = escapeMail(withDownloadParam(payload.certificateUrl || ''));
-
-                return `
+      function buildCertificateEmail(payload) {
+        const name = escapeMail(payload.name || 'aluno');
+        const product = escapeMail(payload.productName || 'Curso Vox Marketing Academy');
+        const signatureUrl = payload.signatureUrl || getSavedSignature();
+        const certificateUrl = escapeMail(addParams(payload.certificateUrl || '', signatureUrl));
+        return `
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;">
-  <tr>
-    <td align="center" style="padding:32px 12px;">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:680px;background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb;box-shadow:0 18px 45px rgba(15,23,42,.08);">
-        <tr>
-          <td style="background:linear-gradient(135deg,#06b6d4,#7c3aed);padding:34px 28px;text-align:center;color:#ffffff;">
-            <div style="font-size:46px;line-height:1;font-weight:900;letter-spacing:8px;margin-bottom:8px;">VOX</div>
-            <div style="font-size:12px;font-weight:800;letter-spacing:4px;opacity:.92;">MARKETING ACADEMY</div>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:34px 34px 10px;text-align:center;">
-            <div style="display:inline-block;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;border-radius:999px;padding:8px 14px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;">
-              Certificado liberado
-            </div>
-            <h1 style="margin:22px 0 10px;font-size:28px;line-height:1.2;color:#111827;font-weight:900;">Parabéns, ${name}!</h1>
-            <p style="margin:0 auto;font-size:16px;line-height:1.65;color:#4b5563;max-width:520px;">
-              Seu certificado referente ao <strong style="color:#111827;">${product}</strong> foi gerado com sucesso e já está pronto para baixar.
-            </p>
-          </td>
-        </tr>
-        <tr>
-          <td align="center" style="padding:24px 34px 10px;">
-            <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:18px;width:100%;max-width:520px;">
-              <tr>
-                <td style="padding:22px;text-align:left;">
-                  <div style="font-size:12px;color:#6b7280;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Como baixar</div>
-                  <div style="font-size:15px;line-height:1.55;color:#374151;">
-                    Clique no botão abaixo. A página do certificado vai abrir com um botão grande para baixar/salvar em PDF no seu celular ou computador.
-                  </div>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-        ${certificateUrl ? `
-        <tr>
-          <td align="center" style="padding:26px 34px 20px;">
-            <a href="${certificateUrl}" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#ffffff;text-decoration:none;padding:16px 28px;border-radius:16px;font-size:15px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;box-shadow:0 12px 28px rgba(37,99,235,.22);">
-              Abrir e baixar certificado
-            </a>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:0 34px 28px;text-align:center;">
-            <p style="margin:0 auto;font-size:12px;line-height:1.5;color:#6b7280;max-width:560px;">
-              Se o botão não funcionar, copie e cole este link no navegador:<br>
-              <span style="word-break:break-all;color:#2563eb;">${certificateUrl}</span>
-            </p>
-          </td>
-        </tr>` : ''}
-        <tr>
-          <td style="padding:22px 34px 34px;text-align:center;border-top:1px solid #f1f5f9;">
-            <p style="margin:0;font-size:13px;line-height:1.6;color:#6b7280;">
-              Atenciosamente,<br>
-              <strong style="color:#111827;">Vox Marketing Academy</strong>
-            </p>
-          </td>
-        </tr>
-      </table>
-    </td>
-  </tr>
+  <tr><td align="center" style="padding:32px 12px;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:680px;background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #e5e7eb;box-shadow:0 18px 45px rgba(15,23,42,.08);">
+      <tr><td style="background:linear-gradient(135deg,#06b6d4,#7c3aed);padding:34px 28px;text-align:center;color:#ffffff;"><div style="font-size:46px;line-height:1;font-weight:900;letter-spacing:8px;margin-bottom:8px;">VOX</div><div style="font-size:12px;font-weight:800;letter-spacing:4px;opacity:.92;">MARKETING ACADEMY</div></td></tr>
+      <tr><td style="padding:34px 34px 10px;text-align:center;"><div style="display:inline-block;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;border-radius:999px;padding:8px 14px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;">Certificado liberado</div><h1 style="margin:22px 0 10px;font-size:28px;line-height:1.2;color:#111827;font-weight:900;">Parabéns, ${name}!</h1><p style="margin:0 auto;font-size:16px;line-height:1.65;color:#4b5563;max-width:520px;">Seu certificado referente ao <strong style="color:#111827;">${product}</strong> foi gerado com sucesso e já está pronto para baixar.</p></td></tr>
+      <tr><td align="center" style="padding:24px 34px 10px;"><table role="presentation" cellspacing="0" cellpadding="0" border="0" style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:18px;width:100%;max-width:520px;"><tr><td style="padding:22px;text-align:left;"><div style="font-size:12px;color:#6b7280;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Como baixar</div><div style="font-size:15px;line-height:1.55;color:#374151;">Clique no botão abaixo. A página do certificado vai abrir com a assinatura e um botão grande para baixar/salvar em PDF.</div></td></tr></table></td></tr>
+      ${certificateUrl ? `<tr><td align="center" style="padding:26px 34px 20px;"><a href="${certificateUrl}" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#ffffff;text-decoration:none;padding:16px 28px;border-radius:16px;font-size:15px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;box-shadow:0 12px 28px rgba(37,99,235,.22);">Abrir e baixar certificado</a></td></tr><tr><td style="padding:0 34px 28px;text-align:center;"><p style="margin:0 auto;font-size:12px;line-height:1.5;color:#6b7280;max-width:560px;">Se o botão não funcionar, copie e cole este link no navegador:<br><span style="word-break:break-all;color:#2563eb;">${certificateUrl}</span></p></td></tr>` : ''}
+      <tr><td style="padding:22px 34px 34px;text-align:center;border-top:1px solid #f1f5f9;"><p style="margin:0;font-size:13px;line-height:1.6;color:#6b7280;">Atenciosamente,<br><strong style="color:#111827;">Vox Marketing Academy</strong></p></td></tr>
+    </table>
+  </td></tr>
 </table>`;
+      }
+
+      window.fetch = function (input, init) {
+        try {
+          const url = typeof input === 'string' ? input : input && input.url;
+          const isEmailFunction = url && url.includes('emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email');
+          const hasBody = init && typeof init.body === 'string';
+          if (isEmailFunction && hasBody) {
+            const payload = JSON.parse(init.body);
+            const isCertificate = String(payload.subject || '').toLowerCase().includes('certificado') || payload.certificateUrl;
+            if (isCertificate) {
+              payload.signatureUrl = payload.signatureUrl || getSavedSignature();
+              payload.certificateUrl = addParams(payload.certificateUrl || '', payload.signatureUrl || '');
+              payload.message = buildCertificateEmail(payload);
+              init = Object.assign({}, init, { body: JSON.stringify(payload) });
             }
+          }
+        } catch (error) {
+          console.warn('Não foi possível melhorar o e-mail de certificado:', error);
+        }
+        return originalFetch.call(this, input, init);
+      };
+    })();
+  </script>
 
-            window.fetch = function (input, init) {
-                try {
-                    const url = typeof input === 'string' ? input : input && input.url;
-                    const isEmailFunction = url && url.includes('emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email');
-                    const hasBody = init && typeof init.body === 'string';
+  <script>
+    (function () {
+      function isCertificatePage() {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('mode') === 'certificate';
+      }
 
-                    if (isEmailFunction && hasBody) {
-                        const payload = JSON.parse(init.body);
-                        const isCertificate = String(payload.subject || '').toLowerCase().includes('certificado') || payload.certificateUrl;
+      function getSignatureFromUrl() {
+        try {
+          const sig = new URLSearchParams(window.location.search).get('sig') || '';
+          return (sig.startsWith('http') || sig.startsWith('data:')) ? sig : '';
+        } catch (_) {
+          return '';
+        }
+      }
 
-                        if (isCertificate) {
-                            payload.certificateUrl = withDownloadParam(payload.certificateUrl || '');
-                            payload.message = buildCertificateEmail(payload);
-                            init = Object.assign({}, init, { body: JSON.stringify(payload) });
-                        }
-                    }
-                } catch (error) {
-                    console.warn('Não foi possível melhorar o layout do email de certificado:', error);
-                }
+      function markCertificatePage() {
+        if (isCertificatePage()) document.body.classList.add('vox-certificate-page');
+      }
 
-                return originalFetch.call(this, input, init);
-            };
-        })();
-    </script>
+      function applySignatureFromUrl() {
+        if (!isCertificatePage()) return;
+        const signatureUrl = getSignatureFromUrl();
+        if (!signatureUrl || document.querySelector('.vox-signature-img')) return;
+        const elements = Array.from(document.querySelectorAll('#root *'));
+        const target = elements.reverse().find((el) => {
+          const text = (el.textContent || '').trim();
+          return text === 'Rodrigo Jardim' || text.includes('Rodrigo Jardim');
+        });
+        if (!target) return;
+        target.innerHTML = '';
+        const img = document.createElement('img');
+        img.src = signatureUrl;
+        img.alt = 'Assinatura';
+        img.className = 'vox-signature-img';
+        target.appendChild(img);
+      }
 
-    <!-- Botão de download dentro da página do certificado -->
-    <script>
-        (function () {
-            function isCertificatePage() {
-                const params = new URLSearchParams(window.location.search);
-                return params.get('mode') === 'certificate';
-            }
+      function injectDownloadButton() {
+        if (!isCertificatePage()) return;
+        document.body.classList.add('vox-certificate-page');
+        applySignatureFromUrl();
+        if (document.getElementById('vox-download-panel')) return;
+        const cameFromEmail = new URLSearchParams(window.location.search).get('download') === '1';
+        const panel = document.createElement('div');
+        panel.id = 'vox-download-panel';
+        panel.className = 'vox-download-panel';
+        if (cameFromEmail) {
+          const hint = document.createElement('div');
+          hint.className = 'vox-download-hint';
+          hint.textContent = 'Seu certificado está pronto. Clique abaixo para baixar/salvar em PDF.';
+          panel.appendChild(hint);
+        }
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'vox-download-btn';
+        button.textContent = '📥 Baixar certificado em PDF';
+        button.onclick = function () { window.print(); };
+        panel.appendChild(button);
+        document.body.appendChild(panel);
+      }
 
-            function markCertificatePage() {
-                if (isCertificatePage()) {
-                    document.body.classList.add('vox-certificate-page');
-                }
-            }
-
-            function injectDownloadButton() {
-                if (!isCertificatePage()) return;
-                document.body.classList.add('vox-certificate-page');
-                if (document.getElementById('vox-download-panel')) return;
-
-                const params = new URLSearchParams(window.location.search);
-                const cameFromEmail = params.get('download') === '1';
-
-                const panel = document.createElement('div');
-                panel.id = 'vox-download-panel';
-                panel.className = 'vox-download-panel';
-
-                if (cameFromEmail) {
-                    const hint = document.createElement('div');
-                    hint.className = 'vox-download-hint';
-                    hint.innerHTML = 'Seu certificado está pronto. Clique abaixo para baixar/salvar em PDF.';
-                    panel.appendChild(hint);
-                }
-
-                const button = document.createElement('button');
-                button.type = 'button';
-                button.className = 'vox-download-btn';
-                button.textContent = '📥 Baixar certificado em PDF';
-                button.onclick = function () {
-                    window.print();
-                };
-
-                panel.appendChild(button);
-                document.body.appendChild(panel);
-            }
-
-            markCertificatePage();
-
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', function () {
-                    markCertificatePage();
-                    injectDownloadButton();
-                });
-            } else {
-                injectDownloadButton();
-            }
-
-            new MutationObserver(function () {
-                markCertificatePage();
-                injectDownloadButton();
-            }).observe(document.documentElement, {
-                childList: true,
-                subtree: true
-            });
-        })();
-    </script>
-
+      markCertificatePage();
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () {
+          markCertificatePage();
+          injectDownloadButton();
+          applySignatureFromUrl();
+        });
+      } else {
+        injectDownloadButton();
+        applySignatureFromUrl();
+      }
+      new MutationObserver(function () {
+        markCertificatePage();
+        injectDownloadButton();
+        applySignatureFromUrl();
+      }).observe(document.documentElement, { childList: true, subtree: true });
+    })();
+  </script>
 </head>
 <body>
-    <div id="root"></div>
-    <script type="module" src="./index.tsx"></script>
+  <div id="root"></div>
+  <script type="module" src="./index.tsx"></script>
 </body>
 </html>
