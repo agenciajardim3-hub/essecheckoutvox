@@ -916,8 +916,96 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
             {/* TAB: INTELIGÊNCIA */}
             {/* ════════════════════════════════════════════════════════════ */}
             {activeTab === 'inteligencia' && (
-                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                    <p className="text-gray-600">Aba em manutenção</p>
+                <div className="space-y-6">
+                    {/* CPA POR TURMA */}
+                    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                        <div className="flex items-center gap-2 mb-4">
+                            <DollarSign size={16} className="text-blue-500" />
+                            <h3 className="font-black text-sm text-gray-800">CPA por Turma (Custo Por Aluno)</h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {checkouts.map(checkout => {
+                                const turmaLeads = leads.filter(l => l.product_id === checkout.id && l.status === 'Pago');
+                                const turmaCost = Object.values(turmaExpenses[checkout.id] || {}).reduce((s, v) => s + (v || 0), 0);
+                                const cpa = turmaLeads.length > 0 ? turmaCost / turmaLeads.length : 0;
+
+                                return (
+                                    <div key={checkout.id} className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-4 border border-blue-100">
+                                        <p className="text-[11px] font-black uppercase text-blue-600 mb-2">{checkout.productName}</p>
+                                        <p className="text-2xl font-black text-blue-700 mb-3">{formatCurrency(cpa)}</p>
+                                        <div className="space-y-1 text-[10px] text-gray-600">
+                                            <p>Alunos: <span className="font-bold text-gray-800">{turmaLeads.length}</span></p>
+                                            <p>Gasto: <span className="font-bold text-gray-800">{formatCurrency(turmaCost)}</span></p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* CPA GERAL */}
+                    <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-6 shadow-lg shadow-emerald-100">
+                        <div className="flex items-center gap-2 mb-3">
+                            <DollarSign size={16} className="text-white" />
+                            <span className="text-[10px] font-black uppercase text-emerald-100 tracking-widest">CPA Geral</span>
+                        </div>
+                        {useMemo(() => {
+                            const totalPaidLeads = leads.filter(l => l.status === 'Pago').length;
+                            const totalCost = Object.values(turmaExpenses).reduce((s, exp) => s + Object.values(exp).reduce((sum, v) => sum + (v || 0), 0), 0);
+                            const cpaGeral = totalPaidLeads > 0 ? totalCost / totalPaidLeads : 0;
+                            return (
+                                <div>
+                                    <p className="text-4xl font-black text-white">{formatCurrency(cpaGeral)}</p>
+                                    <p className="text-[11px] text-emerald-100 font-medium mt-2">
+                                        {totalPaidLeads} alunos | {formatCurrency(totalCost)} investido
+                                    </p>
+                                </div>
+                            );
+                        }, [leads, turmaExpenses])}
+                    </div>
+
+                    {/* ROI POR TURMA */}
+                    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                        <div className="flex items-center gap-2 mb-4">
+                            <TrendingUp size={16} className="text-purple-500" />
+                            <h3 className="font-black text-sm text-gray-800">ROI por Turma</h3>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                                <thead>
+                                    <tr className="border-b border-gray-200">
+                                        <th className="text-left py-3 px-3 font-black text-gray-600">Turma</th>
+                                        <th className="text-right py-3 px-3 font-black text-gray-600">Alunos</th>
+                                        <th className="text-right py-3 px-3 font-black text-gray-600">Receita</th>
+                                        <th className="text-right py-3 px-3 font-black text-gray-600">Gasto</th>
+                                        <th className="text-right py-3 px-3 font-black text-gray-600">ROI</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {checkouts.map(checkout => {
+                                        const turmaLeads = leads.filter(l => l.product_id === checkout.id && l.status === 'Pago');
+                                        const revenue = turmaLeads.reduce((s, l) => s + (l.paid_amount || 0), 0);
+                                        const cost = Object.values(turmaExpenses[checkout.id] || {}).reduce((s, v) => s + (v || 0), 0);
+                                        const roi = cost > 0 ? ((revenue - cost) / cost) * 100 : 0;
+
+                                        return (
+                                            <tr key={checkout.id} className="border-b border-gray-100 hover:bg-gray-50">
+                                                <td className="py-3 px-3 font-bold text-gray-700">{checkout.productName}</td>
+                                                <td className="text-right py-3 px-3 text-gray-600">{turmaLeads.length}</td>
+                                                <td className="text-right py-3 px-3 text-emerald-600 font-bold">{formatCurrency(revenue)}</td>
+                                                <td className="text-right py-3 px-3 text-orange-600 font-bold">{formatCurrency(cost)}</td>
+                                                <td className={`text-right py-3 px-3 font-black ${roi >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                    {roi >= 0 ? '+' : ''}{roi.toFixed(1)}%
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             )}
 
