@@ -17,7 +17,11 @@ type EmailConfig = {
 };
 
 const SEND_EMAIL_ENDPOINT = 'https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const SUPABASE_ANON_KEY =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  import.meta.env.VITE_SUPABASE_KEY ||
+  '';
 
 export const EmailMarketingDashboard: React.FC<EmailMarketingDashboardProps> = ({ leads }) => {
   const [activeTab, setActiveTab] = useState<'send' | 'config'>('send');
@@ -53,20 +57,19 @@ export const EmailMarketingDashboard: React.FC<EmailMarketingDashboardProps> = (
 
   const sendOneEmail = async (lead: Lead) => {
     if (!lead.email) throw new Error(`Lead ${lead.name || lead.id} está sem email`);
+    if (!SUPABASE_ANON_KEY) {
+      throw new Error('Falta configurar a variável VITE_SUPABASE_ANON_KEY na Hostinger. Sem ela o Supabase recusa o envio.');
+    }
 
     const personalizedBody = emailBody.replaceAll('{name}', lead.name || 'aluno');
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json'
-    };
-
-    if (SUPABASE_ANON_KEY) {
-      headers.Authorization = `Bearer ${SUPABASE_ANON_KEY}`;
-      headers.apikey = SUPABASE_ANON_KEY;
-    }
 
     const response = await fetch(SEND_EMAIL_ENDPOINT, {
       method: 'POST',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY
+      },
       body: JSON.stringify({
         to: lead.email,
         name: lead.name || 'Aluno',
