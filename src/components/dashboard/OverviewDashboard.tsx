@@ -917,6 +917,46 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
             {/* ════════════════════════════════════════════════════════════ */}
             {activeTab === 'inteligencia' && (
                 <div className="space-y-6">
+                    {/* LEADS E CONVERSÃO */}
+                    <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Users size={16} className="text-indigo-500" />
+                            <h3 className="font-black text-sm text-gray-800">Leads e Conversão</h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {checkouts.map(checkout => {
+                                const totalLeads = leads.filter(l => l.product_id === checkout.id).length;
+                                const paidLeads = leads.filter(l => l.product_id === checkout.id && l.status === 'Pago').length;
+                                const conversion = totalLeads > 0 ? (paidLeads / totalLeads) * 100 : 0;
+
+                                return (
+                                    <div key={checkout.id} className="bg-indigo-50 rounded-2xl p-4 border border-indigo-100">
+                                        <p className="text-[11px] font-black uppercase text-indigo-600 mb-3">{checkout.productName}</p>
+                                        <div className="space-y-3">
+                                            <div>
+                                                <p className="text-[9px] text-gray-600 font-bold mb-1">LEADS TOTAIS</p>
+                                                <p className="text-2xl font-black text-indigo-700">{totalLeads}</p>
+                                            </div>
+                                            <div className="flex gap-3">
+                                                <div className="flex-1">
+                                                    <p className="text-[9px] text-gray-600 font-bold mb-1">CONVERTIDOS</p>
+                                                    <p className="text-xl font-black text-emerald-600">{paidLeads}</p>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="text-[9px] text-gray-600 font-bold mb-1">TAXA</p>
+                                                    <p className={`text-xl font-black ${conversion >= 50 ? 'text-emerald-600' : conversion >= 30 ? 'text-amber-600' : 'text-red-600'}`}>
+                                                        {conversion.toFixed(1)}%
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
                     {/* CPA POR TURMA */}
                     <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
                         <div className="flex items-center gap-2 mb-4">
