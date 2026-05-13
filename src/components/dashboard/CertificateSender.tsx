@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Send, GraduationCap, Loader2, Check, Mail, AlertCircle, FileCheck, Link as LinkIcon, XCircle, Eye, ExternalLink, X } from 'lucide-react';
+import { Send, GraduationCap, Loader2, Check, AlertCircle, FileCheck, XCircle, Eye, ExternalLink, X } from 'lucide-react';
 import { Lead, AppConfig } from '../../types';
 
 interface CertificateSenderProps {
@@ -15,7 +15,11 @@ type GeneratedCertificate = {
     cpf: string;
     productName: string;
     turma: string;
+    date: string;
+    hours: string;
+    instructorName: string;
     certificateUrl: string;
+    certificateHtml: string;
     status: 'generated' | 'sent' | 'error';
     message: string;
 };
@@ -29,12 +33,265 @@ const SUPABASE_ANON_KEY =
 
 const isPaid = (lead: Lead) => lead.status === 'Pago' || lead.status === 'Aprovado';
 
-const escapeHtml = (value: string) => value
+const escapeHtml = (value: string) => String(value || '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/\"/g, '&quot;')
     .replace(/'/g, '&#039;');
+
+const getOfficialCertificateHtml = (certificate: Omit<GeneratedCertificate, 'certificateHtml'>) => `
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Certificado - ${escapeHtml(certificate.name)}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Great+Vibes&display=swap');
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 28px;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #f3f4f6;
+      font-family: 'Montserrat', sans-serif;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .certificate-wrapper {
+      width: 1122px;
+      height: 794px;
+      background: white;
+      position: relative;
+      overflow: hidden;
+      box-sizing: border-box;
+      box-shadow: 0 22px 70px rgba(15, 23, 42, 0.16);
+      border-radius: 8px;
+    }
+    .content {
+      position: relative;
+      z-index: 10;
+      padding: 50px 80px;
+      text-align: center;
+      height: 100%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .header { margin-top: 20px; }
+    .vox-title {
+      font-size: 72px;
+      font-weight: 900;
+      color: #4b5563;
+      margin: 0;
+      line-height: 1;
+      letter-spacing: 10px;
+    }
+    .vox-subtitle {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0ea5e9;
+      letter-spacing: 8px;
+      margin-top: 5px;
+      margin-bottom: 30px;
+    }
+    .cert-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: #6b7280;
+      letter-spacing: 4px;
+      margin-bottom: 40px;
+    }
+    .student-name {
+      font-size: 42px;
+      font-weight: 400;
+      color: #6b7280;
+      margin-bottom: 40px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .course-desc-bold {
+      font-size: 18px;
+      font-weight: 700;
+      color: #000;
+      margin-bottom: 20px;
+      max-width: 850px;
+      line-height: 1.35;
+    }
+    .course-desc-text {
+      font-size: 16px;
+      line-height: 1.6;
+      color: #111827;
+      max-width: 900px;
+      margin: 0 auto;
+      font-weight: 400;
+      text-align: center;
+    }
+    .footer {
+      margin-top: auto;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding-bottom: 20px;
+    }
+    .medal-container {
+      position: relative;
+      width: 180px;
+      height: 240px;
+      margin-left: 20px;
+      margin-bottom: 15px;
+    }
+    .ribbon {
+      position: absolute;
+      bottom: 20px;
+      width: 50px;
+      height: 100px;
+      background: linear-gradient(to right, #9ca3af, #d1d5db, #9ca3af);
+      z-index: 1;
+    }
+    .ribbon.left { left: 20px; transform: rotate(25deg); }
+    .ribbon.right { right: 20px; transform: rotate(-25deg); }
+    .ribbon:after {
+      content: '';
+      position: absolute;
+      bottom: -25px;
+      left: 0;
+      border-left: 25px solid transparent;
+      border-right: 25px solid transparent;
+      border-top: 25px solid #9ca3af;
+    }
+    .medal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #e5e7eb 0%, #ffffff 50%, #9ca3af 100%);
+      border: 4px solid #f3f4f6;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.2), inset 0 0 20px rgba(255,255,255,0.8);
+      z-index: 2;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+    .medal-inner {
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      border: 1px solid #d1d5db;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .medal-star { font-size: 80px; color: #4b5563; line-height: 1; }
+    .signature-box {
+      text-align: center;
+      margin-right: 60px;
+      width: 300px;
+      margin-bottom: 30px;
+    }
+    .signature-text {
+      font-family: 'Great Vibes', cursive;
+      font-size: 56px;
+      color: #000;
+      margin-bottom: -10px;
+      line-height: 1;
+    }
+    .signature-line {
+      width: 100%;
+      height: 2px;
+      background: #1e3a8a;
+      margin-top: 10px;
+    }
+    .controls {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      display: flex;
+      gap: 8px;
+      z-index: 9999;
+    }
+    .controls button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: white;
+      font-weight: 800;
+      cursor: pointer;
+      background: #2563eb;
+    }
+    @media print {
+      body { background: white; padding: 0; }
+      .certificate-wrapper { box-shadow: none; border-radius: 0; }
+      .controls { display: none; }
+      @page { size: landscape; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <button onclick="window.print()">Imprimir / Salvar PDF</button>
+  </div>
+  <div class="certificate-wrapper">
+    <div class="content">
+      <div class="header">
+        <div class="vox-title">VOX</div>
+        <div class="vox-subtitle">MARKETING ACADEMY</div>
+      </div>
+      <div class="cert-title">CERTIFICADO DE CONCLUSÃO</div>
+      <div class="student-name">${escapeHtml(certificate.name || 'NOME')}</div>
+      <div class="course-desc-bold">
+        Completou com êxito o ${escapeHtml(certificate.productName || 'Curso de Tráfego Pago - Meta Ads')}, com carga horária de ${escapeHtml(certificate.hours || '8')} horas.
+      </div>
+      <div class="course-desc-text">
+        Na Vox Marketing Academy, ministrado por ${escapeHtml(certificate.instructorName || 'Rodrigo Jardim')}, no dia ${escapeHtml(certificate.date || new Date().toLocaleDateString('pt-BR'))}. Durante o curso, demonstrou dedicação e empenho exemplares, adquirindo habilidades valiosas em estratégias de tráfego pago. Parabéns pela conclusão bem-sucedida deste curso! Desejamos sucesso contínuo em suas futuras iniciativas e carreira profissional.
+      </div>
+      <div class="footer">
+        <div class="medal-container">
+          <div class="ribbon left"></div>
+          <div class="ribbon right"></div>
+          <div class="medal"><div class="medal-inner"><div class="medal-star">★</div></div></div>
+        </div>
+        <div class="signature-box">
+          <div class="signature-text">${escapeHtml(certificate.instructorName || 'Rodrigo Jardim')}</div>
+          <div class="signature-line"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+const createCertificate = (lead: Lead, selectedTurma: string): GeneratedCertificate => {
+    const base = {
+        id: crypto.randomUUID(),
+        leadId: lead.id,
+        name: lead.name || 'Aluno',
+        email: lead.email || '',
+        cpf: lead.cpf || '',
+        productName: lead.product_name || selectedTurma || 'Curso de Tráfego Pago - Meta Ads',
+        turma: lead.turma || selectedTurma,
+        date: new Date().toLocaleDateString('pt-BR'),
+        hours: '8',
+        instructorName: 'Rodrigo Jardim',
+        certificateUrl: `${window.location.origin}/?mode=certificate&checkout=${encodeURIComponent(lead.product_id || '')}&cpf=${encodeURIComponent(lead.cpf || '')}`,
+        status: 'generated' as const,
+        message: 'Certificado gerado com o layout oficial',
+    };
+
+    return {
+        ...base,
+        certificateHtml: getOfficialCertificateHtml(base),
+    };
+};
 
 export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, checkouts }) => {
     const [selectedTurma, setSelectedTurma] = useState<string>('');
@@ -81,47 +338,24 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
     const generatedCount = generatedCertificates.length;
     const pendingToSend = generatedCertificates.filter((cert) => cert.status === 'generated').length;
 
-    const buildCertificateUrl = (lead: Lead) => {
-        return `${window.location.origin}/?mode=certificate&checkout=${encodeURIComponent(lead.product_id || '')}&cpf=${encodeURIComponent(lead.cpf || '')}`;
-    };
-
     const handleGenerateCertificates = async () => {
-        if (!selectedTurma) {
-            alert('Selecione uma turma');
-            return;
-        }
-
-        if (turmaLeads.length === 0) {
-            alert('Nenhum aluno pago com email e CPF nesta turma');
-            return;
-        }
+        if (!selectedTurma) return alert('Selecione uma turma');
+        if (turmaLeads.length === 0) return alert('Nenhum aluno pago com email e CPF nesta turma');
 
         setIsGenerating(true);
         setSendingStatus('generating');
-        setStatusMessage('Gerando certificados em massa...');
+        setStatusMessage('Gerando certificados em massa com o layout oficial...');
         setGeneratedCertificates([]);
         setSelectedCertificate(null);
         setSentCount(0);
         setFailedCount(0);
 
         try {
-            const generated: GeneratedCertificate[] = turmaLeads.map((lead) => ({
-                id: crypto.randomUUID(),
-                leadId: lead.id,
-                name: lead.name || 'Aluno',
-                email: lead.email || '',
-                cpf: lead.cpf || '',
-                productName: lead.product_name || selectedTurma,
-                turma: lead.turma || selectedTurma,
-                certificateUrl: buildCertificateUrl(lead),
-                status: 'generated',
-                message: 'Certificado gerado e pronto para envio',
-            }));
-
+            const generated = turmaLeads.map((lead) => createCertificate(lead, selectedTurma));
             setGeneratedCertificates(generated);
             setSelectedCertificate(generated[0] || null);
             setSendingStatus('completed');
-            setStatusMessage(`✓ ${generated.length} certificado(s) gerado(s) em massa. Revise a prévia e depois envie por email.`);
+            setStatusMessage(`✓ ${generated.length} certificado(s) gerado(s) com o mesmo layout oficial do certificado individual.`);
         } catch (error) {
             console.error('Erro ao gerar certificados em massa:', error);
             setSendingStatus('error');
@@ -131,10 +365,15 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
         }
     };
 
+    const openOfficialCertificate = (certificate: GeneratedCertificate) => {
+        const newWindow = window.open('', '_blank');
+        if (!newWindow) return;
+        newWindow.document.write(certificate.certificateHtml);
+        newWindow.document.close();
+    };
+
     const sendCertificateEmail = async (certificate: GeneratedCertificate) => {
-        const headers: Record<string, string> = {
-            'Content-Type': 'application/json'
-        };
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
         if (SUPABASE_ANON_KEY) {
             headers.Authorization = `Bearer ${SUPABASE_ANON_KEY}`;
@@ -144,17 +383,11 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
         const htmlMessage = `
             <p>Olá <strong>${escapeHtml(certificate.name)}</strong>,</p>
             <p>Parabéns pela conclusão do curso <strong>${escapeHtml(certificate.productName)}</strong>!</p>
-            <p>Seu certificado individual foi gerado com sucesso.</p>
-            <p style="margin-top: 22px;">
-                <a href="${certificate.certificateUrl}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;padding:14px 22px;border-radius:14px;font-weight:bold;">
-                    Abrir meu certificado
-                </a>
-            </p>
-            <p style="font-size:13px;color:#6b7280;margin-top:22px;">
-                Caso o botão não funcione, copie e cole este link no navegador:<br />
-                ${certificate.certificateUrl}
-            </p>
-            <p style="margin-top:26px;">Atenciosamente,<br /><strong>Vox Marketing Academy</strong></p>
+            <p>Seu certificado foi gerado com o layout oficial da Vox Marketing Academy.</p>
+            <p style="font-size:13px;color:#6b7280;">Abaixo está uma prévia do certificado. Para salvar em PDF, use o botão abrir/imprimir dentro do sistema.</p>
+            <div style="max-width:900px;overflow:auto;border:1px solid #e5e7eb;border-radius:18px;margin-top:18px;">
+              ${certificate.certificateHtml.replace(/<script[\s\S]*?<\/script>/gi, '')}
+            </div>
         `;
 
         const response = await fetch(SEND_EMAIL_ENDPOINT, {
@@ -180,10 +413,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
             throw new Error(`Resposta inválida da função: ${text.slice(0, 120)}`);
         }
 
-        if (!response.ok || result.error) {
-            throw new Error(result.error || result.message || 'Erro ao enviar certificado por email');
-        }
-
+        if (!response.ok || result.error) throw new Error(result.error || result.message || 'Erro ao enviar certificado por email');
         return result;
     };
 
@@ -193,23 +423,12 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
     };
 
     const handleSendGeneratedCertificates = async () => {
-        if (generatedCertificates.length === 0) {
-            alert('Primeiro gere os certificados em massa');
-            return;
-        }
+        if (generatedCertificates.length === 0) return alert('Primeiro gere os certificados em massa');
 
         const certificatesToSend = generatedCertificates.filter((cert) => cert.status === 'generated' || cert.status === 'error');
+        if (certificatesToSend.length === 0) return alert('Todos os certificados gerados já foram enviados');
 
-        if (certificatesToSend.length === 0) {
-            alert('Todos os certificados gerados já foram enviados');
-            return;
-        }
-
-        const confirmSend = confirm(
-            `Enviar ${certificatesToSend.length} certificado(s) gerado(s) por email?\n\nCada aluno receberá seu link individual.`
-        );
-
-        if (!confirmSend) return;
+        if (!confirm(`Enviar ${certificatesToSend.length} certificado(s) gerado(s) por email?`)) return;
 
         setIsSending(true);
         setSendingStatus('sending');
@@ -238,16 +457,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
 
         setIsSending(false);
         setSendingStatus(failed > 0 && successful === 0 ? 'error' : 'completed');
-        setStatusMessage(
-            `✓ ${successful} certificado(s) enviado(s)${failed > 0 ? `, ${failed} falharam` : ''}`
-        );
-    };
-
-    const handleGenerateAndSend = async () => {
-        await handleGenerateCertificates();
-        setTimeout(() => {
-            setStatusMessage('Certificados gerados. Confira a prévia e clique em “Enviar Certificados Gerados”.');
-        }, 200);
+        setStatusMessage(`✓ ${successful} certificado(s) enviado(s)${failed > 0 ? `, ${failed} falharam` : ''}`);
     };
 
     return (
@@ -256,7 +466,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
                 <div>
                     <h2 className="text-2xl font-black text-gray-900">Certificados em Massa</h2>
                     <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">
-                        Gere certificados individuais em massa, visualize cada certificado e envie por email
+                        Gere em massa usando o mesmo layout oficial do certificado individual
                     </p>
                 </div>
                 <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center">
@@ -266,25 +476,10 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
 
             <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-8">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-2xl border border-blue-200">
-                        <div className="text-sm font-bold text-blue-600 uppercase tracking-widest mb-2">Turmas</div>
-                        <div className="text-3xl font-black text-blue-900">{turmas.length}</div>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 rounded-2xl border border-emerald-200">
-                        <div className="text-sm font-bold text-emerald-600 uppercase tracking-widest mb-2">Alunos</div>
-                        <div className="text-3xl font-black text-emerald-900">{turmaLeads.length}</div>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-2xl border border-purple-200">
-                        <div className="text-sm font-bold text-purple-600 uppercase tracking-widest mb-2">Gerados</div>
-                        <div className="text-3xl font-black text-purple-900">{generatedCount}</div>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-2xl border border-orange-200">
-                        <div className="text-sm font-bold text-orange-600 uppercase tracking-widest mb-2">Pendentes</div>
-                        <div className="text-3xl font-black text-orange-900">{pendingToSend}</div>
-                    </div>
+                    <Stat label="Turmas" value={turmas.length} tone="blue" />
+                    <Stat label="Alunos" value={turmaLeads.length} tone="emerald" />
+                    <Stat label="Gerados" value={generatedCount} tone="purple" />
+                    <Stat label="Pendentes" value={pendingToSend} tone="orange" />
                 </div>
 
                 <div className="space-y-6">
@@ -309,43 +504,17 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
                             <option value="">-- Selecione uma turma --</option>
                             {turmas.map(turma => {
                                 const turmaLeadCount = getLeadsForTurma(turma).length;
-                                return (
-                                    <option key={turma} value={turma}>
-                                        {turma} ({turmaLeadCount} aluno{turmaLeadCount !== 1 ? 's' : ''})
-                                    </option>
-                                );
+                                return <option key={turma} value={turma}>{turma} ({turmaLeadCount} aluno{turmaLeadCount !== 1 ? 's' : ''})</option>;
                             })}
                         </select>
-                        <p className="text-xs text-gray-400 font-bold mt-2">
-                            Só entram alunos pagos/aprovados com email e CPF cadastrados.
-                        </p>
+                        <p className="text-xs text-gray-400 font-bold mt-2">Só entram alunos pagos/aprovados com email e CPF cadastrados.</p>
                     </div>
-
-                    {selectedTurma && turmaLeads.length > 0 && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
-                            <div className="flex items-start gap-3">
-                                <AlertCircle size={20} className="text-blue-600 flex-shrink-0 mt-0.5" />
-                                <div>
-                                    <div className="font-black text-blue-900 text-sm mb-1">
-                                        {turmaLeads.length} aluno{turmaLeads.length !== 1 ? 's' : ''} pronto{turmaLeads.length !== 1 ? 's' : ''} para gerar certificado
-                                    </div>
-                                    <div className="text-xs text-blue-700">
-                                        O sistema vai criar um link individual de certificado para cada aluno, usando checkout + CPF.
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <button
                             onClick={handleGenerateCertificates}
                             disabled={isGenerating || isSending || !selectedTurma || turmaLeads.length === 0}
-                            className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 text-white shadow-lg ${
-                                isGenerating || isSending || !selectedTurma || turmaLeads.length === 0
-                                    ? 'bg-gray-400 cursor-not-allowed opacity-60'
-                                    : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:-translate-y-1 shadow-purple-200'
-                            }`}
+                            className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 text-white shadow-lg ${isGenerating || isSending || !selectedTurma || turmaLeads.length === 0 ? 'bg-gray-400 cursor-not-allowed opacity-60' : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:-translate-y-1 shadow-purple-200'}`}
                         >
                             {isGenerating ? <><Loader2 size={18} className="animate-spin" /> Gerando...</> : <><FileCheck size={18} /> Gerar Certificados em Massa</>}
                         </button>
@@ -353,30 +522,14 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
                         <button
                             onClick={handleSendGeneratedCertificates}
                             disabled={isSending || isGenerating || generatedCertificates.length === 0 || pendingToSend === 0}
-                            className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 text-white shadow-lg ${
-                                isSending || isGenerating || generatedCertificates.length === 0 || pendingToSend === 0
-                                    ? 'bg-gray-400 cursor-not-allowed opacity-60'
-                                    : 'bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 hover:-translate-y-1 shadow-emerald-200'
-                            }`}
+                            className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 text-white shadow-lg ${isSending || isGenerating || generatedCertificates.length === 0 || pendingToSend === 0 ? 'bg-gray-400 cursor-not-allowed opacity-60' : 'bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 hover:-translate-y-1 shadow-emerald-200'}`}
                         >
                             {isSending ? <><Loader2 size={18} className="animate-spin" /> Enviando...</> : <><Send size={18} /> Enviar Certificados Gerados</>}
                         </button>
                     </div>
 
-                    <button
-                        onClick={handleGenerateAndSend}
-                        disabled={isGenerating || isSending || !selectedTurma || turmaLeads.length === 0}
-                        className="w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 border-purple-200 text-purple-700 bg-purple-50 hover:bg-purple-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        Fluxo recomendado: primeiro gerar em massa, revisar a prévia, depois enviar
-                    </button>
-
                     {sendingStatus !== 'idle' && (
-                        <div className={`rounded-2xl p-4 border-2 ${
-                            sendingStatus === 'sending' || sendingStatus === 'generating' ? 'bg-blue-50 border-blue-200' :
-                            sendingStatus === 'completed' ? 'bg-emerald-50 border-emerald-200' :
-                            'bg-red-50 border-red-200'
-                        }`}>
+                        <div className={`rounded-2xl p-4 border-2 ${sendingStatus === 'sending' || sendingStatus === 'generating' ? 'bg-blue-50 border-blue-200' : sendingStatus === 'completed' ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
                             <div className="flex items-center gap-3">
                                 {(sendingStatus === 'sending' || sendingStatus === 'generating') && <Loader2 size={20} className="text-blue-600 animate-spin" />}
                                 {sendingStatus === 'completed' && <Check size={20} className="text-emerald-600" />}
@@ -390,12 +543,8 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
                         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
                             <div className="bg-gray-50 rounded-2xl p-4">
                                 <div className="flex items-center justify-between gap-4 mb-3">
-                                    <div className="text-xs font-bold text-gray-600 uppercase tracking-widest">
-                                        Certificados gerados em massa
-                                    </div>
-                                    <div className="text-[10px] font-black text-gray-500 bg-white border border-gray-200 px-3 py-1 rounded-full">
-                                        Enviados: {sentCount} | Falhas: {failedCount}
-                                    </div>
+                                    <div className="text-xs font-bold text-gray-600 uppercase tracking-widest">Certificados gerados com layout oficial</div>
+                                    <div className="text-[10px] font-black text-gray-500 bg-white border border-gray-200 px-3 py-1 rounded-full">Enviados: {sentCount} | Falhas: {failedCount}</div>
                                 </div>
                                 <div className="space-y-2 max-h-[520px] overflow-y-auto">
                                     {generatedCertificates.map((cert, idx) => (
@@ -405,32 +554,16 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
                                                 <div className="flex-1 min-w-0">
                                                     <div className="font-bold text-gray-900 text-sm truncate">{cert.name}</div>
                                                     <div className="text-xs text-gray-500 truncate">{cert.email}</div>
-                                                    <div className="text-[10px] text-gray-400 truncate flex items-center gap-1 mt-1">
-                                                        <LinkIcon size={10} /> {cert.certificateUrl}
-                                                    </div>
+                                                    <div className="text-[10px] text-purple-600 font-bold mt-1">Mesmo layout do certificado individual</div>
                                                     {cert.message && <div className="text-[10px] text-gray-500 font-bold mt-1">{cert.message}</div>}
                                                 </div>
-                                                <div className={`text-[10px] font-black px-2 py-1 rounded-lg flex-shrink-0 ${
-                                                    cert.status === 'sent' ? 'text-emerald-600 bg-emerald-50' :
-                                                    cert.status === 'error' ? 'text-red-600 bg-red-50' :
-                                                    'text-purple-600 bg-purple-50'
-                                                }`}>
+                                                <div className={`text-[10px] font-black px-2 py-1 rounded-lg flex-shrink-0 ${cert.status === 'sent' ? 'text-emerald-600 bg-emerald-50' : cert.status === 'error' ? 'text-red-600 bg-red-50' : 'text-purple-600 bg-purple-50'}`}>
                                                     {cert.status === 'sent' ? '✓ Enviado' : cert.status === 'error' ? 'Falhou' : 'Gerado'}
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-2 gap-2 mt-3">
-                                                <button
-                                                    onClick={() => setSelectedCertificate(cert)}
-                                                    className="px-3 py-2 bg-purple-50 text-purple-700 rounded-xl text-[10px] font-black uppercase hover:bg-purple-100 transition-all flex items-center justify-center gap-1"
-                                                >
-                                                    <Eye size={13} /> Visualizar
-                                                </button>
-                                                <button
-                                                    onClick={() => window.open(cert.certificateUrl, '_blank')}
-                                                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded-xl text-[10px] font-black uppercase hover:bg-gray-200 transition-all flex items-center justify-center gap-1"
-                                                >
-                                                    <ExternalLink size={13} /> Abrir
-                                                </button>
+                                                <button onClick={() => setSelectedCertificate(cert)} className="px-3 py-2 bg-purple-50 text-purple-700 rounded-xl text-[10px] font-black uppercase hover:bg-purple-100 transition-all flex items-center justify-center gap-1"><Eye size={13} /> Visualizar</button>
+                                                <button onClick={() => openOfficialCertificate(cert)} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-xl text-[10px] font-black uppercase hover:bg-gray-200 transition-all flex items-center justify-center gap-1"><ExternalLink size={13} /> Abrir</button>
                                             </div>
                                         </div>
                                     ))}
@@ -440,37 +573,27 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
                             <div className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 min-h-[520px]">
                                 <div className="bg-slate-800 px-4 py-3 flex items-center justify-between gap-3">
                                     <div>
-                                        <p className="text-white font-black text-sm">Prévia do certificado</p>
-                                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest truncate max-w-[260px]">
-                                            {selectedCertificate ? selectedCertificate.name : 'Selecione um certificado'}
-                                        </p>
+                                        <p className="text-white font-black text-sm">Prévia do certificado oficial</p>
+                                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest truncate max-w-[260px]">{selectedCertificate ? selectedCertificate.name : 'Selecione um certificado'}</p>
                                     </div>
                                     {selectedCertificate && (
                                         <div className="flex items-center gap-2">
-                                            <button onClick={() => window.open(selectedCertificate.certificateUrl, '_blank')} className="bg-white/10 text-white p-2 rounded-lg hover:bg-white/20" title="Abrir em nova aba">
-                                                <ExternalLink size={15} />
-                                            </button>
-                                            <button onClick={() => setSelectedCertificate(null)} className="bg-white/10 text-white p-2 rounded-lg hover:bg-white/20" title="Fechar prévia">
-                                                <X size={15} />
-                                            </button>
+                                            <button onClick={() => openOfficialCertificate(selectedCertificate)} className="bg-white/10 text-white p-2 rounded-lg hover:bg-white/20" title="Abrir em nova aba"><ExternalLink size={15} /></button>
+                                            <button onClick={() => setSelectedCertificate(null)} className="bg-white/10 text-white p-2 rounded-lg hover:bg-white/20" title="Fechar prévia"><X size={15} /></button>
                                         </div>
                                     )}
                                 </div>
 
                                 {selectedCertificate ? (
                                     <div className="h-[620px] bg-white">
-                                        <iframe
-                                            title={`Prévia certificado ${selectedCertificate.name}`}
-                                            src={selectedCertificate.certificateUrl}
-                                            className="w-full h-full border-0"
-                                        />
+                                        <iframe title={`Prévia certificado ${selectedCertificate.name}`} srcDoc={selectedCertificate.certificateHtml} className="w-full h-full border-0" />
                                     </div>
                                 ) : (
                                     <div className="h-[620px] flex items-center justify-center text-center p-8">
                                         <div>
                                             <Eye size={42} className="text-slate-600 mx-auto mb-4" />
                                             <p className="text-white font-black">Nenhum certificado selecionado</p>
-                                            <p className="text-slate-400 text-sm font-bold mt-2">Clique em “Visualizar” na lista ao lado para conferir o certificado gerado.</p>
+                                            <p className="text-slate-400 text-sm font-bold mt-2">Clique em “Visualizar” para conferir o certificado com o layout oficial.</p>
                                         </div>
                                     </div>
                                 )}
@@ -486,14 +609,29 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
                     <div className="text-sm text-amber-800">
                         <div className="font-bold mb-2">ℹ️ Como funciona:</div>
                         <ul className="space-y-1 text-xs list-disc list-inside">
-                            <li>Primeiro o sistema gera um certificado individual para cada aluno da turma.</li>
-                            <li>Depois você visualiza cada certificado na prévia dentro do painel.</li>
-                            <li>Se estiver tudo certo, envie por email direto pelo Supabase.</li>
-                            <li>Cada pessoa recebe um link exclusivo usando o CPF e o checkout correto.</li>
+                            <li>Agora o certificado em massa usa o mesmo HTML/layout do certificado individual.</li>
+                            <li>A prévia não abre mais uma página diferente: ela renderiza o certificado oficial direto no painel.</li>
+                            <li>O botão Abrir abre o certificado oficial em nova aba para imprimir ou salvar em PDF.</li>
                         </ul>
                     </div>
                 </div>
             </div>
+        </div>
+    );
+};
+
+const Stat: React.FC<{ label: string; value: number; tone: 'blue' | 'emerald' | 'purple' | 'orange' }> = ({ label, value, tone }) => {
+    const tones = {
+        blue: 'from-blue-50 to-blue-100 border-blue-200 text-blue-600 text-blue-900',
+        emerald: 'from-emerald-50 to-emerald-100 border-emerald-200 text-emerald-600 text-emerald-900',
+        purple: 'from-purple-50 to-purple-100 border-purple-200 text-purple-600 text-purple-900',
+        orange: 'from-orange-50 to-orange-100 border-orange-200 text-orange-600 text-orange-900',
+    };
+    const classes = tones[tone].split(' ');
+    return (
+        <div className={`bg-gradient-to-br ${classes[0]} ${classes[1]} p-6 rounded-2xl border ${classes[2]}`}>
+            <div className={`text-sm font-bold ${classes[3]} uppercase tracking-widest mb-2`}>{label}</div>
+            <div className={`text-3xl font-black ${classes[4]}`}>{value}</div>
         </div>
     );
 };
