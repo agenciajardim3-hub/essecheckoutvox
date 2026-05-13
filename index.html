@@ -138,6 +138,38 @@
         'https://connect.facebook.net/en_US/fbevents.js');
     </script>
 
+    <!-- Ajuste visual: menu Automação WhatsApp -> Automação -->
+    <script>
+        (function () {
+            function renameAutomationMenu() {
+                try {
+                    document.querySelectorAll('button').forEach(function (button) {
+                        if (button.textContent && button.textContent.includes('Automação WhatsApp')) {
+                            button.childNodes.forEach(function (node) {
+                                if (node.nodeType === Node.TEXT_NODE && node.textContent.includes('Automação WhatsApp')) {
+                                    node.textContent = node.textContent.replace('Automação WhatsApp', 'Automação');
+                                }
+                            });
+                        }
+                    });
+                } catch (error) {
+                    console.warn('Não foi possível renomear o menu de automação:', error);
+                }
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', renameAutomationMenu);
+            } else {
+                renameAutomationMenu();
+            }
+
+            new MutationObserver(renameAutomationMenu).observe(document.documentElement, {
+                childList: true,
+                subtree: true
+            });
+        })();
+    </script>
+
 </head>
 <body>
     <div id="root"></div>
