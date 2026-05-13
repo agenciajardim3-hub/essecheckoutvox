@@ -99,6 +99,126 @@
         })();
     </script>
 
+    <!-- Disparo real de email pelo Supabase/Hostinger -->
+    <script>
+        (function () {
+            const SEND_EMAIL_URL = 'https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtZHNndnVxcmhwamRncmdhc2xvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NjcyMTIsImV4cCI6MjA4MzU0MzIxMn0.Emfi9OyHn9SrrY4AugAVGzLSm2YkBzAKwsZ1XGQ5DD0';
+
+            function normalizePhone(value) {
+                return String(value || '').replace(/\D/g, '');
+            }
+
+            function getCachedLeads() {
+                try {
+                    return JSON.parse(localStorage.getItem('vox_leads_cache') || '[]');
+                } catch (error) {
+                    return [];
+                }
+            }
+
+            function scoreLeadAgainstText(lead, text) {
+                const lower = String(text || '').toLowerCase();
+                let score = 0;
+                if (lead.name && lower.includes(String(lead.name).toLowerCase())) score += 5;
+                if (lead.email && lower.includes(String(lead.email).toLowerCase())) score += 10;
+                if (lead.cpf && lower.includes(String(lead.cpf).replace(/\D/g, ''))) score += 6;
+                const phone = normalizePhone(lead.phone);
+                if (phone && lower.replace(/\D/g, '').includes(phone)) score += 7;
+                return score;
+            }
+
+            function findLeadFromButton(button) {
+                const leads = getCachedLeads();
+                if (!Array.isArray(leads) || !leads.length) return null;
+
+                let node = button;
+                let bestLead = null;
+                let bestScore = 0;
+
+                for (let depth = 0; node && depth < 8; depth += 1) {
+                    const text = node.innerText || node.textContent || '';
+                    for (const lead of leads) {
+                        const score = scoreLeadAgainstText(lead, text);
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestLead = lead;
+                        }
+                    }
+                    if (bestScore >= 10) break;
+                    node = node.parentElement;
+                }
+
+                return bestScore > 0 ? bestLead : null;
+            }
+
+            async function sendLeadTicketEmail(lead, button) {
+                if (!lead || !lead.email) {
+                    alert('Não encontrei o email deste aluno para disparar.');
+                    return;
+                }
+
+                const oldHtml = button ? button.innerHTML : '';
+                try {
+                    if (button) {
+                        button.disabled = true;
+                        button.innerHTML = '⏳ Enviando...';
+                    }
+
+                    const ticketUrl = `${window.location.origin}/?mode=ticket&checkout=${encodeURIComponent(lead.product_id || '')}&cpf=${encodeURIComponent(lead.cpf || '')}`;
+                    const response = await fetch(SEND_EMAIL_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                            'apikey': SUPABASE_ANON_KEY
+                        },
+                        body: JSON.stringify({
+                            to: lead.email,
+                            name: lead.name,
+                            subject: `Seu Ingresso - ${lead.product_name || 'Curso'}`,
+                            productName: lead.product_name || 'Curso Vox Marketing Academy',
+                            ticketUrl,
+                            message: `Olá ${lead.name},\n\nSegue seu ingresso para ${lead.product_name || 'o curso'}.\n\nPara acessar, acesse: ${ticketUrl}\n\nAbs`
+                        })
+                    });
+
+                    const result = await response.json().catch(() => ({}));
+                    if (!response.ok || !result.success) {
+                        throw new Error(result.error || 'Falha ao enviar email');
+                    }
+
+                    alert(`Email enviado com sucesso para ${lead.email}`);
+                } catch (error) {
+                    console.error('Erro ao enviar email pelo Supabase:', error);
+                    alert(`Erro ao enviar email: ${error.message || error}`);
+                } finally {
+                    if (button) {
+                        button.disabled = false;
+                        button.innerHTML = oldHtml;
+                    }
+                }
+            }
+
+            document.addEventListener('click', function (event) {
+                const button = event.target && event.target.closest ? event.target.closest('button') : null;
+                if (!button) return;
+
+                const text = (button.innerText || button.textContent || button.getAttribute('aria-label') || '').toLowerCase();
+                const looksLikeEmailButton = text.includes('email') || text.includes('ingresso') || text.includes('enviar');
+                if (!looksLikeEmailButton) return;
+
+                const lead = findLeadFromButton(button);
+                if (!lead || !lead.email) return;
+
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                sendLeadTicketEmail(lead, button);
+            }, true);
+        })();
+    </script>
+
     <!-- Meta Pixel Code -->
     <script>
         !function(f,b,e,v,n,t,s)
