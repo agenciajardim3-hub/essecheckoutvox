@@ -1,0 +1,37 @@
+# Supabase Configuration
+# This file configures the local Supabase development environment
+
+[api]
+# Port to run the API server on
+port = 54321
+
+[db]
+# Port to run PostgreSQL on
+port = 54322
+
+[studio]
+# Port to run Supabase Studio on
+port = 54323
+
+[inbucket]
+# Port to run Inbucket (email testing) on
+port = 54324
+
+[functions]
+# Functions configuration
+# Note: Edge functions are stored in ./functions directory
+# To deploy: supabase functions deploy <function-name>
+
+[[edge_runtime.env_vars]]
+# Store SMTP configuration here for local development
+# These will be overridden by Supabase Secrets in production
+
+# Example SMTP configuration (update with your values):
+# SMTP_HOST=smtp.hostinger.com
+# SMTP_PORT=587
+# SMTP_USER=noreply@seu-dominio.com
+# SMTP_PASSWORD=sua-senha-segura
+# SMTP_FROM_NAME=Vox Marketing Academy
+
+[auth]
+# Authentication settings (optional)

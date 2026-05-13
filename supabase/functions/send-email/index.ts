@@ -4,13 +4,32 @@ import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
 serve(async (req) => {
   // Only POST allowed
   if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+    return new Response(
+      JSON.stringify({
+        success: false,
+        message: "Apenas POST é permitido"
+      }),
+      { status: 405, headers: { "Content-Type": "application/json" } }
+    );
   }
 
   try {
     // Extract data from body
-    const { email, name, subject, body, certificateUrl, ticketUrl, imageUrl, type } =
-      await req.json();
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: "Corpo da requisição inválido. Certifique-se de enviar JSON válido."
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const { email, name, subject, body, certificateUrl, ticketUrl, imageUrl, type } = requestBody;
 
     // Validate required fields
     if (!email || !subject || !body) {
@@ -44,11 +63,20 @@ serve(async (req) => {
 
     // Validate SMTP configuration
     if (!smtpHost || !smtpUser || !smtpPassword) {
-      console.error("SMTP credentials not configured");
+      console.error("SMTP credentials not configured", {
+        hasHost: !!smtpHost,
+        hasUser: !!smtpUser,
+        hasPassword: !!smtpPassword,
+      });
       return new Response(
         JSON.stringify({
           success: false,
-          message: "Serviço de email não configurado"
+          message: "Serviço de email não configurado. Configure as variáveis SMTP_HOST, SMTP_USER e SMTP_PASSWORD nas Supabase Secrets.",
+          debug: {
+            hasSmtpHost: !!smtpHost,
+            hasSmtpUser: !!smtpUser,
+            hasSmtpPassword: !!smtpPassword
+          }
         }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
