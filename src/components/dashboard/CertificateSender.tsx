@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Send, GraduationCap, Loader2, Check, Mail, AlertCircle, FileCheck, Link as LinkIcon, XCircle } from 'lucide-react';
+import { Send, GraduationCap, Loader2, Check, Mail, AlertCircle, FileCheck, Link as LinkIcon, XCircle, Eye, ExternalLink, X } from 'lucide-react';
 import { Lead, AppConfig } from '../../types';
 
 interface CertificateSenderProps {
@@ -33,7 +33,7 @@ const escapeHtml = (value: string) => value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+    .replace(/\"/g, '&quot;')
     .replace(/'/g, '&#039;');
 
 export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, checkouts }) => {
@@ -43,6 +43,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
     const [sentCount, setSentCount] = useState(0);
     const [failedCount, setFailedCount] = useState(0);
     const [generatedCertificates, setGeneratedCertificates] = useState<GeneratedCertificate[]>([]);
+    const [selectedCertificate, setSelectedCertificate] = useState<GeneratedCertificate | null>(null);
     const [sendingStatus, setSendingStatus] = useState<'idle' | 'generating' | 'sending' | 'completed' | 'error'>('idle');
     const [statusMessage, setStatusMessage] = useState('');
 
@@ -99,6 +100,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
         setSendingStatus('generating');
         setStatusMessage('Gerando certificados em massa...');
         setGeneratedCertificates([]);
+        setSelectedCertificate(null);
         setSentCount(0);
         setFailedCount(0);
 
@@ -117,8 +119,9 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
             }));
 
             setGeneratedCertificates(generated);
+            setSelectedCertificate(generated[0] || null);
             setSendingStatus('completed');
-            setStatusMessage(`✓ ${generated.length} certificado(s) gerado(s) em massa. Agora você pode enviar por email.`);
+            setStatusMessage(`✓ ${generated.length} certificado(s) gerado(s) em massa. Revise a prévia e depois envie por email.`);
         } catch (error) {
             console.error('Erro ao gerar certificados em massa:', error);
             setSendingStatus('error');
@@ -186,6 +189,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
 
     const updateCertificateStatus = (id: string, status: GeneratedCertificate['status'], message: string) => {
         setGeneratedCertificates((previous) => previous.map((cert) => cert.id === id ? { ...cert, status, message } : cert));
+        setSelectedCertificate((previous) => previous?.id === id ? { ...previous, status, message } : previous);
     };
 
     const handleSendGeneratedCertificates = async () => {
@@ -242,7 +246,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
     const handleGenerateAndSend = async () => {
         await handleGenerateCertificates();
         setTimeout(() => {
-            setStatusMessage('Certificados gerados. Clique em “Enviar Certificados Gerados” para disparar os emails.');
+            setStatusMessage('Certificados gerados. Confira a prévia e clique em “Enviar Certificados Gerados”.');
         }, 200);
     };
 
@@ -252,7 +256,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
                 <div>
                     <h2 className="text-2xl font-black text-gray-900">Certificados em Massa</h2>
                     <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">
-                        Gere certificados individuais em massa e envie por email para cada aluno
+                        Gere certificados individuais em massa, visualize cada certificado e envie por email
                     </p>
                 </div>
                 <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center">
@@ -295,6 +299,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
                                 setSendingStatus('idle');
                                 setStatusMessage('');
                                 setGeneratedCertificates([]);
+                                setSelectedCertificate(null);
                                 setSentCount(0);
                                 setFailedCount(0);
                             }}
@@ -363,7 +368,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
                         disabled={isGenerating || isSending || !selectedTurma || turmaLeads.length === 0}
                         className="w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest border-2 border-purple-200 text-purple-700 bg-purple-50 hover:bg-purple-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Fluxo recomendado: primeiro gerar em massa, depois revisar e enviar
+                        Fluxo recomendado: primeiro gerar em massa, revisar a prévia, depois enviar
                     </button>
 
                     {sendingStatus !== 'idle' && (
@@ -382,36 +387,93 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
                     )}
 
                     {generatedCertificates.length > 0 && (
-                        <div className="bg-gray-50 rounded-2xl p-4">
-                            <div className="flex items-center justify-between gap-4 mb-3">
-                                <div className="text-xs font-bold text-gray-600 uppercase tracking-widest">
-                                    Certificados gerados em massa
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                            <div className="bg-gray-50 rounded-2xl p-4">
+                                <div className="flex items-center justify-between gap-4 mb-3">
+                                    <div className="text-xs font-bold text-gray-600 uppercase tracking-widest">
+                                        Certificados gerados em massa
+                                    </div>
+                                    <div className="text-[10px] font-black text-gray-500 bg-white border border-gray-200 px-3 py-1 rounded-full">
+                                        Enviados: {sentCount} | Falhas: {failedCount}
+                                    </div>
                                 </div>
-                                <div className="text-[10px] font-black text-gray-500 bg-white border border-gray-200 px-3 py-1 rounded-full">
-                                    Enviados: {sentCount} | Falhas: {failedCount}
+                                <div className="space-y-2 max-h-[520px] overflow-y-auto">
+                                    {generatedCertificates.map((cert, idx) => (
+                                        <div key={cert.id} className={`p-3 bg-white rounded-xl border transition-all ${selectedCertificate?.id === cert.id ? 'border-purple-400 ring-2 ring-purple-100' : 'border-gray-200 hover:border-purple-300'}`}>
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center text-xs font-black text-purple-600 flex-shrink-0">{idx + 1}</div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="font-bold text-gray-900 text-sm truncate">{cert.name}</div>
+                                                    <div className="text-xs text-gray-500 truncate">{cert.email}</div>
+                                                    <div className="text-[10px] text-gray-400 truncate flex items-center gap-1 mt-1">
+                                                        <LinkIcon size={10} /> {cert.certificateUrl}
+                                                    </div>
+                                                    {cert.message && <div className="text-[10px] text-gray-500 font-bold mt-1">{cert.message}</div>}
+                                                </div>
+                                                <div className={`text-[10px] font-black px-2 py-1 rounded-lg flex-shrink-0 ${
+                                                    cert.status === 'sent' ? 'text-emerald-600 bg-emerald-50' :
+                                                    cert.status === 'error' ? 'text-red-600 bg-red-50' :
+                                                    'text-purple-600 bg-purple-50'
+                                                }`}>
+                                                    {cert.status === 'sent' ? '✓ Enviado' : cert.status === 'error' ? 'Falhou' : 'Gerado'}
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 mt-3">
+                                                <button
+                                                    onClick={() => setSelectedCertificate(cert)}
+                                                    className="px-3 py-2 bg-purple-50 text-purple-700 rounded-xl text-[10px] font-black uppercase hover:bg-purple-100 transition-all flex items-center justify-center gap-1"
+                                                >
+                                                    <Eye size={13} /> Visualizar
+                                                </button>
+                                                <button
+                                                    onClick={() => window.open(cert.certificateUrl, '_blank')}
+                                                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded-xl text-[10px] font-black uppercase hover:bg-gray-200 transition-all flex items-center justify-center gap-1"
+                                                >
+                                                    <ExternalLink size={13} /> Abrir
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                            <div className="space-y-2 max-h-80 overflow-y-auto">
-                                {generatedCertificates.map((cert, idx) => (
-                                    <div key={cert.id} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-200 hover:border-purple-300 transition-all">
-                                        <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center text-xs font-black text-purple-600 flex-shrink-0">{idx + 1}</div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="font-bold text-gray-900 text-sm truncate">{cert.name}</div>
-                                            <div className="text-xs text-gray-500 truncate">{cert.email}</div>
-                                            <div className="text-[10px] text-gray-400 truncate flex items-center gap-1 mt-1">
-                                                <LinkIcon size={10} /> {cert.certificateUrl}
-                                            </div>
-                                            {cert.message && <div className="text-[10px] text-gray-500 font-bold mt-1">{cert.message}</div>}
+
+                            <div className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 min-h-[520px]">
+                                <div className="bg-slate-800 px-4 py-3 flex items-center justify-between gap-3">
+                                    <div>
+                                        <p className="text-white font-black text-sm">Prévia do certificado</p>
+                                        <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest truncate max-w-[260px]">
+                                            {selectedCertificate ? selectedCertificate.name : 'Selecione um certificado'}
+                                        </p>
+                                    </div>
+                                    {selectedCertificate && (
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={() => window.open(selectedCertificate.certificateUrl, '_blank')} className="bg-white/10 text-white p-2 rounded-lg hover:bg-white/20" title="Abrir em nova aba">
+                                                <ExternalLink size={15} />
+                                            </button>
+                                            <button onClick={() => setSelectedCertificate(null)} className="bg-white/10 text-white p-2 rounded-lg hover:bg-white/20" title="Fechar prévia">
+                                                <X size={15} />
+                                            </button>
                                         </div>
-                                        <div className={`text-[10px] font-black px-2 py-1 rounded-lg flex-shrink-0 ${
-                                            cert.status === 'sent' ? 'text-emerald-600 bg-emerald-50' :
-                                            cert.status === 'error' ? 'text-red-600 bg-red-50' :
-                                            'text-purple-600 bg-purple-50'
-                                        }`}>
-                                            {cert.status === 'sent' ? '✓ Enviado' : cert.status === 'error' ? 'Falhou' : 'Gerado'}
+                                    )}
+                                </div>
+
+                                {selectedCertificate ? (
+                                    <div className="h-[620px] bg-white">
+                                        <iframe
+                                            title={`Prévia certificado ${selectedCertificate.name}`}
+                                            src={selectedCertificate.certificateUrl}
+                                            className="w-full h-full border-0"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="h-[620px] flex items-center justify-center text-center p-8">
+                                        <div>
+                                            <Eye size={42} className="text-slate-600 mx-auto mb-4" />
+                                            <p className="text-white font-black">Nenhum certificado selecionado</p>
+                                            <p className="text-slate-400 text-sm font-bold mt-2">Clique em “Visualizar” na lista ao lado para conferir o certificado gerado.</p>
                                         </div>
                                     </div>
-                                ))}
+                                )}
                             </div>
                         </div>
                     )}
@@ -425,9 +487,9 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
                         <div className="font-bold mb-2">ℹ️ Como funciona:</div>
                         <ul className="space-y-1 text-xs list-disc list-inside">
                             <li>Primeiro o sistema gera um certificado individual para cada aluno da turma.</li>
-                            <li>Depois você revisa a lista gerada e envia por email.</li>
+                            <li>Depois você visualiza cada certificado na prévia dentro do painel.</li>
+                            <li>Se estiver tudo certo, envie por email direto pelo Supabase.</li>
                             <li>Cada pessoa recebe um link exclusivo usando o CPF e o checkout correto.</li>
-                            <li>O envio real é feito pelo Supabase, sem abrir mailto.</li>
                         </ul>
                     </div>
                 </div>
