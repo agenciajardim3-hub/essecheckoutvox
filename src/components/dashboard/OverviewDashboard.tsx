@@ -400,6 +400,18 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
     const formatNumber = (value: number) => hideValues ? '•••' : value.toLocaleString('pt-BR');
     const formatPercent = (value: number) => hideValues ? '•••%' : `${value.toFixed(1)}%`;
 
+    const tooltipContentStyle = useMemo(() => ({
+        backgroundColor: '#fff',
+        border: '1px solid #e2e8f0',
+        borderRadius: '8px'
+    }), []);
+
+    const currencyFormatter = useCallback((value: any) => formatCurrency(value as number), [hideValues]);
+
+    const lineChartMargin = useMemo(() => ({ top: 20, right: 30, left: 0, bottom: 20 }), []);
+    const barChartMargin = useMemo(() => ({ top: 5, right: 30, left: 200, bottom: 5 }), []);
+    const scatterChartMargin = useMemo(() => ({ top: 20, right: 20, bottom: 20, left: 20 }), []);
+
     React.useEffect(() => {
         if (selectedTurmas.length === 0 && checkouts.length > 0) {
             setSelectedTurmas(checkouts.slice(0, 3).map(c => c.id));
@@ -939,7 +951,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
                             {growthData.length > 0 ? (
                                 <div className="w-full h-[400px]">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={rechartsData} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
+                                        <LineChart data={rechartsData} margin={lineChartMargin}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                             <XAxis
                                                 dataKey="date"
@@ -1018,7 +1030,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
                                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                                 ))}
                                             </Pie>
-                                            <Tooltip formatter={(value) => formatCurrency(value as number)} />
+                                            <Tooltip formatter={currencyFormatter} />
                                         </PieChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -1068,12 +1080,12 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
                                     <BarChart
                                         data={turmaRanking}
                                         layout="vertical"
-                                        margin={{ top: 5, right: 30, left: 200, bottom: 5 }}
+                                        margin={barChartMargin}
                                     >
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                         <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 11 }} />
                                         <YAxis dataKey="name" type="category" tick={{ fill: '#94a3b8', fontSize: 11 }} width={190} />
-                                        <Tooltip formatter={(value) => formatCurrency(value as number)} contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
+                                        <Tooltip formatter={currencyFormatter} contentStyle={tooltipContentStyle} />
                                         <Bar dataKey="revenue" fill="#10b981" radius={[0, 8, 8, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
@@ -1155,7 +1167,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
 
                             <div className="w-full h-[350px]">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                                    <ScatterChart margin={scatterChartMargin}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                                         <XAxis dataKey="x" name="Gasto Tráfego" unit="R$" tick={{ fill: '#94a3b8', fontSize: 11 }} />
                                         <YAxis dataKey="y" name="Receita" unit="R$" tick={{ fill: '#94a3b8', fontSize: 11 }} />
