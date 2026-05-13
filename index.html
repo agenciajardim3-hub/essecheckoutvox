@@ -6,217 +6,126 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Checkout Seguro | Rodrigo Mesquita</title>
     
+    <!-- Performance: Preconnect to external domains -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://emdsgvuqrhpjdgrgaslo.supabase.co">
     <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    
+    <!-- Performance: DNS prefetch for Pixel -->
     <link rel="dns-prefetch" href="https://connect.facebook.net">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        *, *::before, *::after { box-sizing: border-box; }
-        html, body { width: 100%; min-height: 100%; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        img, svg, video, canvas { max-width: 100%; }
-        input, select, textarea, button { font-family: inherit; }
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            min-height: 100%;
+            overflow-x: hidden;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        img, svg, video, canvas {
+            max-width: 100%;
+        }
+
+        input, select, textarea, button {
+            font-family: inherit;
+        }
 
         @media (max-width: 640px) {
-            body { background-color: #f1f5f9; }
-            #root { width: 100%; overflow-x: hidden; }
-            #root > div { padding-left: 12px !important; padding-right: 12px !important; }
-            form { padding: 24px 18px !important; gap: 18px !important; }
-            form > div { max-width: 100%; }
-            input, textarea, select { font-size: 16px !important; min-height: 50px; }
-            label { line-height: 1.25 !important; }
-            button, a { -webkit-tap-highlight-color: transparent; }
-            button[type="submit"] { padding-top: 20px !important; padding-bottom: 20px !important; border-radius: 28px !important; font-size: 19px !important; line-height: 1.15 !important; gap: 10px !important; text-align: center; white-space: normal; }
-            button[type="submit"] svg { width: 26px !important; height: 26px !important; flex-shrink: 0; }
-            .rounded-\[4rem\] { border-radius: 32px !important; }
-            .rounded-\[3rem\] { border-radius: 28px !important; }
-            .rounded-\[2\.5rem\] { border-radius: 24px !important; }
-            .rounded-\[2rem\] { border-radius: 22px !important; }
-            .tracking-widest { letter-spacing: 0.08em !important; }
-            .shadow-2xl { box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12) !important; }
+            body {
+                background-color: #f1f5f9;
+            }
+
+            #root {
+                width: 100%;
+                overflow-x: hidden;
+            }
+
+            #root > div {
+                padding-left: 12px !important;
+                padding-right: 12px !important;
+            }
+
+            form {
+                padding: 24px 18px !important;
+                gap: 18px !important;
+            }
+
+            form > div {
+                max-width: 100%;
+            }
+
+            input,
+            textarea,
+            select {
+                font-size: 16px !important;
+                min-height: 50px;
+            }
+
+            label {
+                line-height: 1.25 !important;
+            }
+
+            button,
+            a {
+                -webkit-tap-highlight-color: transparent;
+            }
+
+            button[type="submit"] {
+                padding-top: 20px !important;
+                padding-bottom: 20px !important;
+                border-radius: 28px !important;
+                font-size: 19px !important;
+                line-height: 1.15 !important;
+                gap: 10px !important;
+                text-align: center;
+                white-space: normal;
+            }
+
+            button[type="submit"] svg {
+                width: 26px !important;
+                height: 26px !important;
+                flex-shrink: 0;
+            }
+
+            .rounded-\[4rem\] {
+                border-radius: 32px !important;
+            }
+
+            .rounded-\[3rem\] {
+                border-radius: 28px !important;
+            }
+
+            .rounded-\[2\.5rem\] {
+                border-radius: 24px !important;
+            }
+
+            .rounded-\[2rem\] {
+                border-radius: 22px !important;
+            }
+
+            .tracking-widest {
+                letter-spacing: 0.08em !important;
+            }
+
+            .shadow-2xl {
+                box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12) !important;
+            }
         }
     </style>
     
-    <!-- Integrações globais: Supabase, emails, normalização de valores -->
-    <script>
-        (function () {
-            const SEND_EMAIL_URL = 'https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email';
-            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtZHNndnVxcmhwamRncmdhc2xvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NjcyMTIsImV4cCI6MjA4MzU0MzIxMn0.Emfi9OyHn9SrrY4AugAVGzLSm2YkBzAKwsZ1XGQ5DD0';
-
-            function normalizeMoneyValue(value) {
-                if (value === null || value === undefined || value === '') return 0;
-                if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-                var cleaned = String(value).replace(/R\$/gi, '').replace(/\s/g, '').replace(/[^0-9,.-]/g, '');
-                if (!cleaned) return 0;
-                var hasComma = cleaned.indexOf(',') !== -1;
-                var hasDot = cleaned.indexOf('.') !== -1;
-                if (hasComma && hasDot) cleaned = cleaned.replace(/\./g, '').replace(',', '.');
-                else if (hasComma) cleaned = cleaned.replace(',', '.');
-                var parsed = Number(cleaned);
-                return Number.isFinite(parsed) ? parsed : 0;
-            }
-
-            function normalizePaidAmountInPayload(payload) {
-                if (!payload || typeof payload !== 'object') return payload;
-                if (Array.isArray(payload)) return payload.map(normalizePaidAmountInPayload);
-                var next = Object.assign({}, payload);
-                if (Object.prototype.hasOwnProperty.call(next, 'paid_amount')) next.paid_amount = normalizeMoneyValue(next.paid_amount);
-                return next;
-            }
-
-            function normalizeEmailPayload(payload) {
-                if (!payload || typeof payload !== 'object') return payload;
-
-                const to = payload.to || payload.email || payload.recipient || payload.recipientEmail || payload.destinatario;
-                const subject = payload.subject || payload.assunto || 'Mensagem Vox Marketing Academy';
-                const html = payload.html || payload.body || payload.message || payload.corpo || payload.content || '';
-
-                return {
-                    to: to,
-                    name: payload.name || payload.nome || payload.studentName || '',
-                    subject: subject,
-                    productName: payload.productName || payload.produto || payload.courseName || 'Vox Marketing Academy',
-                    ticketUrl: payload.ticketUrl || payload.ingressoUrl || payload.url || '',
-                    certificateUrl: payload.certificateUrl || payload.certificadoUrl || '',
-                    message: typeof html === 'string' ? html : String(html || '')
-                };
-            }
-
-            function shouldRedirectEmailRequest(url, method, body) {
-                if (method !== 'POST') return false;
-                if (!body || typeof body !== 'string') return false;
-                if (url.indexOf('supabase.co/functions/v1/send-ticket-email') !== -1) return false;
-
-                const lowerUrl = String(url || '').toLowerCase();
-                const lowerBody = body.toLowerCase();
-
-                const urlLooksEmail = lowerUrl.includes('email') || lowerUrl.includes('mail') || lowerUrl.includes('send');
-                const bodyLooksEmail = (lowerBody.includes('"to"') || lowerBody.includes('"email"') || lowerBody.includes('destinatario')) && (lowerBody.includes('subject') || lowerBody.includes('assunto') || lowerBody.includes('message') || lowerBody.includes('html') || lowerBody.includes('corpo'));
-
-                return urlLooksEmail || bodyLooksEmail;
-            }
-
-            var originalFetch = window.fetch;
-            window.fetch = function (input, init) {
-                try {
-                    var url = typeof input === 'string' ? input : (input && input.url) || '';
-                    var method = (init && init.method ? init.method : '').toUpperCase();
-                    var body = init && init.body;
-
-                    var isSupabaseLeadWrite = url.indexOf('supabase.co') !== -1 && url.indexOf('/leads') !== -1 && ['POST', 'PATCH', 'PUT'].indexOf(method) !== -1;
-                    if (isSupabaseLeadWrite && typeof body === 'string' && body.indexOf('paid_amount') !== -1) {
-                        var parsedBody = JSON.parse(body);
-                        var normalizedBody = normalizePaidAmountInPayload(parsedBody);
-                        init = Object.assign({}, init, { body: JSON.stringify(normalizedBody) });
-                    }
-
-                    if (shouldRedirectEmailRequest(url, method, body)) {
-                        var emailBody = normalizeEmailPayload(JSON.parse(body));
-                        input = SEND_EMAIL_URL;
-                        init = Object.assign({}, init, {
-                            method: 'POST',
-                            headers: Object.assign({}, init && init.headers ? init.headers : {}, {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                                'apikey': SUPABASE_ANON_KEY
-                            }),
-                            body: JSON.stringify(emailBody)
-                        });
-                    }
-                } catch (error) {
-                    console.warn('Falha no interceptor global:', error);
-                }
-
-                return originalFetch.apply(this, arguments.length > 1 ? [input, init] : [input]);
-            };
-
-            function normalizePhone(value) {
-                return String(value || '').replace(/\D/g, '');
-            }
-
-            function getCachedLeads() {
-                try { return JSON.parse(localStorage.getItem('vox_leads_cache') || '[]'); }
-                catch (error) { return []; }
-            }
-
-            function scoreLeadAgainstText(lead, text) {
-                const lower = String(text || '').toLowerCase();
-                let score = 0;
-                if (lead.name && lower.includes(String(lead.name).toLowerCase())) score += 5;
-                if (lead.email && lower.includes(String(lead.email).toLowerCase())) score += 10;
-                if (lead.cpf && lower.includes(String(lead.cpf).replace(/\D/g, ''))) score += 6;
-                const phone = normalizePhone(lead.phone);
-                if (phone && lower.replace(/\D/g, '').includes(phone)) score += 7;
-                return score;
-            }
-
-            function findLeadFromButton(button) {
-                const leads = getCachedLeads();
-                if (!Array.isArray(leads) || !leads.length) return null;
-                let node = button;
-                let bestLead = null;
-                let bestScore = 0;
-                for (let depth = 0; node && depth < 8; depth += 1) {
-                    const text = node.innerText || node.textContent || '';
-                    for (const lead of leads) {
-                        const score = scoreLeadAgainstText(lead, text);
-                        if (score > bestScore) { bestScore = score; bestLead = lead; }
-                    }
-                    if (bestScore >= 10) break;
-                    node = node.parentElement;
-                }
-                return bestScore > 0 ? bestLead : null;
-            }
-
-            async function sendLeadTicketEmail(lead, button) {
-                if (!lead || !lead.email) { alert('Não encontrei o email deste aluno para disparar.'); return; }
-                const oldHtml = button ? button.innerHTML : '';
-                try {
-                    if (button) { button.disabled = true; button.innerHTML = '⏳ Enviando...'; }
-                    const ticketUrl = `${window.location.origin}/?mode=ticket&checkout=${encodeURIComponent(lead.product_id || '')}&cpf=${encodeURIComponent(lead.cpf || '')}`;
-                    const response = await originalFetch(SEND_EMAIL_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY },
-                        body: JSON.stringify({
-                            to: lead.email,
-                            name: lead.name,
-                            subject: `Seu Ingresso - ${lead.product_name || 'Curso'}`,
-                            productName: lead.product_name || 'Curso Vox Marketing Academy',
-                            ticketUrl,
-                            message: `Olá ${lead.name},\n\nSegue seu ingresso para ${lead.product_name || 'o curso'}.\n\nPara acessar, acesse: ${ticketUrl}\n\nAbs`
-                        })
-                    });
-                    const result = await response.json().catch(() => ({}));
-                    if (!response.ok || !result.success) throw new Error(result.error || 'Falha ao enviar email');
-                    alert(`Email enviado com sucesso para ${lead.email}`);
-                } catch (error) {
-                    console.error('Erro ao enviar email pelo Supabase:', error);
-                    alert(`Erro ao enviar email: ${error.message || error}`);
-                } finally {
-                    if (button) { button.disabled = false; button.innerHTML = oldHtml; }
-                }
-            }
-
-            document.addEventListener('click', function (event) {
-                const button = event.target && event.target.closest ? event.target.closest('button') : null;
-                if (!button) return;
-                const text = (button.innerText || button.textContent || button.getAttribute('aria-label') || '').toLowerCase();
-                const looksLikeEmailButton = text.includes('email') || text.includes('ingresso') || text.includes('enviar');
-                if (!looksLikeEmailButton) return;
-                const lead = findLeadFromButton(button);
-                if (!lead || !lead.email) return;
-                event.preventDefault();
-                event.stopPropagation();
-                event.stopImmediatePropagation();
-                sendLeadTicketEmail(lead, button);
-            }, true);
-        })();
-    </script>
-
     <!-- Meta Pixel Code -->
     <script>
         !function(f,b,e,v,n,t,s)
@@ -229,95 +138,10 @@
         'https://connect.facebook.net/en_US/fbevents.js');
     </script>
 
-    <!-- Correção robusta: força assinatura/logo no PDF do certificado + botão Salvar PDF Direto -->
-    <script>
-        (function () {
-            const originalOpen = window.open;
-            const certificatePdfPatch = `
-<script>
-(function () {
-  function loadScript(src) {
-    return new Promise(function(resolve, reject) {
-      if (window.html2pdf) return resolve();
-      var script = document.createElement('script');
-      script.src = src;
-      script.onload = resolve;
-      script.onerror = reject;
-      document.head.appendChild(script);
-    });
-  }
-  function waitForImage(img) {
-    img.setAttribute('crossorigin', 'anonymous');
-    if (img.complete && img.naturalWidth > 0) return Promise.resolve();
-    return new Promise(function(resolve) { img.onload = resolve; img.onerror = resolve; setTimeout(resolve, 15000); });
-  }
-  function blobToDataUrl(blob) {
-    return new Promise(function(resolve, reject) {
-      var reader = new FileReader(); reader.onloadend = function() { resolve(reader.result); }; reader.onerror = reject; reader.readAsDataURL(blob);
-    });
-  }
-  async function inlineImage(img) {
-    try {
-      img.setAttribute('crossorigin', 'anonymous');
-      if (!img.src || img.src.indexOf('data:') === 0) return;
-      var response = await fetch(img.src, { mode: 'cors', cache: 'force-cache' });
-      if (!response.ok) throw new Error('image fetch failed');
-      var blob = await response.blob(); img.src = await blobToDataUrl(blob); await waitForImage(img);
-    } catch (error) { console.warn('Não foi possível embutir imagem no certificado:', img.src, error); await waitForImage(img); }
-  }
-  async function prepareCertificateImages(element) {
-    var images = Array.from(element.querySelectorAll('img'));
-    for (var i = 0; i < images.length; i++) await inlineImage(images[i]);
-  }
-  async function saveCertificatePdfDirect() {
-    var element = document.querySelector('.certificate-wrapper');
-    if (!element) { alert('Certificado não encontrado para baixar.'); return; }
-    var rawName = document.title.replace('Certificado - ', '').trim() || 'certificado';
-    var fileName = 'Certificado_' + rawName.replace(/\\s+/g, '_') + '.pdf';
-    var directButton = document.getElementById('save-pdf-direct-button');
-    var oldText = directButton ? directButton.innerHTML : '';
-    try {
-      if (directButton) { directButton.disabled = true; directButton.innerHTML = '⏳ Salvando...'; }
-      await prepareCertificateImages(element);
-      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js');
-      var opt = { margin: 0, filename: fileName, image: { type: 'jpeg', quality: 1 }, html2canvas: { scale: 2, useCORS: true, allowTaint: false, imageTimeout: 15000, logging: false, backgroundColor: '#ffffff' }, jsPDF: { orientation: 'landscape', unit: 'px', format: [1122, 794], hotfixes: ['px_scaling'] } };
-      await window.html2pdf().set(opt).from(element).save(fileName);
-    } catch (error) { console.error('Erro ao salvar PDF direto com assinatura:', error); alert('Não consegui baixar automaticamente com a assinatura. Vou abrir a impressão para você salvar como PDF.'); window.print(); }
-    finally { if (directButton) { directButton.disabled = false; directButton.innerHTML = oldText || '💾 Salvar PDF Direto'; } }
-  }
-  window.downloadPDF = saveCertificatePdfDirect;
-  window.savePDFDirect = saveCertificatePdfDirect;
-  function injectDirectButton() {
-    var controls = document.querySelector('.controls');
-    if (!controls || document.getElementById('save-pdf-direct-button')) return;
-    var button = document.createElement('button'); button.id = 'save-pdf-direct-button'; button.className = 'btn btn-download'; button.type = 'button'; button.innerHTML = '💾 Salvar PDF Direto'; button.onclick = saveCertificatePdfDirect; controls.insertBefore(button, controls.firstChild);
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', injectDirectButton); else injectDirectButton();
-})();
-<\/script>`;
-            window.open = function (...args) {
-                const openedWindow = originalOpen.apply(window, args);
-                try {
-                    if (!openedWindow || !openedWindow.document || !openedWindow.document.write) return openedWindow;
-                    const originalWrite = openedWindow.document.write.bind(openedWindow.document);
-                    openedWindow.document.write = function (html) {
-                        if (typeof html === 'string' && html.includes('certificate-wrapper')) {
-                            html = html
-                                .replace(/<img src=\"([^\"]+)\" class=\"signature-img\" \/>/g, '<img src="$1" class="signature-img" crossorigin="anonymous" />')
-                                .replace(/<img src=\"([^\"]+)\" style=\"height: 80px; margin-bottom: 20px; object-fit: contain;\" \/>/g, '<img src="$1" style="height: 80px; margin-bottom: 20px; object-fit: contain;" crossorigin="anonymous" />')
-                                .replace('</body>', certificatePdfPatch + '\n</body>');
-                        }
-                        return originalWrite(html);
-                    };
-                } catch (error) { console.warn('Certificate PDF direct save patch skipped:', error); }
-                return openedWindow;
-            };
-        })();
-    </script>
-
 </head>
 <body>
     <div id="root"></div>
+    <!-- Esta linha é essencial para o Vercel/Hostinger carregar o app -->
     <script type="module" src="./index.tsx"></script>
 </body>
 </html>
