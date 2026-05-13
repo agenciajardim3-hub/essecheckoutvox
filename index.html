@@ -138,32 +138,42 @@
         'https://connect.facebook.net/en_US/fbevents.js');
     </script>
 
-    <!-- Ajuste visual: menu Automação WhatsApp -> Automação -->
+    <!-- Ajustes visuais temporários de menu -->
     <script>
         (function () {
-            function renameAutomationMenu() {
+            function renameMenus() {
                 try {
                     document.querySelectorAll('button').forEach(function (button) {
-                        if (button.textContent && button.textContent.includes('Automação WhatsApp')) {
+                        if (!button.textContent) return;
+
+                        if (button.textContent.includes('Automação WhatsApp')) {
                             button.childNodes.forEach(function (node) {
                                 if (node.nodeType === Node.TEXT_NODE && node.textContent.includes('Automação WhatsApp')) {
                                     node.textContent = node.textContent.replace('Automação WhatsApp', 'Automação');
                                 }
                             });
                         }
+
+                        if (button.textContent.includes('2️⃣ Enviar Certificados')) {
+                            button.childNodes.forEach(function (node) {
+                                if (node.nodeType === Node.TEXT_NODE && node.textContent.includes('2️⃣ Enviar Certificados')) {
+                                    node.textContent = node.textContent.replace('2️⃣ Enviar Certificados', '2️⃣ Certificados em Massa');
+                                }
+                            });
+                        }
                     });
                 } catch (error) {
-                    console.warn('Não foi possível renomear o menu de automação:', error);
+                    console.warn('Não foi possível renomear menus:', error);
                 }
             }
 
             if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', renameAutomationMenu);
+                document.addEventListener('DOMContentLoaded', renameMenus);
             } else {
-                renameAutomationMenu();
+                renameMenus();
             }
 
-            new MutationObserver(renameAutomationMenu).observe(document.documentElement, {
+            new MutationObserver(renameMenus).observe(document.documentElement, {
                 childList: true,
                 subtree: true
             });
