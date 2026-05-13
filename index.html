@@ -24,6 +24,47 @@
         img, svg, video, canvas { max-width: 100%; }
         input, select, textarea, button { font-family: inherit; }
 
+        .vox-download-panel {
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            z-index: 999999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 340px;
+        }
+        .vox-download-hint {
+            background: #ffffff;
+            border: 1px solid #dbeafe;
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
+            border-radius: 18px;
+            padding: 14px 16px;
+            color: #1f2937;
+            font-size: 13px;
+            line-height: 1.4;
+            font-weight: 700;
+        }
+        .vox-download-btn {
+            border: 0;
+            border-radius: 18px;
+            padding: 16px 22px;
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+            color: #ffffff;
+            font-size: 14px;
+            line-height: 1.1;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            cursor: pointer;
+            box-shadow: 0 18px 35px rgba(37, 99, 235, 0.28);
+        }
+        .vox-download-btn:hover { transform: translateY(-1px); }
+
+        @media print {
+            .vox-download-panel { display: none !important; }
+        }
+
         @media (max-width: 640px) {
             body { background-color: #f1f5f9; }
             #root { width: 100%; overflow-x: hidden; }
@@ -41,6 +82,8 @@
             .rounded-\[2rem\] { border-radius: 22px !important; }
             .tracking-widest { letter-spacing: 0.08em !important; }
             .shadow-2xl { box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12) !important; }
+            .vox-download-panel { left: 12px; right: 12px; bottom: 12px; max-width: none; }
+            .vox-download-btn { width: 100%; padding: 17px 18px; }
         }
     </style>
     
@@ -182,10 +225,21 @@
                     .replace(/'/g, '&#039;');
             }
 
+            function withDownloadParam(url) {
+                try {
+                    if (!url) return '';
+                    const parsed = new URL(url, window.location.origin);
+                    parsed.searchParams.set('download', '1');
+                    return parsed.toString();
+                } catch {
+                    return url || '';
+                }
+            }
+
             function buildCertificateEmail(payload) {
                 const name = escapeMail(payload.name || 'aluno');
                 const product = escapeMail(payload.productName || 'Curso Vox Marketing Academy');
-                const certificateUrl = escapeMail(payload.certificateUrl || '');
+                const certificateUrl = escapeMail(withDownloadParam(payload.certificateUrl || ''));
 
                 return `
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111827;">
@@ -205,7 +259,7 @@
             </div>
             <h1 style="margin:22px 0 10px;font-size:28px;line-height:1.2;color:#111827;font-weight:900;">Parabéns, ${name}!</h1>
             <p style="margin:0 auto;font-size:16px;line-height:1.65;color:#4b5563;max-width:520px;">
-              Seu certificado referente ao <strong style="color:#111827;">${product}</strong> foi gerado com sucesso e já está pronto para visualização.
+              Seu certificado referente ao <strong style="color:#111827;">${product}</strong> foi gerado com sucesso e já está pronto para baixar.
             </p>
           </td>
         </tr>
@@ -214,9 +268,9 @@
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:18px;width:100%;max-width:520px;">
               <tr>
                 <td style="padding:22px;text-align:left;">
-                  <div style="font-size:12px;color:#6b7280;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Como acessar</div>
+                  <div style="font-size:12px;color:#6b7280;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Como baixar</div>
                   <div style="font-size:15px;line-height:1.55;color:#374151;">
-                    Clique no botão abaixo para abrir seu certificado oficial. Depois, você pode imprimir ou salvar em PDF diretamente pelo navegador.
+                    Clique no botão abaixo. A página do certificado vai abrir com um botão grande para baixar/salvar em PDF no seu celular ou computador.
                   </div>
                 </td>
               </tr>
@@ -227,7 +281,7 @@
         <tr>
           <td align="center" style="padding:26px 34px 20px;">
             <a href="${certificateUrl}" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#ffffff;text-decoration:none;padding:16px 28px;border-radius:16px;font-size:15px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;box-shadow:0 12px 28px rgba(37,99,235,.22);">
-              Abrir meu certificado
+              Abrir e baixar certificado
             </a>
           </td>
         </tr>
@@ -264,6 +318,7 @@
                         const isCertificate = String(payload.subject || '').toLowerCase().includes('certificado') || payload.certificateUrl;
 
                         if (isCertificate) {
+                            payload.certificateUrl = withDownloadParam(payload.certificateUrl || '');
                             payload.message = buildCertificateEmail(payload);
                             init = Object.assign({}, init, { body: JSON.stringify(payload) });
                         }
@@ -274,6 +329,57 @@
 
                 return originalFetch.call(this, input, init);
             };
+        })();
+    </script>
+
+    <!-- Botão de download dentro da página do certificado -->
+    <script>
+        (function () {
+            function isCertificatePage() {
+                const params = new URLSearchParams(window.location.search);
+                return params.get('mode') === 'certificate';
+            }
+
+            function injectDownloadButton() {
+                if (!isCertificatePage()) return;
+                if (document.getElementById('vox-download-panel')) return;
+
+                const params = new URLSearchParams(window.location.search);
+                const cameFromEmail = params.get('download') === '1';
+
+                const panel = document.createElement('div');
+                panel.id = 'vox-download-panel';
+                panel.className = 'vox-download-panel';
+
+                if (cameFromEmail) {
+                    const hint = document.createElement('div');
+                    hint.className = 'vox-download-hint';
+                    hint.innerHTML = 'Seu certificado está pronto. Clique abaixo para baixar/salvar em PDF.';
+                    panel.appendChild(hint);
+                }
+
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'vox-download-btn';
+                button.textContent = '📥 Baixar certificado em PDF';
+                button.onclick = function () {
+                    window.print();
+                };
+
+                panel.appendChild(button);
+                document.body.appendChild(panel);
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', injectDownloadButton);
+            } else {
+                injectDownloadButton();
+            }
+
+            new MutationObserver(injectDownloadButton).observe(document.documentElement, {
+                childList: true,
+                subtree: true
+            });
         })();
     </script>
 
