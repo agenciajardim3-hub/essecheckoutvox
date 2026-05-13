@@ -1,8 +1,14 @@
 // supabase/functions/send-ticket-email/index.ts
-// Envia e-mail de ingresso/certificado usando Resend.
+// Envia e-mail de ingresso/certificado usando SMTP da Hostinger via Nodemailer.
 // Secrets necessários no Supabase:
-// RESEND_API_KEY
-// EMAIL_FROM
+// SMTP_HOST=smtp.hostinger.com
+// SMTP_PORT=465
+// SMTP_SECURE=true
+// SMTP_USER=seuemail@seudominio.com
+// SMTP_PASS=senha_do_email
+// EMAIL_FROM=Vox Marketing Academy <seuemail@seudominio.com>
+
+import nodemailer from 'npm:nodemailer@6.9.16';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,6 +30,15 @@ const isEmail = (value?: string) => {
   return !!value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 };
 
+const escapeHtml = (value: string) => {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -37,11 +52,18 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    const emailFrom = Deno.env.get('EMAIL_FROM') || 'Vox Marketing Academy <onboarding@resend.dev>';
+    const smtpHost = Deno.env.get('SMTP_HOST') || 'smtp.hostinger.com';
+    const smtpPort = Number(Deno.env.get('SMTP_PORT') || '465');
+    const smtpSecure = (Deno.env.get('SMTP_SECURE') || 'true') === 'true';
+    const smtpUser = Deno.env.get('SMTP_USER');
+    const smtpPass = Deno.env.get('SMTP_PASS');
+    const emailFrom = Deno.env.get('EMAIL_FROM') || (smtpUser ? `Vox Marketing Academy <${smtpUser}>` : '');
 
-    if (!resendApiKey) {
-      return new Response(JSON.stringify({ error: 'RESEND_API_KEY não configurada no Supabase' }), {
+    if (!smtpUser || !smtpPass || !emailFrom) {
+      return new Response(JSON.stringify({
+        error: 'SMTP não configurado no Supabase',
+        requiredSecrets: ['SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS', 'EMAIL_FROM'],
+      }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -56,16 +78,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const studentName = payload.name || 'aluno';
-    const productName = payload.productName || 'Curso Vox Marketing Academy';
-    const subject = payload.subject || `Seu ingresso - ${productName}`;
+    const studentName = escapeHtml(payload.name || 'aluno');
+    const productName = escapeHtml(payload.productName || 'Curso Vox Marketing Academy');
+    const subject = payload.subject || `Seu ingresso - ${payload.productName || 'Curso Vox Marketing Academy'}`;
     const ticketUrl = payload.ticketUrl || '';
     const certificateUrl = payload.certificateUrl || '';
 
     const text = payload.message || [
-      `Olá ${studentName},`,
+      `Olá ${payload.name || 'aluno'},`,
       '',
-      `Segue seu acesso para ${productName}.`,
+      `Segue seu acesso para ${payload.productName || 'Curso Vox Marketing Academy'}.`,
       ticketUrl ? `Ingresso: ${ticketUrl}` : '',
       certificateUrl ? `Certificado: ${certificateUrl}` : '',
       '',
@@ -88,7 +110,7 @@ Deno.serve(async (req) => {
 
           ${ticketUrl ? `
             <p style="margin: 24px 0;">
-              <a href="${ticketUrl}" style="display: inline-block; background: #2563eb; color: white; text-decoration: none; padding: 14px 22px; border-radius: 14px; font-weight: bold;">
+              <a href="${escapeHtml(ticketUrl)}" style="display: inline-block; background: #2563eb; color: white; text-decoration: none; padding: 14px 22px; border-radius: 14px; font-weight: bold;">
                 Acessar ingresso
               </a>
             </p>
@@ -96,7 +118,7 @@ Deno.serve(async (req) => {
 
           ${certificateUrl ? `
             <p style="margin: 24px 0;">
-              <a href="${certificateUrl}" style="display: inline-block; background: #16a34a; color: white; text-decoration: none; padding: 14px 22px; border-radius: 14px; font-weight: bold;">
+              <a href="${escapeHtml(certificateUrl)}" style="display: inline-block; background: #16a34a; color: white; text-decoration: none; padding: 14px 22px; border-radius: 14px; font-weight: bold;">
                 Acessar certificado
               </a>
             </p>
@@ -104,45 +126,38 @@ Deno.serve(async (req) => {
 
           <p style="font-size: 14px; color: #6b7280; margin-top: 28px;">
             Caso o botão não funcione, copie e cole este link no navegador:<br />
-            ${ticketUrl ? `<span>${ticketUrl}</span>` : ''}
-            ${certificateUrl ? `<br /><span>${certificateUrl}</span>` : ''}
+            ${ticketUrl ? `<span>${escapeHtml(ticketUrl)}</span>` : ''}
+            ${certificateUrl ? `<br /><span>${escapeHtml(certificateUrl)}</span>` : ''}
           </p>
         </div>
       </div>
     `;
 
-    const resendResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${resendApiKey}`,
-        'Content-Type': 'application/json',
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
       },
-      body: JSON.stringify({
-        from: emailFrom,
-        to: [payload.to],
-        subject,
-        html,
-        text,
-      }),
     });
 
-    const result = await resendResponse.json().catch(async () => ({ raw: await resendResponse.text() }));
+    const result = await transporter.sendMail({
+      from: emailFrom,
+      to: payload.to,
+      subject,
+      html,
+      text,
+    });
 
-    if (!resendResponse.ok) {
-      console.error('Erro Resend:', result);
-      return new Response(JSON.stringify({ error: 'Falha ao enviar e-mail', details: result }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    return new Response(JSON.stringify({ success: true, result }), {
+    return new Response(JSON.stringify({ success: true, messageId: result.messageId }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('send-ticket-email error:', error);
-    return new Response(JSON.stringify({ error: error?.message || 'Erro inesperado' }), {
+    console.error('send-ticket-email SMTP error:', error);
+    return new Response(JSON.stringify({ error: error?.message || 'Erro inesperado ao enviar e-mail' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
