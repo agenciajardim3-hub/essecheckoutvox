@@ -12,7 +12,20 @@ const OPERATION_LABELS_TO_HIDE = [
   'Assinaturas',
 ];
 
-const OPERATION_ACTIONS = [
+type OperationItem = {
+  title: string;
+  target: string;
+  fallback?: string;
+  badge: string;
+};
+
+type OperationGroup = {
+  group: string;
+  description: string;
+  items: OperationItem[];
+};
+
+const OPERATION_ACTIONS: OperationGroup[] = [
   {
     group: 'Ingressos',
     description: 'Geração, envio e histórico de ingressos dos alunos.',
@@ -71,8 +84,30 @@ const css = `
   }
   .vox-ops-trigger:hover { transform: translateY(-1px); background: linear-gradient(135deg, #2563eb, #7c3aed); }
   .vox-ops-trigger.active { background: linear-gradient(135deg, #2563eb, #7c3aed); box-shadow: 0 16px 30px rgba(37,99,235,.22); }
+  .vox-ops-floating {
+    position: fixed;
+    right: 22px;
+    top: 92px;
+    z-index: 999998;
+    border: 0;
+    border-radius: 18px;
+    padding: 15px 18px;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    color: #fff;
+    box-shadow: 0 18px 38px rgba(37,99,235,.28);
+    font-size: 12px;
+    font-weight: 950;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    cursor: pointer;
+  }
+  .vox-ops-floating:hover { transform: translateY(-1px); }
   body.vox-ops-hub-active main .max-w-7xl > :not(#vox-operations-hub) { display: none !important; }
-  #vox-operations-hub { display: block; }
+  #vox-operations-hub { display: none; }
+  body.vox-ops-hub-active #vox-operations-hub { display: block !important; }
   .vox-ops-hero {
     border-radius: 32px;
     padding: 28px;
@@ -95,7 +130,12 @@ const css = `
   .vox-ops-action:hover { background:#2563eb; color:#fff; border-color:#2563eb; transform:translateY(-1px); }
   .vox-ops-badge { font-size:10px; font-weight:950; text-transform:uppercase; letter-spacing:.08em; color:#2563eb; background:#dbeafe; border-radius:999px; padding:6px 9px; white-space:nowrap; }
   .vox-ops-action:hover .vox-ops-badge { background:rgba(255,255,255,.2); color:#fff; }
-  @media (max-width: 900px) { .vox-ops-grid { grid-template-columns: 1fr; } .vox-ops-hero { border-radius:24px; padding:22px; } }
+  .vox-ops-close { margin-top: 18px; border: 0; border-radius: 16px; padding: 13px 18px; background: #111827; color: #fff; font-size: 11px; font-weight: 950; text-transform: uppercase; letter-spacing: .08em; }
+  @media (max-width: 900px) {
+    .vox-ops-grid { grid-template-columns: 1fr; }
+    .vox-ops-hero { border-radius:24px; padding:22px; }
+    .vox-ops-floating { top: auto; right: 12px; bottom: 18px; padding: 14px 16px; }
+  }
 `;
 
 function ensureStyle() {
@@ -124,7 +164,7 @@ function clickTarget(primary: string, fallback?: string) {
   setTimeout(() => {
     organizeOperationsMenu();
     injectOperationsBreadcrumb();
-  }, 120);
+  }, 160);
 }
 
 function hideScatteredOperationButtons() {
@@ -132,7 +172,7 @@ function hideScatteredOperationButtons() {
   buttons.forEach((button) => {
     const text = buttonText(button);
     const shouldHide = OPERATION_LABELS_TO_HIDE.some((label) => text.includes(label));
-    const isTrigger = button.classList.contains('vox-ops-trigger');
+    const isTrigger = button.classList.contains('vox-ops-trigger') || button.classList.contains('vox-ops-floating') || button.classList.contains('vox-ops-action');
     if (shouldHide && !isTrigger) button.setAttribute('data-vox-hidden-operation', 'true');
   });
 }
@@ -175,10 +215,15 @@ function buildHub() {
         </div>
       `).join('')}
     </section>
+    <button type="button" class="vox-ops-close">Fechar central</button>
   `;
 
   hub.querySelectorAll<HTMLButtonElement>('.vox-ops-action').forEach((button) => {
     button.addEventListener('click', () => clickTarget(button.dataset.target || '', button.dataset.fallback || undefined));
+  });
+
+  hub.querySelector<HTMLButtonElement>('.vox-ops-close')?.addEventListener('click', () => {
+    document.body.classList.remove('vox-ops-hub-active');
   });
 
   mainContainer.prepend(hub);
@@ -189,8 +234,6 @@ function openOperationsHub() {
   buildHub();
   document.body.classList.add('vox-ops-hub-active');
   document.querySelectorAll('.vox-ops-trigger').forEach((button) => button.classList.add('active'));
-  const mobileClose = Array.from(document.querySelectorAll('button')).find((button) => buttonText(button) === '×');
-  if (mobileClose instanceof HTMLButtonElement) mobileClose.click();
 }
 
 function insertOperationsTrigger() {
@@ -212,6 +255,19 @@ function insertOperationsTrigger() {
   });
 }
 
+function insertFloatingTrigger() {
+  if (document.getElementById('vox-ops-floating')) return;
+  if (!document.querySelector('main')) return;
+
+  const button = document.createElement('button');
+  button.id = 'vox-ops-floating';
+  button.type = 'button';
+  button.className = 'vox-ops-floating';
+  button.innerHTML = '<span>⚙️</span><span>Operações</span>';
+  button.addEventListener('click', openOperationsHub);
+  document.body.appendChild(button);
+}
+
 function injectOperationsBreadcrumb() {
   const main = document.querySelector('main .max-w-7xl');
   if (!main || document.getElementById('vox-operations-return')) return;
@@ -230,6 +286,7 @@ function injectOperationsBreadcrumb() {
 function organizeOperationsMenu() {
   ensureStyle();
   insertOperationsTrigger();
+  insertFloatingTrigger();
   hideScatteredOperationButtons();
 }
 
