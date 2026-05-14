@@ -153,6 +153,7 @@ function buttonText(button: Element) {
 function closeOperationsHub() {
   document.body.classList.remove('vox-ops-hub-active');
   document.querySelectorAll('.vox-ops-trigger').forEach((button) => button.classList.remove('active'));
+  document.getElementById('vox-operations-return')?.remove();
 }
 
 function findButton(label: string) {
@@ -166,10 +167,7 @@ function clickTarget(primary: string, fallback?: string) {
   closeOperationsHub();
   button.removeAttribute('data-vox-hidden-operation');
   button.click();
-  setTimeout(() => {
-    organizeOperationsMenu();
-    injectOperationsBreadcrumb();
-  }, 160);
+  setTimeout(organizeOperationsMenu, 160);
 }
 
 function hideScatteredOperationButtons() {
@@ -271,19 +269,8 @@ function insertFloatingTrigger() {
   document.body.appendChild(button);
 }
 
-function injectOperationsBreadcrumb() {
-  const main = document.querySelector('main .max-w-7xl');
-  if (!main || document.getElementById('vox-operations-return')) return;
-  const pageText = main.textContent || '';
-  const isOperationPage = ['Ingresso', 'Certificado', 'Email', 'E-mail', 'Automação', 'Assinatura', 'QR Code'].some((term) => pageText.includes(term));
-  if (!isOperationPage || document.body.classList.contains('vox-ops-hub-active')) return;
-
-  const bar = document.createElement('div');
-  bar.id = 'vox-operations-return';
-  bar.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:12px 14px;margin-bottom:18px;box-shadow:0 12px 32px rgba(15,23,42,.05);';
-  bar.innerHTML = '<div style="font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.12em;color:#64748b;">Operações centralizadas</div><button type="button" style="background:#111827;color:white;border:0;border-radius:14px;padding:10px 14px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;">Voltar para Operações</button>';
-  bar.querySelector('button')?.addEventListener('click', openOperationsHub);
-  main.prepend(bar);
+function removeOldReturnBar() {
+  document.getElementById('vox-operations-return')?.remove();
 }
 
 function installGlobalMenuClose() {
@@ -306,15 +293,13 @@ function installGlobalMenuClose() {
     if (isOperationsControl) return;
 
     const isNavigationButton = Boolean(button.closest('aside') || button.closest('header') || button.closest('nav'));
-    if (isNavigationButton) {
-      closeOperationsHub();
-      document.getElementById('vox-operations-return')?.remove();
-    }
+    if (isNavigationButton) closeOperationsHub();
   }, true);
 }
 
 function organizeOperationsMenu() {
   ensureStyle();
+  removeOldReturnBar();
   insertOperationsTrigger();
   insertFloatingTrigger();
   hideScatteredOperationButtons();
@@ -323,7 +308,6 @@ function organizeOperationsMenu() {
 
 function boot() {
   organizeOperationsMenu();
-  injectOperationsBreadcrumb();
 }
 
 if (typeof window !== 'undefined') {
