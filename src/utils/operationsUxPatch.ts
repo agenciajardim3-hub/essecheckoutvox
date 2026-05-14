@@ -150,6 +150,11 @@ function buttonText(button: Element) {
   return (button.textContent || '').replace(/\s+/g, ' ').trim();
 }
 
+function closeOperationsHub() {
+  document.body.classList.remove('vox-ops-hub-active');
+  document.querySelectorAll('.vox-ops-trigger').forEach((button) => button.classList.remove('active'));
+}
+
 function findButton(label: string) {
   const buttons = Array.from(document.querySelectorAll('button'));
   return buttons.find((button) => buttonText(button).includes(label)) as HTMLButtonElement | undefined;
@@ -158,7 +163,7 @@ function findButton(label: string) {
 function clickTarget(primary: string, fallback?: string) {
   const button = findButton(primary) || (fallback ? findButton(fallback) : undefined);
   if (!button) return;
-  document.body.classList.remove('vox-ops-hub-active');
+  closeOperationsHub();
   button.removeAttribute('data-vox-hidden-operation');
   button.click();
   setTimeout(() => {
@@ -222,9 +227,7 @@ function buildHub() {
     button.addEventListener('click', () => clickTarget(button.dataset.target || '', button.dataset.fallback || undefined));
   });
 
-  hub.querySelector<HTMLButtonElement>('.vox-ops-close')?.addEventListener('click', () => {
-    document.body.classList.remove('vox-ops-hub-active');
-  });
+  hub.querySelector<HTMLButtonElement>('.vox-ops-close')?.addEventListener('click', closeOperationsHub);
 
   mainContainer.prepend(hub);
 }
@@ -283,11 +286,39 @@ function injectOperationsBreadcrumb() {
   main.prepend(bar);
 }
 
+function installGlobalMenuClose() {
+  if ((window as any).__voxOperationsMenuCloseInstalled) return;
+  (window as any).__voxOperationsMenuCloseInstalled = true;
+
+  document.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement | null;
+    const button = target?.closest('button');
+    if (!button) return;
+
+    const isOperationsControl = Boolean(
+      button.classList.contains('vox-ops-trigger') ||
+      button.classList.contains('vox-ops-floating') ||
+      button.classList.contains('vox-ops-action') ||
+      button.classList.contains('vox-ops-close') ||
+      button.closest('#vox-operations-hub')
+    );
+
+    if (isOperationsControl) return;
+
+    const isNavigationButton = Boolean(button.closest('aside') || button.closest('header') || button.closest('nav'));
+    if (isNavigationButton) {
+      closeOperationsHub();
+      document.getElementById('vox-operations-return')?.remove();
+    }
+  }, true);
+}
+
 function organizeOperationsMenu() {
   ensureStyle();
   insertOperationsTrigger();
   insertFloatingTrigger();
   hideScatteredOperationButtons();
+  installGlobalMenuClose();
 }
 
 function boot() {
