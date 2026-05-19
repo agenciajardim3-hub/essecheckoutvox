@@ -1371,8 +1371,8 @@ export default function App() {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: space-between;
-      padding: 10mm 20mm 10mm;
+      justify-content: center;
+      padding: 8mm 20mm;
       box-shadow: 0 4px 32px rgba(0,0,0,0.18);
     }
 
@@ -1381,6 +1381,7 @@ export default function App() {
       flex-direction: column;
       align-items: center;
       width: 100%;
+      margin-bottom: 8mm;
     }
 
     .mid-section {
@@ -1388,8 +1389,7 @@ export default function App() {
       flex-direction: column;
       align-items: center;
       width: 100%;
-      flex: 1;
-      justify-content: center;
+      margin-bottom: 8mm;
     }
 
     .controls {
