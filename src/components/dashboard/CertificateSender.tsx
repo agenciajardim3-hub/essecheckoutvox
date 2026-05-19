@@ -51,12 +51,14 @@ const getSavedSignature = () => {
   }
 };
 
-const getCertificateUrl = (lead: Lead, signatureUrl: string) => {
+const getCertificateUrl = (name: string, productName: string, date: string, hours: string, instructorName: string, signatureUrl: string) => {
   const url = new URL(window.location.origin);
   url.searchParams.set('mode', 'certificate');
-  url.searchParams.set('checkout', lead.product_id || '');
-  url.searchParams.set('cpf', lead.cpf || '');
-  url.searchParams.set('download', '1');
+  url.searchParams.set('name', name);
+  url.searchParams.set('course', productName);
+  url.searchParams.set('date', date);
+  url.searchParams.set('hours', hours);
+  url.searchParams.set('instructor', instructorName);
   if (signatureUrl) url.searchParams.set('sig', signatureUrl);
   return url.toString();
 };
@@ -151,19 +153,25 @@ const getCertificateEmailHtml = (certificate: GeneratedCertificate) => `
 
 const createCertificate = (lead: Lead, selectedTurma: string): GeneratedCertificate => {
   const savedSignature = getSavedSignature();
+  const name = lead.name || 'Aluno';
+  const productName = lead.product_name || selectedTurma || 'Curso de Tráfego Pago - Meta Ads';
+  const date = new Date().toLocaleDateString('pt-BR');
+  const hours = '8';
+  const instructorName = 'Rodrigo Jardim';
+
   const base = {
     id: crypto.randomUUID(),
     leadId: lead.id,
-    name: lead.name || 'Aluno',
+    name,
     email: lead.email || '',
     cpf: lead.cpf || '',
-    productName: lead.product_name || selectedTurma || 'Curso de Tráfego Pago - Meta Ads',
+    productName,
     turma: lead.turma || selectedTurma,
-    date: new Date().toLocaleDateString('pt-BR'),
-    hours: '8',
-    instructorName: 'Rodrigo Jardim',
+    date,
+    hours,
+    instructorName,
     signatureUrl: savedSignature,
-    certificateUrl: getCertificateUrl(lead, savedSignature),
+    certificateUrl: getCertificateUrl(name, productName, date, hours, instructorName, savedSignature),
     status: 'generated' as const,
     message: savedSignature ? 'Certificado gerado com assinatura e layout oficial' : 'Certificado gerado sem assinatura salva',
   };
