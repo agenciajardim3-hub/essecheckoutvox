@@ -22,5 +22,9 @@ port = 54324
 # To deploy: supabase functions deploy <function-name>
 # Production secrets must be configured in Supabase Dashboard → Edge Functions → Secrets.
 
+[functions.mp-webhook]
+# Mercado Pago não envia JWT do Supabase, então o webhook precisa ser público.
+verify_jwt = false
+
 [auth]
 # Authentication settings (optional)
