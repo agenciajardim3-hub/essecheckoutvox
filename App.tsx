@@ -1315,12 +1315,11 @@ export default function App() {
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=1122, initial-scale=1.0">
   <title>Certificado - ${finalName}</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Great+Vibes&display=swap');
 
-    /* Force A4 landscape for print/PDF */
     @page {
       size: A4 landscape;
       margin: 0;
@@ -1328,14 +1327,33 @@ export default function App() {
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    html, body {
-      width: 297mm;
-      height: 210mm;
-      overflow: hidden;
-      background: white;
-      font-family: 'Montserrat', Arial, sans-serif;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+    /* Screen: show centered card */
+    @media screen {
+      html, body {
+        width: 100%;
+        min-height: 100vh;
+        background: #e5e7eb;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 20px;
+        font-family: 'Montserrat', Arial, sans-serif;
+      }
+    }
+
+    /* Print: exactly A4 landscape, no margins */
+    @media print {
+      html, body {
+        width: 297mm;
+        height: 210mm;
+        margin: 0;
+        padding: 0;
+        background: white;
+        font-family: 'Montserrat', Arial, sans-serif;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .controls { display: none !important; }
     }
 
     .page {
@@ -1348,6 +1366,7 @@ export default function App() {
       align-items: center;
       justify-content: space-between;
       padding: 10mm 20mm 10mm;
+      box-shadow: 0 4px 32px rgba(0,0,0,0.18);
     }
 
     .top-section {
@@ -1508,10 +1527,7 @@ export default function App() {
       text-transform: uppercase;
     }
 
-    @media print {
-      .controls { display: none !important; }
-      html, body { width: 297mm; height: 210mm; }
-    }
+
   </style>
 </head>
 <body>
