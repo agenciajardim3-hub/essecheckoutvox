@@ -1346,8 +1346,24 @@ export default function App() {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
-      padding: 14mm 20mm 10mm;
+      justify-content: space-between;
+      padding: 10mm 20mm 10mm;
+    }
+
+    .top-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+
+    .mid-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      flex: 1;
+      justify-content: center;
     }
 
     .controls {
@@ -1369,35 +1385,35 @@ export default function App() {
     }
 
     .vox-title {
-      font-size: 52px;
+      font-size: 46px;
       font-weight: 900;
       color: #4b5563;
       line-height: 1;
-      letter-spacing: 6px;
+      letter-spacing: 8px;
       text-align: center;
     }
     .vox-subtitle {
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 700;
       color: #0ea5e9;
       letter-spacing: 6px;
-      margin-top: 2mm;
-      margin-bottom: 6mm;
+      margin-top: 1.5mm;
+      margin-bottom: 0;
       text-align: center;
     }
     .cert-title {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
       color: #6b7280;
-      letter-spacing: 3px;
-      margin-bottom: 6mm;
+      letter-spacing: 4px;
+      margin-bottom: 0;
       text-align: center;
     }
     .student-name {
-      font-size: 30px;
+      font-size: 32px;
       font-weight: 400;
       color: #6b7280;
-      margin-bottom: 5mm;
+      margin-bottom: 4mm;
       text-transform: uppercase;
       text-align: center;
       letter-spacing: 1px;
@@ -1406,25 +1422,23 @@ export default function App() {
       font-size: 13px;
       font-weight: 700;
       color: #000;
-      margin-bottom: 3mm;
+      margin-bottom: 2.5mm;
       text-align: center;
     }
     .course-desc-text {
-      font-size: 11px;
+      font-size: 10.5px;
       line-height: 1.55;
       color: #374151;
-      max-width: 220mm;
+      max-width: 230mm;
       margin: 0 auto;
       text-align: center;
     }
 
     .footer {
-      margin-top: auto;
       width: 100%;
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
-      padding-top: 4mm;
     }
 
     /* Medal */
@@ -1506,15 +1520,20 @@ export default function App() {
   </div>
 
   <div class="page">
-    <div class="vox-title">VOX</div>
-    <div class="vox-subtitle">MARKETING ACADEMY</div>
-    <div class="cert-title">CERTIFICADO DE CONCLUSÃO</div>
-    <div class="student-name">${finalName}</div>
-    <div class="course-desc-bold">Completou com êxito o ${finalCourse}, com carga horária de ${certHours} horas.</div>
-    <div class="course-desc-text">
-      Na Vox Marketing Academy, ministrado por ${certInstructor}, no dia ${finalDate}.
-      Durante o curso, demonstrou dedicação e empenho exemplares, adquirindo habilidades
-      valiosas em estratégias de tráfego pago. Parabéns pela conclusão bem-sucedida deste curso!
+    <div class="top-section">
+      <div class="vox-title">VOX</div>
+      <div class="vox-subtitle">MARKETING ACADEMY</div>
+      <div class="cert-title">CERTIFICADO DE CONCLUSÃO</div>
+    </div>
+
+    <div class="mid-section">
+      <div class="student-name">${finalName}</div>
+      <div class="course-desc-bold">Completou com êxito o ${finalCourse}, com carga horária de ${certHours} horas.</div>
+      <div class="course-desc-text">
+        Na Vox Marketing Academy, ministrado por ${certInstructor}, no dia ${finalDate}.
+        Durante o curso, demonstrou dedicação e empenho exemplares, adquirindo habilidades
+        valiosas em estratégias de tráfego pago. Parabéns pela conclusão bem-sucedida deste curso!
+      </div>
     </div>
 
     <div class="footer">
