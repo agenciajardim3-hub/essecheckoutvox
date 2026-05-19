@@ -120,6 +120,82 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Se o pagamento for aprovado ('Pago'), dispara automações (WhatsApp via UazAPI e e-mail)
+    const lead = Array.isArray(updatedLead) && updatedLead.length > 0 ? updatedLead[0] : null;
+    if (lead && normalizedLeadStatus === 'Pago') {
+      const UAZAPI_URL = Deno.env.get('UAZAPI_URL');
+      const UAZAPI_KEY = Deno.env.get('UAZAPI_KEY');
+      const FRONTEND_URL = Deno.env.get('FRONTEND_URL') || 'https://payvoxmarketingacademy.online';
+
+      const ticketUrl = `${FRONTEND_URL}/?mode=ticket&checkout=${encodeURIComponent(lead.product_id || '')}&cpf=${encodeURIComponent(lead.cpf || '')}`;
+
+      // 1. Envia mensagem via WhatsApp usando UazAPI se os secrets estiverem configurados
+      if (UAZAPI_URL && UAZAPI_KEY && lead.phone) {
+        try {
+          let cleanPhone = lead.phone.replace(/\D/g, '');
+          if (cleanPhone.length > 0) {
+            if (!cleanPhone.startsWith('55') && cleanPhone.length >= 10 && cleanPhone.length <= 11) {
+              cleanPhone = '55' + cleanPhone;
+            }
+
+            const messageText = `Olá ${lead.name || 'aluno'}!\n\nSeu pagamento para *${lead.product_name || 'Curso'}* foi confirmado com sucesso. 🎉\n\n🎫 *Seu Ingresso:* ${ticketUrl}\n\nObrigado por confiar na Vox Marketing Academy! 🙏`;
+
+            const uazBaseUrl = UAZAPI_URL.replace(/\/$/, '');
+            const waResponse = await fetch(`${uazBaseUrl}/send/text`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'token': UAZAPI_KEY,
+              },
+              body: JSON.stringify({
+                number: cleanPhone,
+                text: messageText,
+                delay: 0,
+                linkPreview: false,
+              }),
+            });
+
+            if (!waResponse.ok) {
+              console.error('Erro ao enviar WhatsApp via UazAPI:', await waResponse.text());
+            } else {
+              console.log('WhatsApp enviado com sucesso para:', cleanPhone);
+            }
+          }
+        } catch (waError) {
+          console.error('Erro ao processar envio de WhatsApp:', waError);
+        }
+      }
+
+      // 2. Envia email com ingresso usando a edge function send-ticket-email
+      if (lead.email) {
+        try {
+          const emailResponse = await fetch(`${PROJECT_URL}/functions/v1/send-ticket-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+              'apikey': SERVICE_ROLE_KEY,
+            },
+            body: JSON.stringify({
+              to: lead.email,
+              name: lead.name || 'Aluno',
+              subject: `Seu ingresso - ${lead.product_name || 'Curso Vox Marketing Academy'}`,
+              productName: lead.product_name || 'Curso Vox Marketing Academy',
+              ticketUrl: ticketUrl,
+            }),
+          });
+
+          if (!emailResponse.ok) {
+            console.error('Erro ao enviar email de ingresso:', await emailResponse.text());
+          } else {
+            console.log('Email de ingresso enviado com sucesso para:', lead.email);
+          }
+        } catch (emailError) {
+          console.error('Erro ao processar envio de email:', emailError);
+        }
+      }
+    }
+
     return new Response(JSON.stringify({
       received: true,
       payment_id: paymentId,

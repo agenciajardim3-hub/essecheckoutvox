@@ -168,15 +168,43 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ userRo
     setSuccessMessage('');
 
     try {
-      if (uazapiUrl.includes('http') && uazapiKey.length > 10 && whatsappNumber.match(/^\d{10,15}$/)) {
+      // Normaliza a URL para remover a barra final
+      const baseUrl = uazapiUrl.replace(/\/$/, '');
+      
+      if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+        throw new Error('A URL Base deve iniciar com http:// ou https://');
+      }
+
+      // Chamada real na UazAPI para checar status da instância
+      const response = await fetch(`${baseUrl}/instance/status`, {
+        method: 'GET',
+        headers: {
+          'token': uazapiKey,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`UazAPI retornou status HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Checa se o status retornado indica conexão ou sucesso básico da API key
+      const isConnectedStatus = data?.status === 'connected' || data?.instanceStatus === 'connected' || data?.connected === true || !!data;
+
+      if (isConnectedStatus) {
         setIsConnected(true);
-        setSuccessMessage('✅ Conexão salva com sucesso!');
-        localStorage.setItem('vox_uazapi_url', uazapiUrl);
+        setSuccessMessage('✅ Conexão testada e salva com sucesso!');
+        localStorage.setItem('vox_uazapi_url', baseUrl);
         localStorage.setItem('vox_uazapi_key', uazapiKey);
         localStorage.setItem('vox_whatsapp_number', whatsappNumber);
       } else {
-        setErrorMessage('Dados inválidos. Verifique URL, API Key e número.');
-        setIsConnected(false);
+        setIsConnected(true);
+        setSuccessMessage('⚠️ Conectado à API, mas a instância do WhatsApp está desconectada ou lendo QR Code.');
+        localStorage.setItem('vox_uazapi_url', baseUrl);
+        localStorage.setItem('vox_uazapi_key', uazapiKey);
+        localStorage.setItem('vox_whatsapp_number', whatsappNumber);
       }
     } catch (err) {
       setErrorMessage(`Erro ao conectar: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
@@ -239,22 +267,80 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ userRo
         .replaceAll('{link_ingresso}', 'https://payvoxmarketingacademy.online/?mode=ticket')
         .replaceAll('{link_certificado}', 'https://payvoxmarketingacademy.online/?mode=certificate');
 
-      console.log('Teste de automação:', {
-        channel: editingRule.channel,
-        trigger: editingRule.trigger,
-        recipientMode: editingRule.recipientMode,
-        targetTurma: editingRule.targetTurma,
-        targetName: editingRule.targetName,
-        targetEmail: editingRule.targetEmail,
-        targetPhone: editingRule.targetPhone,
-        subject: editingRule.subject,
-        body: testMessage,
-      });
+      // Se o canal for WhatsApp ou Ambos, envia pelo WhatsApp
+      if (editingRule.channel === 'whatsapp' || editingRule.channel === 'ambos') {
+        if (!uazapiUrl || !uazapiKey) {
+          throw new Error('Configure e teste a conexão do WhatsApp primeiro');
+        }
 
-      setSuccessMessage(`✅ Teste preparado para ${channelLabels[editingRule.channel]} (${recipientLabels[editingRule.recipientMode]}).`);
-      setTimeout(() => setSuccessMessage(''), 3000);
+        const destPhone = editingRule.recipientMode === 'person' && editingRule.targetPhone 
+          ? editingRule.targetPhone.replace(/\D/g, '') 
+          : whatsappNumber.replace(/\D/g, '');
+
+        if (!destPhone) {
+          throw new Error('Nenhum número de telefone de destino para o teste');
+        }
+
+        let cleanPhone = destPhone;
+        if (!cleanPhone.startsWith('55') && cleanPhone.length >= 10 && cleanPhone.length <= 11) {
+          cleanPhone = '55' + cleanPhone;
+        }
+
+        const baseUrl = uazapiUrl.replace(/\/$/, '');
+        const response = await fetch(`${baseUrl}/send/text`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'token': uazapiKey
+          },
+          body: JSON.stringify({
+            number: cleanPhone,
+            text: testMessage,
+            delay: 0,
+            linkPreview: false
+          })
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`UazAPI retornou erro: ${errText || response.statusText}`);
+        }
+      }
+
+      // Se o canal for Email ou Ambos, envia pelo Email (usando a edge function send-email)
+      if (editingRule.channel === 'email' || editingRule.channel === 'ambos') {
+        const destEmail = editingRule.recipientMode === 'person' && editingRule.targetEmail
+          ? editingRule.targetEmail
+          : localStorage.getItem('vox_test_email') || 'teste@exemplo.com';
+
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://emdsgvuqrhpjdgrgaslo.supabase.co';
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+        const response = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseKey}`
+          },
+          body: JSON.stringify({
+            email: destEmail,
+            name: previewName,
+            subject: editingRule.subject || 'Teste de Automação',
+            body: testMessage,
+            type: 'custom'
+          })
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Serviço de Email retornou erro: ${errText || response.statusText}`);
+        }
+      }
+
+      setSuccessMessage(`✅ Teste enviado com sucesso via ${channelLabels[editingRule.channel]}!`);
+      setTimeout(() => setSuccessMessage(''), 5000);
     } catch (err) {
-      setErrorMessage(`Erro ao testar: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      setErrorMessage(`Erro ao testar envio: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
     } finally {
       setIsTesting(false);
     }
