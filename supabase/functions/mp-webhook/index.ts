@@ -1,6 +1,6 @@
 // supabase/functions/mp-webhook/index.ts
 // Recebe notificações do Mercado Pago e atualiza o lead para Pago quando o pagamento for aprovado.
-// Configure os secrets SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY e MP_ACCESS_TOKEN.
+// Configure os secrets PROJECT_URL, SERVICE_ROLE_KEY e MP_ACCESS_TOKEN.
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,13 +14,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const PROJECT_URL = Deno.env.get('PROJECT_URL');
+    const SERVICE_ROLE_KEY = Deno.env.get('SERVICE_ROLE_KEY');
     const MP_ACCESS_TOKEN = Deno.env.get('MP_ACCESS_TOKEN');
 
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !MP_ACCESS_TOKEN) {
+    if (!PROJECT_URL || !SERVICE_ROLE_KEY || !MP_ACCESS_TOKEN) {
       return new Response(JSON.stringify({
-        error: 'Secrets ausentes. Configure SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY e MP_ACCESS_TOKEN.',
+        error: 'Secrets ausentes. Configure PROJECT_URL, SERVICE_ROLE_KEY e MP_ACCESS_TOKEN.',
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -44,7 +44,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // O Mercado Pago pode enviar diferentes tipos de notificação. Aqui tratamos pagamento.
     if (topic && !String(topic).includes('payment')) {
       return new Response(JSON.stringify({ received: true, ignored: topic }), {
         status: 200,
@@ -100,11 +99,11 @@ Deno.serve(async (req) => {
       ticket_generated: status === 'approved',
     };
 
-    const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/leads?id=eq.${leadId}`, {
+    const updateResponse = await fetch(`${PROJECT_URL}/rest/v1/leads?id=eq.${leadId}`, {
       method: 'PATCH',
       headers: {
-        apikey: SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
         'Content-Type': 'application/json',
         Prefer: 'return=representation',
       },
