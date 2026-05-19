@@ -1,5 +1,4 @@
-
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Check, GraduationCap, Loader2 } from 'lucide-react';
 import { AppConfig, CustomerData, MultiTicketPurchase, Coupon } from '../../types';
 import { CheckoutForm } from './CheckoutForm';
@@ -46,35 +45,72 @@ export const ClientView: React.FC<ClientViewProps> = ({
     const supabase = useSupabase();
     const hasTrackedView = useRef(false);
 
-    // Get variant from URL if present
     const effectiveConfig = React.useMemo(() => {
         const params = new URLSearchParams(window.location.search);
         const variantId = params.get('variant');
+        const checkoutSlug = params.get('p') || params.get('checkout') || params.get('slug') || '';
 
-        if (variantId && config.variations && config.variations.length > 0) {
-            const selectedVariation = config.variations.find(v => v.id === variantId);
+        if (config.variations && config.variations.length > 0) {
+            const selectedVariation = config.variations.find(v =>
+                (!!variantId && v.id === variantId) ||
+                (!!checkoutSlug && v.slug === checkoutSlug)
+            );
+
             if (selectedVariation) {
-                // Merge variant data into config
                 return {
                     ...config,
+                    productName: selectedVariation.name
+                        ? `${config.productName} - ${selectedVariation.name}`
+                        : config.productName,
                     productPrice: selectedVariation.price,
                     ticketAmount: selectedVariation.ticketAmount || config.ticketAmount || 1,
                     mercadoPagoLink: selectedVariation.mercadoPagoLink || config.mercadoPagoLink,
                     useMpApi: selectedVariation.useMpApi !== undefined ? selectedVariation.useMpApi : config.useMpApi,
+                    slug: selectedVariation.slug || config.slug,
                     _selectedVariationName: selectedVariation.name
-                };
+                } as AppConfig & { _selectedVariationName?: string };
             }
         }
 
         return config;
     }, [config]);
 
+    const handleSubmitWithVariation = async (purchase: MultiTicketPurchase) => {
+        const purchaseWithConfig = {
+            ...purchase,
+            checkoutConfig: effectiveConfig
+        } as MultiTicketPurchase & { checkoutConfig: AppConfig };
+
+        sessionStorage.setItem('vox_effective_checkout_config', JSON.stringify({
+            id: effectiveConfig.id,
+            productName: effectiveConfig.productName,
+            productPrice: effectiveConfig.productPrice,
+            mercadoPagoLink: effectiveConfig.mercadoPagoLink,
+            useMpApi: effectiveConfig.useMpApi,
+            slug: effectiveConfig.slug,
+            turma: effectiveConfig.turma
+        }));
+
+        await onSubmit(purchaseWithConfig);
+
+        const isManualVariationPayment =
+            !isTicketMode &&
+            !isRegistrationMode &&
+            !effectiveConfig.useMpApi &&
+            !!effectiveConfig.mercadoPagoLink &&
+            effectiveConfig.mercadoPagoLink !== config.mercadoPagoLink;
+
+        if (isManualVariationPayment) {
+            setTimeout(() => {
+                window.location.href = effectiveConfig.mercadoPagoLink;
+            }, 800);
+        }
+    };
+
     useEffect(() => {
-        // Track checkout view only once per checkout per browser session.
-        // This avoids repeated Supabase writes on refreshes, Android tab restores and remounts.
         if (hasTrackedView.current || !supabase || !effectiveConfig.id) return;
 
-        const trackingKey = `vox_checkout_view_tracked_${effectiveConfig.id}`;
+        const trackingKey = `vox_checkout_view_tracked_${effectiveConfig.id}_${effectiveConfig.slug || 'main'}`;
         if (sessionStorage.getItem(trackingKey) === 'true') {
             hasTrackedView.current = true;
             return;
@@ -103,7 +139,6 @@ export const ClientView: React.FC<ClientViewProps> = ({
 
         trackView();
 
-        // Meta Pixel - ViewContent event
         if (window.fbq && effectiveConfig.metaPixelId) {
             window.fbq('track', 'ViewContent', {
                 content_type: 'product',
@@ -114,6 +149,7 @@ export const ClientView: React.FC<ClientViewProps> = ({
             });
         }
     }, [effectiveConfig, supabase]);
+
     return (
         <div className="min-h-screen bg-[#f1f5f9] flex flex-col lg:flex-row items-center justify-start lg:justify-center px-3 py-4 sm:p-6 lg:p-12 gap-5 sm:gap-8 lg:gap-20 sm:py-10 lg:py-16 overflow-x-hidden">
             {showSuccess && (
@@ -127,7 +163,6 @@ export const ClientView: React.FC<ClientViewProps> = ({
                 />
             )}
 
-            {/* Payment Redirect Warning Overlay */}
             {showPaymentRedirect && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-6">
                     <div className="bg-white rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 shadow-2xl max-w-lg w-full text-center animate-in zoom-in-95 duration-300">
@@ -158,7 +193,6 @@ export const ClientView: React.FC<ClientViewProps> = ({
                 </div>
             )}
 
-            {/* Left Column - Product Info */}
             <div className="hidden lg:block max-w-md w-full animate-in fade-in slide-in-from-left-8 duration-700">
                 <div className="bg-white p-12 rounded-[4rem] shadow-2xl border border-gray-100">
                     <div className="relative group">
@@ -186,7 +220,7 @@ export const ClientView: React.FC<ClientViewProps> = ({
 
             <CheckoutForm
                 config={effectiveConfig}
-                onSubmit={onSubmit}
+                onSubmit={handleSubmitWithVariation}
                 isSubmitting={isSubmitting}
                 isTicketMode={isTicketMode}
                 isRegistrationMode={isRegistrationMode}
