@@ -12,6 +12,7 @@ export const CustomEmailSender: React.FC<CustomEmailSenderProps> = ({ userRole }
     const [recipientEmail, setRecipientEmail] = useState('');
     const [subject, setSubject] = useState('');
     const [htmlBody, setHtmlBody] = useState('');
+    const [imageUrl, setImageUrl] = useState('');
     const [isSending, setIsSending] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
@@ -48,9 +49,12 @@ export const CustomEmailSender: React.FC<CustomEmailSenderProps> = ({ userRole }
                     name: isTest ? 'Teste' : 'Destinatário',
                     subject,
                     productName: 'Vox Marketing Academy',
-                    message: htmlBody,
+                    message: imageUrl.trim()
+                        ? `${htmlBody}\n<div style="text-align:center;margin:20px 0;"><img src="${imageUrl.trim()}" alt="Imagem" style="max-width:100%;height:auto;border-radius:12px;" /></div>`
+                        : htmlBody,
                     ticketUrl: '',
-                    certificateUrl: ''
+                    certificateUrl: '',
+                    preserveCertificateLayout: true
                 })
             });
 
@@ -138,6 +142,22 @@ export const CustomEmailSender: React.FC<CustomEmailSenderProps> = ({ userRole }
                     />
                     <p className="text-xs text-gray-500 mt-2">
                         💡 Dica: Use HTML para formatação. Exemplo: <code className="bg-gray-100 px-2 py-1 rounded">&lt;b&gt;texto em negrito&lt;/b&gt;</code>
+                    </p>
+                </div>
+
+                <div>
+                    <label className="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-widest">
+                        Imagem / Mídia (URL)
+                    </label>
+                    <input
+                        type="url"
+                        placeholder="https://exemplo.com/imagem.jpg (opcional)"
+                        value={imageUrl}
+                        onChange={(e) => setImageUrl(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 font-bold text-sm"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                        🖼️ Cole a URL da imagem JPEG/PNG para incluir no corpo do email (opcional)
                     </p>
                 </div>
 
