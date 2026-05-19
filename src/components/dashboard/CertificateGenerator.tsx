@@ -31,7 +31,12 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
   const [selectedTurma, setSelectedTurma] = useState('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
-  const turmas = Array.from(new Set(leads.map(l => l.turma).filter(Boolean))) as string[];
+  const turmas = Array.from(new Set([
+    ...leads.map(l => l.turma),
+    ...leads.map(l => l.product_name),
+    ...allCheckouts.map(c => c.turma),
+    ...allCheckouts.map(c => c.productName)
+  ].filter(Boolean))) as string[];
 
   // Update signature when defaultSignature changes from SignatureManager
   useEffect(() => {
@@ -44,7 +49,7 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
   }, [defaultSignature]);
 
   const filteredLeads = leads.filter(l => {
-    const matchTurma = selectedTurma ? l.turma === selectedTurma : true;
+    const matchTurma = selectedTurma ? (l.turma === selectedTurma || l.product_name === selectedTurma) : true;
     const matchSearch = searchLead
       ? l.name.toLowerCase().includes(searchLead.toLowerCase()) || (l.phone && l.phone.includes(searchLead))
       : true;
