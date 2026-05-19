@@ -1504,11 +1504,17 @@ export default function App() {
 
             @media print {
               body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-              @page { size: landscape; margin: 0; }
+              @page { size: 1122px 794px landscape; margin: 0; }
+              .controls { display: none !important; }
             }
           </style>
         </head>
         <body>
+          <div class="controls" style="position:fixed;top:16px;right:16px;z-index:9999;">
+            <button onclick="window.print()" style="border:0;border-radius:12px;padding:12px 20px;color:white;font-weight:800;cursor:pointer;background:#2563eb;font-size:14px;">
+              📥 Salvar como PDF
+            </button>
+          </div>
           <div class="certificate-wrapper">
             <div class="content">
               <div class="header">
@@ -1545,37 +1551,19 @@ export default function App() {
               </div>
             </div>
           </div>
-          <script>
-            window.onload = function() { 
-              setTimeout(function() { window.print(); }, 500);
-            };
-          </script>
         </body>
       </html>
     `;
+
+    // Render directly in the current document instead of opening a new window.
+    // This ensures @page landscape is respected when clicking the link from email.
+    document.open();
+    document.write(certificateHtml);
+    document.close();
+
+    // Return null — the document has been fully replaced above.
+    return null;
     
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(certificateHtml);
-      printWindow.document.close();
-    }
-    
-    return (
-      <div ref={containerRef}>
-        <RefreshButton />
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 shadow-xl text-center max-w-md">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-black text-gray-900 mb-2">Abrindo Certificado...</h2>
-            <p className="text-gray-600">O certificado será aberto em uma nova aba para impressão.</p>
-          </div>
-        </div>
-      </div>
-    );
   }
 
   return (
