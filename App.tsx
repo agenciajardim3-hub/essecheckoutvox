@@ -1308,6 +1308,7 @@ export default function App() {
     
     const certHours = query.get('hours') || '8';
     const certInstructor = query.get('instructor') || 'Rodrigo Jardim';
+    const certSig = query.get('sig') || '';
     
     // Beautiful certificate layout for printing/PDF
     const certificateHtml = `
@@ -1538,7 +1539,7 @@ export default function App() {
                 </div>
                 
                 <div class="signature-box">
-                  <div class="signature-text">${certInstructor}</div>
+                  ${certSig ? `<img src="${certSig}" alt="Assinatura" style="height:80px;max-width:280px;object-fit:contain;margin-bottom:-10px;display:inline-block;" />` : `<div class="signature-text">${certInstructor}</div>`}
                   <div class="signature-line"></div>
                 </div>
               </div>

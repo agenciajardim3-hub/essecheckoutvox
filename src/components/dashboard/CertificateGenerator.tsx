@@ -368,7 +368,10 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
       const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
       const SEND_EMAIL_ENDPOINT = 'https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email';
 
-      const certificateUrl = `${window.location.origin}/?mode=certificate&name=${encodeURIComponent(certGenData.name)}&course=${encodeURIComponent(certGenData.courseName)}&date=${encodeURIComponent(certGenData.date)}&hours=${encodeURIComponent(certGenData.hours)}&instructor=${encodeURIComponent(certGenData.instructorName)}`;
+      let certificateUrl = `${window.location.origin}/?mode=certificate&name=${encodeURIComponent(certGenData.name)}&course=${encodeURIComponent(certGenData.courseName)}&date=${encodeURIComponent(certGenData.date)}&hours=${encodeURIComponent(certGenData.hours)}&instructor=${encodeURIComponent(certGenData.instructorName)}`;
+      if (certGenData.signatureUrl) {
+        certificateUrl += `&sig=${encodeURIComponent(certGenData.signatureUrl)}`;
+      }
 
       const emailHtml = `
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0;padding:0;background:#eef1f5;font-family:Arial,Helvetica,sans-serif;">
