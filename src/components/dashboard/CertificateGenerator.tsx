@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Input } from '../ui/Input';
-import { Printer, Loader2, CheckCircle, Upload, MessageCircle, Download } from 'lucide-react';
+import { Printer, Loader2, CheckCircle, Upload, MessageCircle, Download, Mail } from 'lucide-react';
 import { AppConfig, Lead } from '../../types';
 
 interface CertificateGeneratorProps {
@@ -15,6 +14,7 @@ interface CertificateGeneratorProps {
 export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allCheckouts, uploadService, isUploading, leads = [], defaultSignature = '' }) => {
   const [certGenData, setCertGenData] = useState({
     name: '',
+    email: '',
     phone: '',
     courseName: 'Curso de Tráfego Pago - Meta Ads',
     date: new Date().toLocaleDateString('pt-BR'),
@@ -29,6 +29,7 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
   const [searchLead, setSearchLead] = useState('');
   const [showLeadsDrop, setShowLeadsDrop] = useState(false);
   const [selectedTurma, setSelectedTurma] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   const turmas = Array.from(new Set(leads.map(l => l.turma).filter(Boolean))) as string[];
 
@@ -346,6 +347,92 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
     window.open(`https://wa.me/${prefix}${num}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
+  const handleEmail = async () => {
+    if (!certGenData.email) {
+      alert("Preencha o e-mail do aluno para enviar o certificado.");
+      return;
+    }
+    if (!certGenData.name || !certGenData.courseName) {
+      alert('Preencha o nome do aluno e do curso para gerar o certificado!');
+      return;
+    }
+
+    setIsSendingEmail(true);
+
+    try {
+      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+      const SEND_EMAIL_ENDPOINT = 'https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email';
+
+      const emailHtml = `
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0;padding:0;background:#eef1f5;font-family:Arial,Helvetica,sans-serif;">
+  <tr>
+    <td align="center" style="padding:28px 12px;">
+      <div style="width:1122px;height:794px;background:#ffffff;position:relative;overflow:hidden;box-sizing:border-box;box-shadow:0 22px 70px rgba(15,23,42,0.16);border-radius:8px;margin:0 auto;">
+        <div style="position:relative;z-index:10;padding:50px 80px;text-align:center;height:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;">
+          <div style="margin-top:20px;">
+            ${certGenData.logoUrl ? `<img src="${certGenData.logoUrl}" style="height: 80px; margin-bottom: 20px; object-fit: contain;" />` : `<div style="font-size:72px;font-weight:900;color:#4b5563;margin:0;line-height:1;letter-spacing:10px;">VOX</div><div style="font-size:14px;font-weight:700;color:#0ea5e9;letter-spacing:8px;margin-top:5px;margin-bottom:30px;">MARKETING ACADEMY</div>`}
+          </div>
+          <div style="font-size:28px;font-weight:700;color:#6b7280;letter-spacing:4px;margin-bottom:40px;">CERTIFICADO DE CONCLUSÃO</div>
+          <div style="font-size:42px;font-weight:400;color:#6b7280;margin-bottom:40px;text-transform:uppercase;letter-spacing:1px;">${certGenData.name}</div>
+          <div style="font-size:18px;font-weight:700;color:#000;margin-bottom:20px;max-width:850px;line-height:1.35;">
+            Completou com êxito o ${certGenData.courseName}, com carga horária de ${certGenData.hours} horas.
+          </div>
+          <div style="font-size:16px;line-height:1.6;color:#111827;max-width:900px;margin:0 auto;font-weight:400;text-align:center;">
+            Na Vox Marketing Academy, ministrado por ${certGenData.instructorName}, no dia ${certGenData.date}. Durante o curso, demonstrou dedicação e empenho exemplares, adquirindo habilidades valiosas em estratégias de tráfego pago. Parabéns pela conclusão bem-sucedida deste curso!
+          </div>
+          <div style="margin-top:auto;width:100%;display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:20px;">
+            <div style="position:relative;width:180px;height:240px;margin-left:20px;margin-bottom:15px;">
+              <div style="position:absolute;bottom:20px;left:20px;width:50px;height:100px;background:linear-gradient(to right,#9ca3af,#d1d5db,#9ca3af);z-index:1;transform:rotate(25deg);"></div>
+              <div style="position:absolute;bottom:20px;right:20px;width:50px;height:100px;background:linear-gradient(to right,#9ca3af,#d1d5db,#9ca3af);z-index:1;transform:rotate(-25deg);"></div>
+              <div style="position:absolute;top:0;left:0;width:180px;height:180px;border-radius:50%;background:linear-gradient(135deg,#e5e7eb 0%,#ffffff 50%,#9ca3af 100%);border:4px solid #f3f4f6;box-shadow:0 10px 20px rgba(0,0,0,0.2);z-index:2;display:flex;justify-content:center;align-items:center;text-align:center;">
+                <div style="width:160px;height:160px;border-radius:50%;border:1px solid #d1d5db;display:flex;justify-content:center;align-items:center;"><div style="font-size:80px;color:#4b5563;line-height:1;">★</div></div>
+              </div>
+            </div>
+            <div style="text-align:center;margin-right:60px;width:300px;margin-bottom:30px;">
+              ${certGenData.signatureUrl ? `<img src="${certGenData.signatureUrl}" alt="Assinatura" style="height:80px;max-width:280px;object-fit:contain;margin-bottom:-10px;display:inline-block;" />` : `<div style="font-family:'Great Vibes',cursive;font-size:56px;color:#000;margin-bottom:-10px;line-height:1;">${certGenData.instructorName}</div>`}
+              <div style="width:100%;height:2px;background:#1e3a8a;margin-top:10px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </td>
+  </tr>
+</table>
+      `;
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (SUPABASE_ANON_KEY) {
+        headers.Authorization = `Bearer ${SUPABASE_ANON_KEY}`;
+        headers.apikey = SUPABASE_ANON_KEY;
+      }
+
+      const response = await fetch(SEND_EMAIL_ENDPOINT, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          to: certGenData.email,
+          name: certGenData.name,
+          subject: `Seu Certificado de Conclusão - ${certGenData.courseName}`,
+          productName: certGenData.courseName,
+          message: emailHtml,
+          preserveCertificateLayout: true,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Erro HTTP ${response.status}`);
+      }
+
+      alert("Certificado enviado com sucesso para o e-mail!");
+    } catch (error) {
+      console.error("Erro ao enviar certificado por e-mail:", error);
+      alert(`Falha ao enviar e-mail: ${error instanceof Error ? error.message : "Erro desconhecido"}`);
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   const handleOpenInNewTab = () => {
     if (!certGenData.name || !certGenData.courseName) {
       alert('Preencha o nome do aluno e do curso para gerar o certificado!');
@@ -658,7 +745,7 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
                     key={lead.id}
                     className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0"
                     onClick={() => {
-                      setCertGenData(prev => ({ ...prev, name: lead.name, phone: lead.phone }));
+                      setCertGenData(prev => ({ ...prev, name: lead.name, phone: lead.phone || '', email: lead.email || '' }));
                       setSearchLead(lead.name);
                       setShowLeadsDrop(false);
                     }}
@@ -673,7 +760,10 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
 
           <Input label="Nome do Aluno no Certificado" type="text" placeholder="Nome Completo" value={certGenData.name} onChange={v => setCertGenData({ ...certGenData, name: v })} />
 
-          <Input label="WhatsApp para Envio" type="text" placeholder="(DD) 90000-0000" value={certGenData.phone} onChange={v => setCertGenData({ ...certGenData, phone: v })} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="E-mail para Envio" type="text" placeholder="aluno@email.com" value={certGenData.email} onChange={v => setCertGenData({ ...certGenData, email: v })} />
+            <Input label="WhatsApp para Envio" type="text" placeholder="(DD) 90000-0000" value={certGenData.phone} onChange={v => setCertGenData({ ...certGenData, phone: v })} />
+          </div>
 
           <div className="space-y-1">
             <label className="text-sm font-black text-gray-700">Selecione o Treinamento / Curso</label>
@@ -765,6 +855,13 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
               className="w-full bg-green-500 text-white py-4 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-green-600 transition-all flex items-center justify-center gap-2"
             >
               <MessageCircle size={18} /> ENVIAR POR WHATSAPP
+            </button>
+            <button
+              onClick={handleEmail}
+              disabled={isSendingEmail}
+              className={`w-full text-white py-4 rounded-2xl font-black text-xs uppercase shadow-xl transition-all flex items-center justify-center gap-2 ${isSendingEmail ? 'bg-gray-400 cursor-not-allowed opacity-70' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 hover:-translate-y-1'}`}
+            >
+              {isSendingEmail ? <Loader2 size={18} className="animate-spin" /> : <Mail size={18} />} {isSendingEmail ? 'ENVIANDO...' : 'ENVIAR POR E-MAIL'}
             </button>
           </div>
         </div>
