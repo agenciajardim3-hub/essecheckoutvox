@@ -1306,47 +1306,250 @@ export default function App() {
       );
     }
     
-    // Simple certificate display - opens print dialog
+    const certHours = query.get('hours') || '8';
+    const certInstructor = query.get('instructor') || 'Rodrigo Jardim';
+    
+    // Beautiful certificate layout for printing/PDF
     const certificateHtml = `
       <!DOCTYPE html>
       <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Certificado - ${finalName}</title>
-        <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Inter', sans-serif; background: #f8fafc; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-          .certificate { background: white; width: 100%; max-width: 900px; min-height: 600px; border-radius: 20px; box-shadow: 0 25px 50px rgba(0,0,0,0.15); padding: 60px; text-align: center; border: 3px solid #1e3a8a; position: relative; }
-          .logo { font-size: 48px; font-weight: 900; color: #1e3a8a; letter-spacing: 8px; margin-bottom: 5px; }
-          .subtitle { font-size: 10px; font-weight: 700; color: #0ea5e9; letter-spacing: 6px; margin-bottom: 40px; }
-          .title { font-size: 32px; font-weight: 900; color: #64748b; letter-spacing: 4px; margin-bottom: 40px; }
-          .name { font-family: 'Great Vibes', cursive; font-size: 56px; color: #1e3a8a; margin-bottom: 30px; }
-          .text { font-size: 16px; color: #64748b; margin-bottom: 15px; }
-          .course { font-size: 20px; font-weight: 700; color: #1e3a8a; margin-bottom: 30px; }
-          .date { font-size: 14px; color: #94a3b8; margin-bottom: 50px; }
-          .signature { font-family: 'Great Vibes', cursive; font-size: 36px; color: #1e3a8a; margin-bottom: 10px; }
-          .line { width: 200px; height: 2px; background: #1e3a8a; margin: 0 auto 5px; }
-          .signature-label { font-size: 10px; color: #94a3b8; letter-spacing: 2px; }
-          @media print { body { background: white; } .certificate { box-shadow: none; } }
-        </style>
-      </head>
-      <body>
-        <div class="certificate">
-          <div class="logo">VOX</div>
-          <div class="subtitle">MARKETING ACADEMY</div>
-          <div class="title">CERTIFICADO DE CONCLUSÃO</div>
-          <p class="text">Certificamos que</p>
-          <div class="name">${finalName}</div>
-          <p class="text">participou do evento</p>
-          <div class="course">${finalCourse}</div>
-          <div class="date">${finalDate}</div>
-          <div class="signature">Rodrigo Jardim</div>
-          <div class="line"></div>
-          <div class="signature-label">INSTRUTOR</div>
-        </div>
-        <script>window.onload = function() { window.print(); }</script>
-      </body>
+        <head>
+          <meta charset="UTF-8">
+          <title>Certificado - ${finalName}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Great+Vibes&display=swap');
+            
+            body { 
+              margin: 0; 
+              padding: 0; 
+              display: flex; 
+              justify-content: center; 
+              align-items: center; 
+              min-height: 100vh; 
+              background: white;
+              font-family: 'Montserrat', sans-serif;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            
+            .certificate-wrapper {
+              width: 1122px; 
+              height: 794px;
+              background: white;
+              position: relative;
+              overflow: hidden;
+              box-sizing: border-box;
+            }
+
+            .content {
+              position: relative;
+              z-index: 10;
+              padding: 50px 80px;
+              text-align: center;
+              height: 100%;
+              box-sizing: border-box;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+            }
+            
+            .header {
+              margin-top: 20px;
+            }
+            .vox-title {
+              font-size: 72px;
+              font-weight: 900;
+              color: #4b5563;
+              margin: 0;
+              line-height: 1;
+              letter-spacing: 2px;
+            }
+            .vox-subtitle {
+              font-size: 14px;
+              font-weight: 700;
+              color: #0ea5e9;
+              letter-spacing: 8px;
+              margin-top: 5px;
+              margin-bottom: 30px;
+            }
+            
+            .cert-title {
+              font-size: 28px;
+              font-weight: 700;
+              color: #6b7280;
+              letter-spacing: 2px;
+              margin-bottom: 40px;
+            }
+            
+            .student-name {
+              font-size: 42px;
+              font-weight: 400;
+              color: #6b7280;
+              margin-bottom: 40px;
+              text-transform: uppercase;
+            }
+            
+            .course-desc-bold {
+              font-size: 18px;
+              font-weight: 700;
+              color: #000;
+              margin-bottom: 20px;
+            }
+            
+            .course-desc-text {
+              font-size: 16px;
+              line-height: 1.6;
+              color: #111827;
+              max-width: 900px;
+              margin: 0 auto;
+              font-weight: 400;
+              text-align: center;
+            }
+            
+            .footer {
+              margin-top: auto;
+              width: 100%;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+              padding-bottom: 20px;
+            }
+            
+            .medal-container {
+              position: relative;
+              width: 180px;
+              height: 240px;
+              margin-left: 20px;
+              margin-bottom: 15px;
+            }
+            .ribbon {
+              position: absolute;
+              bottom: 20px;
+              width: 50px;
+              height: 100px;
+              background: linear-gradient(to right, #9ca3af, #d1d5db, #9ca3af);
+              z-index: 1;
+            }
+            .ribbon.left {
+              left: 20px;
+              transform: rotate(25deg);
+            }
+            .ribbon.right {
+              right: 20px;
+              transform: rotate(-25deg);
+            }
+            .ribbon:after {
+              content: '';
+              position: absolute;
+              bottom: -25px;
+              left: 0;
+              border-left: 25px solid transparent;
+              border-right: 25px solid transparent;
+              border-top: 25px solid #9ca3af;
+            }
+            .medal {
+              position: absolute;
+              top: 0;
+              left: 0;
+              width: 180px;
+              height: 180px;
+              border-radius: 50%;
+              background: linear-gradient(135deg, #e5e7eb 0%, #ffffff 50%, #9ca3af 100%);
+              border: 4px solid #f3f4f6;
+              box-shadow: 0 10px 20px rgba(0,0,0,0.2), inset 0 0 20px rgba(255,255,255,0.8);
+              z-index: 2;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              text-align: center;
+            }
+            .medal-inner {
+              width: 160px;
+              height: 160px;
+              border-radius: 50%;
+              border: 1px solid #d1d5db;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+              align-items: center;
+              padding: 10px;
+              box-sizing: border-box;
+            }
+            .medal-star {
+              font-size: 80px;
+              color: #4b5563;
+              line-height: 1;
+            }
+            
+            .signature-box {
+              text-align: center;
+              margin-right: 60px;
+              width: 300px;
+              margin-bottom: 30px;
+            }
+            .signature-text {
+              font-family: 'Great Vibes', cursive;
+              font-size: 56px;
+              color: #000;
+              margin-bottom: -10px;
+              line-height: 1;
+            }
+            .signature-line {
+              width: 100%;
+              height: 2px;
+              background: #1e3a8a;
+              margin-top: 10px;
+            }
+
+            @media print {
+              body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              @page { size: landscape; margin: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="certificate-wrapper">
+            <div class="content">
+              <div class="header">
+                <div class="vox-title">VOX</div><div class="vox-subtitle">MARKETING ACADEMY</div>
+              </div>
+              
+              <div class="cert-title">CERTIFICADO DE CONCLUSÃO</div>
+              
+              <div class="student-name">${finalName}</div>
+              
+              <div class="course-desc-bold">
+                Completou com êxito o ${finalCourse}, com carga horária de ${certHours} horas.
+              </div>
+              
+              <div class="course-desc-text">
+                Na Vox Marketing Academy, ministrado por ${certInstructor}, no dia ${finalDate}. Durante o curso, demonstrou dedicação e empenho exemplares, adquirindo habilidades valiosas em estratégias de tráfego pago. Parabéns pela conclusão bem-sucedida deste curso!
+              </div>
+              
+              <div class="footer">
+                <div class="medal-container">
+                  <div class="ribbon left"></div>
+                  <div class="ribbon right"></div>
+                  <div class="medal">
+                    <div class="medal-inner">
+                      <div class="medal-star">★</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="signature-box">
+                  <div class="signature-text">${certInstructor}</div>
+                  <div class="signature-line"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <script>
+            window.onload = function() { 
+              setTimeout(function() { window.print(); }, 500);
+            };
+          </script>
+        </body>
       </html>
     `;
     

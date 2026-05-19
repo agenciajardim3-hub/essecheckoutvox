@@ -117,18 +117,33 @@ const getOfficialCertificateHtml = (certificate: GeneratedCertificate | Omit<Gen
 const getCertificateEmailHtml = (certificate: GeneratedCertificate) => `
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0;padding:0;background:#eef1f5;font-family:Arial,Helvetica,sans-serif;">
   <tr>
-    <td align="center" style="padding:28px 12px;">
-      <div style="width:100%;max-width:1122px;overflow-x:auto;">
-        ${getCertificateCardHtml(certificate)}
-      </div>
-      <div style="margin-top:22px;text-align:center;">
-        <a href="${escapeHtml(certificate.certificateUrl)}" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#ffffff;text-decoration:none;padding:16px 26px;border-radius:16px;font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;">
-          Abrir e baixar certificado em PDF
-        </a>
-      </div>
-      <p style="margin:14px auto 0;max-width:720px;font-size:12px;line-height:1.5;color:#6b7280;text-align:center;">
-        Caso o botão não funcione, copie e cole este link no navegador:<br />
-        <span style="word-break:break-all;color:#2563eb;">${escapeHtml(certificate.certificateUrl)}</span>
+    <td align="center" style="padding:40px 20px;">
+      <table role="presentation" width="100%" max-width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background:#ffffff;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,0.05);overflow:hidden;margin:0 auto;">
+        <tr>
+          <td align="center" style="padding:40px 30px 20px;">
+            <h1 style="margin:0;color:#1e3a8a;font-size:36px;letter-spacing:4px;font-weight:900;">VOX</h1><p style="margin:5px 0 0;color:#0ea5e9;font-size:12px;letter-spacing:2px;font-weight:bold;">MARKETING ACADEMY</p>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:0 30px;">
+            <h2 style="margin:0 0 15px;color:#1f2937;font-size:24px;">Seu Certificado está pronto!</h2>
+            <p style="margin:0 0 25px;color:#4b5563;font-size:16px;line-height:1.6;">
+              Olá <strong>${escapeHtml(certificate.name)}</strong>, parabéns por concluir com êxito o <strong>${escapeHtml(certificate.productName)}</strong>. 
+              É com grande alegria que entregamos o seu certificado oficial.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:10px 30px 40px;">
+            <a href="${escapeHtml(certificate.certificateUrl)}" target="_blank" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:16px 32px;border-radius:8px;font-size:16px;font-weight:bold;">
+              Abrir e Baixar PDF
+            </a>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:20px auto 0;max-width:600px;font-size:12px;line-height:1.5;color:#6b7280;text-align:center;">
+        Se o botão não funcionar, copie e cole este link no navegador:<br/>
+        <a href="${escapeHtml(certificate.certificateUrl)}" style="color:#2563eb;word-break:break-all;">${escapeHtml(certificate.certificateUrl)}</a>
       </p>
     </td>
   </tr>

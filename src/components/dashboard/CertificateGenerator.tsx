@@ -368,48 +368,38 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
       const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
       const SEND_EMAIL_ENDPOINT = 'https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email';
 
-      const certificateUrl = `${window.location.origin}/?mode=certificate&name=${encodeURIComponent(certGenData.name)}&course=${encodeURIComponent(certGenData.courseName)}&date=${encodeURIComponent(certGenData.date)}`;
+      const certificateUrl = `${window.location.origin}/?mode=certificate&name=${encodeURIComponent(certGenData.name)}&course=${encodeURIComponent(certGenData.courseName)}&date=${encodeURIComponent(certGenData.date)}&hours=${encodeURIComponent(certGenData.hours)}&instructor=${encodeURIComponent(certGenData.instructorName)}`;
 
       const emailHtml = `
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0;padding:0;background:#eef1f5;font-family:Arial,Helvetica,sans-serif;">
   <tr>
-    <td align="center" style="padding:28px 12px;">
-      <div style="width:1122px;height:794px;background:#ffffff;position:relative;overflow:hidden;box-sizing:border-box;box-shadow:0 22px 70px rgba(15,23,42,0.16);border-radius:8px;margin:0 auto;">
-        <div style="position:relative;z-index:10;padding:50px 80px;text-align:center;height:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;">
-          <div style="margin-top:20px;">
-            ${certGenData.logoUrl ? `<img src="${certGenData.logoUrl}" style="height: 80px; margin-bottom: 20px; object-fit: contain;" />` : `<div style="font-size:72px;font-weight:900;color:#4b5563;margin:0;line-height:1;letter-spacing:10px;">VOX</div><div style="font-size:14px;font-weight:700;color:#0ea5e9;letter-spacing:8px;margin-top:5px;margin-bottom:30px;">MARKETING ACADEMY</div>`}
-          </div>
-          <div style="font-size:28px;font-weight:700;color:#6b7280;letter-spacing:4px;margin-bottom:40px;">CERTIFICADO DE CONCLUSÃO</div>
-          <div style="font-size:42px;font-weight:400;color:#6b7280;margin-bottom:40px;text-transform:uppercase;letter-spacing:1px;">${certGenData.name}</div>
-          <div style="font-size:18px;font-weight:700;color:#000;margin-bottom:20px;max-width:850px;line-height:1.35;">
-            Completou com êxito o ${certGenData.courseName}, com carga horária de ${certGenData.hours} horas.
-          </div>
-          <div style="font-size:16px;line-height:1.6;color:#111827;max-width:900px;margin:0 auto;font-weight:400;text-align:center;">
-            Na Vox Marketing Academy, ministrado por ${certGenData.instructorName}, no dia ${certGenData.date}. Durante o curso, demonstrou dedicação e empenho exemplares, adquirindo habilidades valiosas em estratégias de tráfego pago. Parabéns pela conclusão bem-sucedida deste curso!
-          </div>
-          <div style="margin-top:auto;width:100%;display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:20px;">
-            <div style="position:relative;width:180px;height:240px;margin-left:20px;margin-bottom:15px;">
-              <div style="position:absolute;bottom:20px;left:20px;width:50px;height:100px;background:linear-gradient(to right,#9ca3af,#d1d5db,#9ca3af);z-index:1;transform:rotate(25deg);"></div>
-              <div style="position:absolute;bottom:20px;right:20px;width:50px;height:100px;background:linear-gradient(to right,#9ca3af,#d1d5db,#9ca3af);z-index:1;transform:rotate(-25deg);"></div>
-              <div style="position:absolute;top:0;left:0;width:180px;height:180px;border-radius:50%;background:linear-gradient(135deg,#e5e7eb 0%,#ffffff 50%,#9ca3af 100%);border:4px solid #f3f4f6;box-shadow:0 10px 20px rgba(0,0,0,0.2);z-index:2;display:flex;justify-content:center;align-items:center;text-align:center;">
-                <div style="width:160px;height:160px;border-radius:50%;border:1px solid #d1d5db;display:flex;justify-content:center;align-items:center;"><div style="font-size:80px;color:#4b5563;line-height:1;">★</div></div>
-              </div>
-            </div>
-            <div style="text-align:center;margin-right:60px;width:300px;margin-bottom:30px;">
-              ${certGenData.signatureUrl ? `<img src="${certGenData.signatureUrl}" alt="Assinatura" style="height:80px;max-width:280px;object-fit:contain;margin-bottom:-10px;display:inline-block;" />` : `<div style="font-family:'Great Vibes',cursive;font-size:56px;color:#000;margin-bottom:-10px;line-height:1;">${certGenData.instructorName}</div>`}
-              <div style="width:100%;height:2px;background:#1e3a8a;margin-top:10px;"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div style="margin-top:22px;text-align:center;">
-        <a href="${certificateUrl}" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#ffffff;text-decoration:none;padding:16px 26px;border-radius:16px;font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;">
-          Abrir e baixar certificado em PDF
-        </a>
-      </div>
-      <p style="margin:14px auto 0;max-width:720px;font-size:12px;line-height:1.5;color:#6b7280;text-align:center;">
-        Caso o botão não funcione, copie e cole este link no navegador:<br />
-        <span style="word-break:break-all;color:#2563eb;">${certificateUrl}</span>
+    <td align="center" style="padding:40px 20px;">
+      <table role="presentation" width="100%" max-width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background:#ffffff;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,0.05);overflow:hidden;margin:0 auto;">
+        <tr>
+          <td align="center" style="padding:40px 30px 20px;">
+            ${certGenData.logoUrl ? `<img src="${certGenData.logoUrl}" width="120" style="display:block;margin:0 auto;" />` : `<h1 style="margin:0;color:#1e3a8a;font-size:36px;letter-spacing:4px;font-weight:900;">VOX</h1><p style="margin:5px 0 0;color:#0ea5e9;font-size:12px;letter-spacing:2px;font-weight:bold;">MARKETING ACADEMY</p>`}
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:0 30px;">
+            <h2 style="margin:0 0 15px;color:#1f2937;font-size:24px;">Seu Certificado está pronto!</h2>
+            <p style="margin:0 0 25px;color:#4b5563;font-size:16px;line-height:1.6;">
+              Olá <strong>${certGenData.name}</strong>, parabéns por concluir com êxito o <strong>${certGenData.courseName}</strong>. 
+              É com grande alegria que entregamos o seu certificado oficial.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:10px 30px 40px;">
+            <a href="${certificateUrl}" target="_blank" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:16px 32px;border-radius:8px;font-size:16px;font-weight:bold;">
+              Abrir e Baixar PDF
+            </a>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:20px auto 0;max-width:600px;font-size:12px;line-height:1.5;color:#6b7280;text-align:center;">
+        Se o botão não funcionar, copie e cole este link no navegador:<br/>
+        <a href="${certificateUrl}" style="color:#2563eb;word-break:break-all;">${certificateUrl}</a>
       </p>
     </td>
   </tr>
