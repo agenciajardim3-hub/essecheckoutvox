@@ -18,20 +18,9 @@ port = 54323
 port = 54324
 
 [functions]
-# Functions configuration
-# Note: Edge functions are stored in ./functions directory
+# Edge functions are stored in ./functions directory
 # To deploy: supabase functions deploy <function-name>
-
-[[edge_runtime.env_vars]]
-# Store SMTP configuration here for local development
-# These will be overridden by Supabase Secrets in production
-
-# Example SMTP configuration (update with your values):
-# SMTP_HOST=smtp.hostinger.com
-# SMTP_PORT=587
-# SMTP_USER=noreply@seu-dominio.com
-# SMTP_PASSWORD=sua-senha-segura
-# SMTP_FROM_NAME=Vox Marketing Academy
+# Production secrets must be configured in Supabase Dashboard → Edge Functions → Secrets.
 
 [auth]
 # Authentication settings (optional)
