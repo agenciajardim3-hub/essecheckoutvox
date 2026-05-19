@@ -1341,19 +1341,26 @@ export default function App() {
       }
     }
 
-    /* Print: exactly A4 landscape, no margins */
+    /* Print: fill all available space */
     @media print {
       html, body {
-        width: 297mm;
-        height: 210mm;
+        width: 100%;
+        height: 100%;
         margin: 0;
         padding: 0;
         background: white;
         font-family: 'Montserrat', Arial, sans-serif;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+        overflow: hidden;
       }
       .controls { display: none !important; }
+      .page {
+        width: 100vw !important;
+        height: 100vh !important;
+        box-shadow: none !important;
+        padding: 6mm 12mm 6mm !important;
+      }
     }
 
     .page {
