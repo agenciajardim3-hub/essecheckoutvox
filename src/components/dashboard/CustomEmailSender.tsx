@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Mail, Send, Loader2, Check, AlertCircle } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Mail, Send, Loader2, Check, AlertCircle, Upload, Image as ImageIcon, X } from 'lucide-react';
 
 interface CustomEmailSenderProps {
     userRole: string;
@@ -18,6 +18,7 @@ export const CustomEmailSender: React.FC<CustomEmailSenderProps> = ({ userRole }
     const [errorMessage, setErrorMessage] = useState('');
 
     const testEmail = import.meta.env.VITE_TEST_EMAIL || 'rodrigomesquita58@gmail.com';
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const sendEmail = async (email: string, isTest: boolean = false) => {
         if (!subject.trim() || !htmlBody.trim()) {
@@ -147,18 +148,63 @@ export const CustomEmailSender: React.FC<CustomEmailSenderProps> = ({ userRole }
 
                 <div>
                     <label className="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-widest">
-                        Imagem / Mídia (URL)
+                        Imagem / Mídia
                     </label>
-                    <input
-                        type="url"
-                        placeholder="https://exemplo.com/imagem.jpg (opcional)"
-                        value={imageUrl}
-                        onChange={(e) => setImageUrl(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 font-bold text-sm"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                        🖼️ Cole a URL da imagem JPEG/PNG para incluir no corpo do email (opcional)
-                    </p>
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex-1 px-4 py-3 border-2 border-dashed border-gray-300 rounded-xl hover:border-violet-400 transition-all flex items-center justify-center gap-2 text-sm font-bold text-gray-500 hover:text-violet-600 bg-gray-50"
+                        >
+                            <Upload size={16} /> Fazer Upload
+                        </button>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/gif,image/webp"
+                            className="hidden"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                if (file.size > 5 * 1024 * 1024) {
+                                    setErrorMessage('Imagem muito grande. Máximo 5MB.');
+                                    return;
+                                }
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                    setImageUrl(reader.result as string);
+                                };
+                                reader.readAsDataURL(file);
+                                e.target.value = '';
+                            }}
+                        />
+                        <span className="text-xs text-gray-400 self-center">ou</span>
+                        <input
+                            type="url"
+                            placeholder="Cole a URL da imagem"
+                            value={imageUrl.startsWith('data:') ? '' : imageUrl}
+                            onChange={(e) => setImageUrl(e.target.value)}
+                            className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 font-bold text-xs"
+                        />
+                    </div>
+                    {imageUrl && (
+                        <div className="mt-3 relative inline-block">
+                            <img
+                                src={imageUrl}
+                                alt="Preview"
+                                className="max-h-32 rounded-lg border border-gray-200 shadow-sm"
+                                onError={() => setErrorMessage('Não foi possível carregar a imagem')}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setImageUrl('')}
+                                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md hover:bg-red-600"
+                            >
+                                <X size={14} />
+                            </button>
+                            <p className="text-xs text-emerald-600 font-bold mt-1">✓ Imagem carregada</p>
+                        </div>
+                    )}
                 </div>
 
                 {successMessage && (
