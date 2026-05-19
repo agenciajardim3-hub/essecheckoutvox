@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
       'Vox Marketing Academy',
     ].filter(Boolean).join('\n');
 
-    const html = `
+    const html = (payload as any).preserveCertificateLayout ? payload.message : `
       <div style="font-family: Arial, sans-serif; max-width: 620px; margin: 0 auto; padding: 24px; color: #111827;">
         <div style="background: linear-gradient(135deg, #06b6d4, #7c3aed); padding: 24px; border-radius: 20px; color: white; text-align: center;">
           <h1 style="margin: 0; font-size: 26px;">Vox Marketing Academy</h1>

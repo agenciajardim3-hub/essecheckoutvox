@@ -164,19 +164,27 @@ const createCertificate = (lead: Lead, selectedTurma: string): GeneratedCertific
   return generated;
 };
 
-const postJsonWithXhr = (url: string, payload: any, headers: Record<string, string>) => new Promise<any>((resolve, reject) => {
-  const xhr = new XMLHttpRequest();
-  xhr.open('POST', url, true);
-  Object.entries(headers).forEach(([key, value]) => xhr.setRequestHeader(key, value));
-  xhr.onload = () => {
-    let result: any = {};
-    try { result = xhr.responseText ? JSON.parse(xhr.responseText) : {}; } catch { result = { raw: xhr.responseText }; }
-    if (xhr.status >= 200 && xhr.status < 300 && !result.error) resolve(result);
-    else reject(new Error(result.error || result.message || `Erro HTTP ${xhr.status}`));
-  };
-  xhr.onerror = () => reject(new Error('Falha de rede ao enviar email'));
-  xhr.send(JSON.stringify(payload));
-});
+const postJsonWithXhr = async (url: string, payload: any, headers: Record<string, string>) => {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+  
+  let result: any = {};
+  const text = await response.text();
+  try {
+    result = text ? JSON.parse(text) : {};
+  } catch {
+    result = { raw: text };
+  }
+  
+  if (!response.ok || result.error) {
+    throw new Error(result.error || result.message || `Erro HTTP ${response.status}`);
+  }
+  
+  return result;
+};
 
 export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, checkouts }) => {
   const [selectedTurma, setSelectedTurma] = useState<string>('');
