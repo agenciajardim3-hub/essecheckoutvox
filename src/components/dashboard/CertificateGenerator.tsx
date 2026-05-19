@@ -363,6 +363,8 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
       const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
       const SEND_EMAIL_ENDPOINT = 'https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email';
 
+      const certificateUrl = `${window.location.origin}/?mode=certificate&name=${encodeURIComponent(certGenData.name)}&course=${encodeURIComponent(certGenData.courseName)}&date=${encodeURIComponent(certGenData.date)}`;
+
       const emailHtml = `
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0;padding:0;background:#eef1f5;font-family:Arial,Helvetica,sans-serif;">
   <tr>
@@ -395,6 +397,15 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
           </div>
         </div>
       </div>
+      <div style="margin-top:22px;text-align:center;">
+        <a href="${certificateUrl}" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#ffffff;text-decoration:none;padding:16px 26px;border-radius:16px;font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;">
+          Abrir e baixar certificado em PDF
+        </a>
+      </div>
+      <p style="margin:14px auto 0;max-width:720px;font-size:12px;line-height:1.5;color:#6b7280;text-align:center;">
+        Caso o botão não funcione, copie e cole este link no navegador:<br />
+        <span style="word-break:break-all;color:#2563eb;">${certificateUrl}</span>
+      </p>
     </td>
   </tr>
 </table>
@@ -414,6 +425,7 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
           name: certGenData.name,
           subject: `Seu Certificado de Conclusão - ${certGenData.courseName}`,
           productName: certGenData.courseName,
+          certificateUrl: certificateUrl,
           message: emailHtml,
           preserveCertificateLayout: true,
         }),
