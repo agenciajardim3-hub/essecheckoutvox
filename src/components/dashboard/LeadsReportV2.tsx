@@ -7,6 +7,7 @@ import {
     UserPlus, X, Wallet
 } from 'lucide-react';
 import { Lead, AppConfig, UserRole } from '../../types';
+import { useEmailTemplates } from '../../hooks/useEmailTemplates';
 
 interface LeadsReportV2Props {
     userRole: UserRole;
@@ -139,9 +140,11 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
         return Math.ceil(filteredAndSortedLeads.length / itemsPerPage);
     }, [filteredAndSortedLeads.length, itemsPerPage]);
 
+    const { templates } = useEmailTemplates();
     const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+    const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
 
-    const handleSendAutomatedEmail = async (lead: Lead) => {
+    const handleSendAutomatedEmail = async (lead: Lead, templateId?: string) => {
         if (!lead.email) {
             alert('Lead sem email cadastrado.');
             return;
@@ -157,16 +160,23 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
             let body = `<p>Olá ${lead.name || 'Aluno'},</p>`;
             let ticketUrl = '';
 
-            if (lead.status === 'Abandonado') {
-                subject = `Finalize sua inscrição - ${lead.product_name || 'Vox'}`;
-                const checkoutUrl = `${FRONTEND_URL}/?checkout=${lead.product_id || ''}`;
-                body = `<p>Olá ${lead.name || 'Aluno'},</p><p>Vimos que você iniciou sua compra para o <b>${lead.product_name || 'curso'}</b> mas não finalizou.</p><p>Se precisar de ajuda com o pagamento ou tiver alguma dúvida, estamos à disposição!</p><p><a href="${checkoutUrl}">Clique aqui para concluir sua inscrição</a></p><p>Atenciosamente,<br>Equipe Vox Marketing Academy</p>`;
-            } else if (lead.status === 'Pago' || lead.status === 'Aprovado') {
-                subject = `Inscrição Confirmada - ${lead.product_name || 'Vox'}`;
-                ticketUrl = `${FRONTEND_URL}/?mode=ticket&checkout=${encodeURIComponent(lead.product_id || '')}&cpf=${encodeURIComponent(lead.cpf || '')}`;
-                body = `<p>Olá ${lead.name || 'Aluno'},</p><p>Sua inscrição para o <b>${lead.product_name || 'curso'}</b> foi confirmada com sucesso!</p><p>Seja muito bem-vindo(a)! Acesse seu ingresso abaixo.</p><p>Atenciosamente,<br>Equipe Vox Marketing Academy</p>`;
+            if (templateId) {
+                const tmpl = templates.find(t => t.id === templateId);
+                if (tmpl) {
+                    body = tmpl.html.replace(/{name}/g, lead.name || 'Aluno');
+                }
             } else {
-                 body = `<p>Olá ${lead.name || 'Aluno'},</p><p>Gostaríamos de entrar em contato sobre a sua inscrição no <b>${lead.product_name || 'curso'}</b>.</p><p>Atenciosamente,<br>Equipe Vox Marketing Academy</p>`;
+                if (lead.status === 'Abandonado') {
+                    subject = `Finalize sua inscrição - ${lead.product_name || 'Vox'}`;
+                    const checkoutUrl = `${FRONTEND_URL}/?checkout=${lead.product_id || ''}`;
+                    body = `<p>Olá ${lead.name || 'Aluno'},</p><p>Vimos que você iniciou sua compra para o <b>${lead.product_name || 'curso'}</b> mas não finalizou.</p><p>Se precisar de ajuda com o pagamento ou tiver alguma dúvida, estamos à disposição!</p><p><a href="${checkoutUrl}">Clique aqui para concluir sua inscrição</a></p><p>Atenciosamente,<br>Equipe Vox Marketing Academy</p>`;
+                } else if (lead.status === 'Pago' || lead.status === 'Aprovado') {
+                    subject = `Inscrição Confirmada - ${lead.product_name || 'Vox'}`;
+                    ticketUrl = `${FRONTEND_URL}/?mode=ticket&checkout=${encodeURIComponent(lead.product_id || '')}&cpf=${encodeURIComponent(lead.cpf || '')}`;
+                    body = `<p>Olá ${lead.name || 'Aluno'},</p><p>Sua inscrição para o <b>${lead.product_name || 'curso'}</b> foi confirmada com sucesso!</p><p>Seja muito bem-vindo(a)! Acesse seu ingresso abaixo.</p><p>Atenciosamente,<br>Equipe Vox Marketing Academy</p>`;
+                } else {
+                     body = `<p>Olá ${lead.name || 'Aluno'},</p><p>Gostaríamos de entrar em contato sobre a sua inscrição no <b>${lead.product_name || 'curso'}</b>.</p><p>Atenciosamente,<br>Equipe Vox Marketing Academy</p>`;
+                }
             }
 
             const response = await fetch('https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email', {
@@ -1070,16 +1080,25 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                         )}
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
-                                        {lead.phone && (
-                                            <a
-                                                href={`https://wa.me/55${lead.phone?.replace(/\D/g, '') || ''}?text=${encodeURIComponent(generateWhatsAppMessage(lead))}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="px-2 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 font-bold text-[10px] uppercase hover:bg-emerald-100 transition-all flex items-center justify-center gap-1"
+                                        <div className="flex items-center gap-2">
+                                            <select
+                                                className="px-1 py-1 text-[10px] border border-gray-200 rounded bg-white w-full"
+                                                value={selectedTemplateId}
+                                                onChange={e => setSelectedTemplateId(e.target.value)}
                                             >
-                                                <MessageCircle size={12} /> Chat
-                                            </a>
-                                        )}
+                                                <option value="">Padrão</option>
+                                                {templates.map(t => (
+                                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                onClick={() => handleSendAutomatedEmail(lead, selectedTemplateId)}
+                                                disabled={sendingEmailId === lead.id}
+                                                className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all"
+                                            >
+                                                {sendingEmailId === lead.id ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                                            </button>
+                                        </div>
                                         <button
                                             onClick={() => handleDeleteWithConfirm(lead.id)}
                                             disabled={savingId === lead.id}
@@ -1258,16 +1277,21 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                                         <Edit2 size={12} />
                                                     </button>
                                                 )}
-                                                {lead.email && (
+                                                <div className="flex items-center gap-1">
+                                                    <select
+                                                        className="px-1 py-0.5 text-[10px] border border-gray-200 rounded bg-white w-20"
+                                                        value={selectedTemplateId}
+                                                        onChange={e => setSelectedTemplateId(e.target.value)}
+                                                    >
+                                                        <option value="">Padrão</option>
+                                                        {templates.map(t => (
+                                                            <option key={t.id} value={t.id}>{t.name}</option>
+                                                        ))}
+                                                    </select>
                                                     <button
-                                                        onClick={() => handleSendAutomatedEmail(lead)}
+                                                        onClick={() => handleSendAutomatedEmail(lead, selectedTemplateId)}
                                                         disabled={sendingEmailId === lead.id}
-                                                        className={`px-2 py-1 rounded-lg font-bold text-[10px] uppercase transition-all flex items-center gap-1 ${
-                                                            sendingEmailId === lead.id
-                                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                                : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                                                        }`}
-                                                        title="Disparar Email"
+                                                        className="px-2 py-1 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all flex items-center gap-1"
                                                     >
                                                         {sendingEmailId === lead.id ? (
                                                             <Loader2 size={12} className="animate-spin" />
@@ -1275,7 +1299,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                                             <Send size={12} />
                                                         )}
                                                     </button>
-                                                )}
+                                                </div>
                                                 {lead.phone && (
                                                     <a
                                                         href={`https://wa.me/55${lead.phone?.replace(/\D/g, '') || ''}?text=${encodeURIComponent(generateWhatsAppMessage(lead))}`}

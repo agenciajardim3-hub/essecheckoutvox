@@ -91,12 +91,7 @@ Deno.serve(async (req) => {
     const updatePayload: Record<string, unknown> = {
       status: normalizedLeadStatus,
       paid_amount: status === 'approved' ? paidAmount : 0,
-      payment_method: paymentMethod || 'Mercado Pago',
-      payment_location: 'Mercado Pago API',
-      mp_payment_id: String(paymentId),
-      mp_status: status,
-      mp_status_detail: statusDetail,
-      ticket_generated: status === 'approved',
+      payment_location: 'Mercado Pago API'
     };
 
     const updateResponse = await fetch(`${PROJECT_URL}/rest/v1/leads?id=eq.${leadId}`, {
