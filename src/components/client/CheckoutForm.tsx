@@ -207,7 +207,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     };
 
     return (
-        <div className="max-w-md w-full bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100 animate-in fade-in slide-in-from-bottom-8 duration-700">
+        <div className="max-w-md w-full bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100 animate-in fade-in slide-in-from-bottom-8 duration-700 flex flex-col mx-auto">
 
             {/* ── Banner ── */}
             <div
@@ -307,7 +307,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="px-6 py-5 lg:px-8 lg:py-7 space-y-5">
+            <form onSubmit={handleSubmit} className="px-6 py-6 lg:px-8 lg:py-8 space-y-6 flex flex-col flex-1">
 
                 {/* ── Quantity Selector ── */}
                 {!isTicketMode && !isRegistrationMode && (
@@ -490,20 +490,22 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                 {/* ── CTA Button ── */}
                 <button
                     disabled={isSubmitting || !!isSoldOut}
-                    className={`w-full py-6 rounded-2xl text-white font-black text-lg lg:text-xl shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 group relative overflow-hidden ${
-                        isSoldOut ? 'bg-gray-400 cursor-not-allowed' :
-                        isRegistrationMode ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-blue-500/25' :
-                        'bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 shadow-emerald-500/30'
+                    className={`w-full mt-auto py-7 px-6 rounded-2xl text-white font-black text-base lg:text-lg shadow-2xl active:scale-[0.97] transition-all flex items-center justify-center gap-3 group relative overflow-hidden ${
+                        isSoldOut ? 'bg-gray-400 cursor-not-allowed shadow-gray-400/20' :
+                        isRegistrationMode ? 'bg-gradient-to-r from-blue-600 via-blue-600 to-blue-700 hover:shadow-2xl hover:shadow-blue-500/40 hover:from-blue-700 hover:to-blue-800' :
+                        'bg-gradient-to-r from-emerald-500 via-emerald-500 to-green-600 hover:shadow-2xl hover:shadow-emerald-500/40 hover:from-emerald-600 hover:to-green-700'
                     }`}
                 >
                     {/* shimmer */}
                     {!isSoldOut && !isSubmitting && (
-                        <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+                        <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
                     )}
-                    {isSubmitting ? <Loader2 className="animate-spin" size={26} /> : (
+                    {isSubmitting ? (
+                        <Loader2 className="animate-spin" size={24} />
+                    ) : (
                         <>
                             {!isSoldOut && (isRegistrationMode ? <BadgeCheck size={24} /> : <ShoppingCart size={24} strokeWidth={2.5} />)}
-                            <span>{ctaText()}</span>
+                            <span className="flex-1 text-center">{ctaText()}</span>
                             {!isSoldOut && !isSubmitting && <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />}
                         </>
                     )}
