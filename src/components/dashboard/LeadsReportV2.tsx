@@ -139,6 +139,66 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
         return Math.ceil(filteredAndSortedLeads.length / itemsPerPage);
     }, [filteredAndSortedLeads.length, itemsPerPage]);
 
+    const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+
+    const handleSendAutomatedEmail = async (lead: Lead) => {
+        if (!lead.email) {
+            alert('Lead sem email cadastrado.');
+            return;
+        }
+
+        setSendingEmailId(lead.id);
+
+        try {
+            const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+            const FRONTEND_URL = window.location.origin;
+
+            let subject = "Contato - Vox Marketing Academy";
+            let body = `<p>Olá ${lead.name || 'Aluno'},</p>`;
+            let ticketUrl = '';
+
+            if (lead.status === 'Abandonado') {
+                subject = `Finalize sua inscrição - ${lead.product_name || 'Vox'}`;
+                const checkoutUrl = `${FRONTEND_URL}/?checkout=${lead.product_id || ''}`;
+                body = `<p>Olá ${lead.name || 'Aluno'},</p><p>Vimos que você iniciou sua compra para o <b>${lead.product_name || 'curso'}</b> mas não finalizou.</p><p>Se precisar de ajuda com o pagamento ou tiver alguma dúvida, estamos à disposição!</p><p><a href="${checkoutUrl}">Clique aqui para concluir sua inscrição</a></p><p>Atenciosamente,<br>Equipe Vox Marketing Academy</p>`;
+            } else if (lead.status === 'Pago' || lead.status === 'Aprovado') {
+                subject = `Inscrição Confirmada - ${lead.product_name || 'Vox'}`;
+                ticketUrl = `${FRONTEND_URL}/?mode=ticket&checkout=${encodeURIComponent(lead.product_id || '')}&cpf=${encodeURIComponent(lead.cpf || '')}`;
+                body = `<p>Olá ${lead.name || 'Aluno'},</p><p>Sua inscrição para o <b>${lead.product_name || 'curso'}</b> foi confirmada com sucesso!</p><p>Seja muito bem-vindo(a)! Acesse seu ingresso abaixo.</p><p>Atenciosamente,<br>Equipe Vox Marketing Academy</p>`;
+            } else {
+                 body = `<p>Olá ${lead.name || 'Aluno'},</p><p>Gostaríamos de entrar em contato sobre a sua inscrição no <b>${lead.product_name || 'curso'}</b>.</p><p>Atenciosamente,<br>Equipe Vox Marketing Academy</p>`;
+            }
+
+            const response = await fetch('https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                },
+                body: JSON.stringify({
+                    email: lead.email,
+                    name: lead.name || 'Aluno',
+                    subject: subject,
+                    body: body,
+                    ticketUrl: ticketUrl,
+                    type: 'automated'
+                })
+            });
+
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || 'Erro ao enviar email');
+            }
+
+            alert('✅ Email disparado com sucesso!');
+        } catch (err) {
+            console.error('Erro ao enviar email:', err);
+            alert(`❌ Erro ao enviar email: ${err instanceof Error ? err.message : 'Desconhecido'}`);
+        } finally {
+            setSendingEmailId(null);
+        }
+    };
+
     // Cálculos de estatísticas
     const stats = useMemo(() => {
         const paidLeads = filteredAndSortedLeads.filter(l => l.status === 'Pago' || l.status === 'Aprovado');
@@ -1196,30 +1256,24 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                                         <Edit2 size={12} />
                                                     </button>
                                                 )}
-                                                {lead.email && (() => {
-                                                    let subject = "Contato - Vox Marketing Academy";
-                                                    let body = `Olá ${lead.name || 'Aluno'},\n\n`;
-
-                                                    if (lead.status === 'Abandonado') {
-                                                        subject = `Finalize sua inscrição - ${lead.product_name || 'Vox'}`;
-                                                        body = `Olá ${lead.name || 'Aluno'},\n\nVimos que você iniciou sua compra para o ${lead.product_name || 'curso'} mas não finalizou.\n\nSe precisar de ajuda com o pagamento ou tiver alguma dúvida, estamos à disposição!\n\nAtenciosamente,\nEquipe Vox Marketing Academy`;
-                                                    } else if (lead.status === 'Pago' || lead.status === 'Aprovado') {
-                                                        subject = `Inscrição Confirmada - ${lead.product_name || 'Vox'}`;
-                                                        body = `Olá ${lead.name || 'Aluno'},\n\nSua inscrição para o ${lead.product_name || 'curso'} foi confirmada com sucesso!\n\nSeja muito bem-vindo(a)!\n\nAtenciosamente,\nEquipe Vox Marketing Academy`;
-                                                    }
-
-                                                    return (
-                                                        <a
-                                                            href={`mailto:${lead.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="px-2 py-1 rounded-lg bg-blue-50 text-blue-600 font-bold text-[10px] uppercase hover:bg-blue-100 transition-all flex items-center gap-1"
-                                                            title="Enviar Email"
-                                                        >
-                                                            <Mail size={12} />
-                                                        </a>
-                                                    );
-                                                })()}
+                                                {lead.email && (
+                                                    <button
+                                                        onClick={() => handleSendAutomatedEmail(lead)}
+                                                        disabled={sendingEmailId === lead.id}
+                                                        className={`px-2 py-1 rounded-lg font-bold text-[10px] uppercase transition-all flex items-center gap-1 ${
+                                                            sendingEmailId === lead.id
+                                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                                : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                                                        }`}
+                                                        title="Disparar Email"
+                                                    >
+                                                        {sendingEmailId === lead.id ? (
+                                                            <Loader2 size={12} className="animate-spin" />
+                                                        ) : (
+                                                            <Send size={12} />
+                                                        )}
+                                                    </button>
+                                                )}
                                                 {lead.phone && (
                                                     <a
                                                         href={`https://wa.me/55${lead.phone?.replace(/\D/g, '') || ''}?text=${encodeURIComponent(generateWhatsAppMessage(lead))}`}
