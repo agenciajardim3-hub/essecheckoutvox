@@ -104,13 +104,24 @@ export const TicketLogs: React.FC<TicketLogsProps> = ({
                 utmSource === 'Manual_Entry' ||
                 source === 'manual' ||
                 utmSource === 'checkout' ||
-                lead.ticket_generated === true;
+                lead.ticket_generated === true ||
+                lead.status === 'Pago' ||
+                lead.status === 'Aprovado';
             const matchProduct = selectedTicketFilter === 'all' || lead.product_id === selectedTicketFilter;
-            const matchTurma = selectedTicketTurmaFilter === 'all' || lead.turma === selectedTicketTurmaFilter;
+            
+            let matchTurma = false;
+            if (selectedTicketTurmaFilter === 'all') {
+                matchTurma = true;
+            } else {
+                const checkoutForLead = allCheckouts.find(c => c.id === lead.product_id);
+                matchTurma = lead.turma === selectedTicketTurmaFilter || 
+                             checkoutForLead?.turma === selectedTicketTurmaFilter ||
+                             checkoutForLead?.productName === selectedTicketTurmaFilter;
+            }
 
             return isTicketLead && matchProduct && matchTurma;
         });
-    }, [leads, selectedTicketFilter, selectedTicketTurmaFilter]);
+    }, [leads, selectedTicketFilter, selectedTicketTurmaFilter, allCheckouts]);
 
     return (
         <div className="animate-in fade-in duration-500 space-y-8 pb-20">
