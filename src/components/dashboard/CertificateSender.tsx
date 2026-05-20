@@ -461,15 +461,36 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
             <p className="text-xs text-gray-400 font-bold mt-2">Só entram alunos pagos/aprovados com email e CPF cadastrados.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button onClick={handleGenerateCertificates} disabled={isGenerating || isSending || !selectedTurma || turmaLeads.length === 0} className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 text-white shadow-lg ${isGenerating || isSending || !selectedTurma || turmaLeads.length === 0 ? 'bg-gray-400 cursor-not-allowed opacity-60' : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:-translate-y-1 shadow-purple-200'}`}>
-              {isGenerating ? <><Loader2 size={18} className="animate-spin" /> Gerando...</> : <><FileCheck size={18} /> Gerar Certificados em Massa</>}
-            </button>
+          {selectedTurma && turmaLeads.length > 0 && generatedCertificates.length === 0 && (
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-6 shadow-xl shadow-purple-200/50">
+              <div className="flex items-center justify-between gap-4 mb-4">
+                <div>
+                  <div className="text-white font-black text-lg">Pronto para gerar!</div>
+                  <div className="text-purple-200 text-sm font-bold mt-1">{turmaLeads.length} aluno{turmaLeads.length !== 1 ? 's' : ''} encontrado{turmaLeads.length !== 1 ? 's' : ''} na turma "{selectedTurma}"</div>
+                </div>
+                <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
+                  <FileCheck size={28} className="text-white" />
+                </div>
+              </div>
+              <button
+                onClick={handleGenerateCertificates}
+                disabled={isGenerating}
+                className="w-full py-5 rounded-2xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 bg-white text-purple-700 hover:bg-purple-50 hover:-translate-y-1 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isGenerating ? <><Loader2 size={20} className="animate-spin" /> Gerando certificados...</> : <><FileCheck size={20} /> Criar Certificados em Massa</>}
+              </button>
+            </div>
+          )}
 
-            <button onClick={handleSendGeneratedCertificates} disabled={isSending || isGenerating || generatedCertificates.length === 0 || pendingToSend === 0} className={`w-full py-5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 text-white shadow-lg ${isSending || isGenerating || generatedCertificates.length === 0 || pendingToSend === 0 ? 'bg-gray-400 cursor-not-allowed opacity-60' : 'bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 hover:-translate-y-1 shadow-emerald-200'}`}>
-              {isSending ? <><Loader2 size={18} className="animate-spin" /> Enviando...</> : <><Send size={18} /> Enviar Certificados Gerados</>}
+          {generatedCertificates.length > 0 && (
+            <button
+              onClick={handleGenerateCertificates}
+              disabled={isGenerating || isSending}
+              className="w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 text-purple-700 bg-purple-50 border-2 border-purple-200 hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isGenerating ? <><Loader2 size={16} className="animate-spin" /> Regenerando...</> : <><FileCheck size={16} /> Regenerar Certificados</>}
             </button>
-          </div>
+          )}
 
           {sendingStatus !== 'idle' && (
             <div className={`rounded-2xl p-4 border-2 ${sendingStatus === 'sending' || sendingStatus === 'generating' ? 'bg-blue-50 border-blue-200' : sendingStatus === 'completed' ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
