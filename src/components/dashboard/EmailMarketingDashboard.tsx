@@ -298,8 +298,106 @@ export const EmailMarketingDashboard: React.FC<EmailMarketingDashboardProps> = (
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Corpo do Email</label>
-                  <textarea placeholder="Digite aqui o conteúdo do seu email..." value={emailBody} onChange={(e) => setEmailBody(e.target.value)} rows={8} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm" />
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Modelos Prontos</label>
+                    <select
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm mb-4 bg-gray-50 text-gray-700"
+                    onChange={(e) => {
+                      if (e.target.value) setEmailBody(e.target.value);
+                    }}
+                  >
+                    <option value="">Selecione um template lindo...</option>
+                    <option value={`<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+  <div style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 30px 20px; text-align: center; color: white;">
+    <h1 style="margin: 0; font-size: 24px;">Bem-vindo(a) à Vox! 🚀</h1>
+  </div>
+  <div style="padding: 30px 20px; color: #374151; line-height: 1.6;">
+    <p>Olá <b>{name}</b>,</p>
+    <p>É um prazer ter você conosco! Sua jornada de aprendizado acaba de começar.</p>
+    <p>Prepare-se para ter acesso aos melhores conteúdos e um suporte de primeira linha.</p>
+    <br/>
+    <p>Qualquer dúvida, estamos à disposição!</p>
+  </div>
+  <div style="background: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 12px;">
+    &copy; ${new Date().getFullYear()} Vox Marketing Academy. Todos os direitos reservados.
+  </div>
+</div>`}>Boas Vindas (Azul/Roxo)</option>
+                    <option value={`<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+  <div style="background: #111827; padding: 30px 20px; text-align: center; color: white;">
+    <h1 style="margin: 0; font-size: 24px; color: #f59e0b;">Oferta Exclusiva Liberada! ⚡</h1>
+  </div>
+  <div style="padding: 30px 20px; color: #374151; line-height: 1.6; text-align: center;">
+    <p>Olá <b>{name}</b>,</p>
+    <p>Liberamos uma oportunidade única para você dar o próximo passo.</p>
+    <p>Garanta sua vaga no nosso novo treinamento com <b>condições especiais</b> apenas para quem já é aluno!</p>
+    <div style="margin: 30px 0;">
+      <a href="SEU_LINK_AQUI" style="background: #f59e0b; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: bold; display: inline-block;">GARANTIR MINHA VAGA</a>
+    </div>
+    <p style="font-size: 12px; color: #9ca3af;">Atenção: Oferta válida por tempo limitadíssimo.</p>
+  </div>
+</div>`}>Oferta Exclusiva (Escuro/Dourado)</option>
+                    <option value={`<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border-left: 4px solid #ef4444; background: #fef2f2; border-radius: 8px; overflow: hidden;">
+  <div style="padding: 30px 20px; color: #7f1d1d; line-height: 1.6;">
+    <h2 style="margin-top: 0; color: #991b1b;">⚠️ Aviso Importante</h2>
+    <p>Olá <b>{name}</b>,</p>
+    <p>Gostaríamos de informar sobre uma atualização importante no seu acesso ao sistema.</p>
+    <p>[Descreva sua atualização aqui]</p>
+    <br/>
+    <p>Atenciosamente,<br/><b>Equipe Vox</b></p>
+  </div>
+</div>`}>Aviso Urgente (Vermelho)</option>
+                    <option value={`<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+  <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px 20px; text-align: center; color: white;">
+    <h1 style="margin: 0; font-size: 24px;">Falta Pouco! ⏳</h1>
+  </div>
+  <div style="padding: 30px 20px; color: #374151; line-height: 1.6;">
+    <p>Olá <b>{name}</b>,</p>
+    <p>O grande dia está chegando! Faltam poucos dias para o nosso encontro.</p>
+    <p>Recomendamos que você se prepare, separe seu material e chegue com antecedência para aproveitar tudo ao máximo.</p>
+    <div style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+      <b>📅 Data:</b> [Data do Evento]<br/>
+      <b>📍 Local:</b> [Local / Link do Zoom]
+    </div>
+    <p>Estamos muito animados para te ver lá!</p>
+  </div>
+</div>`}>Tá Chegando a Hora (Verde Esmeralda)</option>
+                    <option value={`<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+  <div style="background: #ffffff; padding: 30px 20px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+    <div style="font-size: 48px; margin-bottom: 10px;">✅</div>
+    <h1 style="margin: 0; font-size: 24px; color: #111827;">Pagamento Confirmado!</h1>
+  </div>
+  <div style="padding: 30px 20px; color: #374151; line-height: 1.6;">
+    <p>Olá <b>{name}</b>,</p>
+    <p>Recebemos o seu pagamento com sucesso. Sua vaga já está 100% garantida.</p>
+    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px dashed #cbd5e1;">
+      <p style="margin: 0; font-size: 14px; color: #64748b;">Resumo da Compra</p>
+      <p style="margin: 5px 0 0 0; font-weight: bold; font-size: 18px; color: #0f172a;">[Nome do Curso / Treinamento]</p>
+    </div>
+    <p>Em breve você receberá mais instruções sobre os próximos passos. Se precisar de ajuda, basta responder este email.</p>
+    <p>Bem-vindo(a) ao time!</p>
+  </div>
+</div>`}>Pagamento Confirmado (Branco/Clean)</option>
+                    <option value={`<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+  <div style="background: #25D366; padding: 30px 20px; text-align: center; color: white;">
+    <h1 style="margin: 0; font-size: 24px;">Entre no Grupo VIP 💬</h1>
+  </div>
+  <div style="padding: 30px 20px; color: #374151; line-height: 1.6; text-align: center;">
+    <p>Olá <b>{name}</b>,</p>
+    <p>Toda a nossa comunicação oficial, links de aulas, materiais e avisos importantes serão enviados <b>exclusivamente</b> através do nosso Grupo VIP no WhatsApp.</p>
+    <p>Não fique de fora! Clique no botão abaixo para entrar agora mesmo:</p>
+    <div style="margin: 30px 0;">
+      <a href="SEU_LINK_DO_GRUPO_AQUI" style="background: #128C7E; color: white; text-decoration: none; padding: 16px 32px; border-radius: 50px; font-weight: bold; font-size: 16px; display: inline-block;">ENTRAR NO GRUPO VIP</a>
+    </div>
+    <p style="font-size: 13px; color: #6b7280; background: #f3f4f6; padding: 15px; border-radius: 8px;">
+      <b>Regra importante:</b> O grupo é silenciado e apenas os administradores enviam mensagens. Fique tranquilo, você não será incomodado!
+    </p>
+  </div>
+</div>`}>Link do Grupo WhatsApp (Verde Zap)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Corpo do Email (HTML)</label>
+                  <textarea placeholder="Digite aqui o conteúdo do seu email..." value={emailBody} onChange={(e) => setEmailBody(e.target.value)} rows={8} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm bg-white" />
                 </div>
 
                 <div className="text-xs text-gray-500 font-bold p-3 bg-gray-50 rounded-xl">
