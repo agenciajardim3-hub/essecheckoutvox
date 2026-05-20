@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Lead, AppConfig } from '../../types';
 import { DollarSign, UserPlus, Filter, Wallet, TrendingUp, BarChart3, Settings, Save } from 'lucide-react';
+import { useSupabase } from '../../hooks/useSupabase';
 
 interface OverviewDashboardProps {
   leads: Lead[];
@@ -44,12 +45,30 @@ const safeDate = (value?: string) => {
 };
 
 export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, checkouts }) => {
+  const supabase = useSupabase();
   const [activeTab, setActiveTab] = useState<Tab>('financeiro');
   const [selectedProduct, setSelectedProduct] = useState('all');
   const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | 'all'>('all');
   const [expenses, setExpenses] = useState<Record<string, Expenses>>(loadExpenses);
+  const [globalExpenses, setGlobalExpenses] = useState<number>(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    const fetchGlobalExpenses = async () => {
+      if (!supabase) return;
+      try {
+        const { data } = await supabase.from('expenses').select('amount');
+        if (data) {
+          const total = data.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+          setGlobalExpenses(total);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchGlobalExpenses();
+  }, [supabase]);
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -79,8 +98,9 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
   const allPaidLeads = useMemo(() => leads.filter((lead) => lead.status === 'Pago' || lead.status === 'Aprovado'), [leads]);
 
   const totalExpenses = useMemo(() => {
-    return Object.values(expenses).reduce((sum, item) => sum + Object.values(item).reduce((s, v) => s + (Number(v) || 0), 0), 0);
-  }, [expenses]);
+    const local = Object.values(expenses).reduce((sum, item) => sum + Object.values(item).reduce((s, v) => s + (Number(v) || 0), 0), 0);
+    return local + globalExpenses;
+  }, [expenses, globalExpenses]);
 
   const metrics = useMemo(() => {
     const revenue = paidLeads.reduce((sum, lead) => sum + (lead.paid_amount || 0), 0);
