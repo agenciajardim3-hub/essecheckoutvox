@@ -1,5 +1,6 @@
 
-import React from 'react';
+import React, { useState } from 'react';
+import { Check, X } from 'lucide-react';
 
 interface InputProps {
   label: string;
@@ -9,6 +10,8 @@ interface InputProps {
   onChange: (value: string) => void;
   required?: boolean;
   mask?: 'cpf' | 'phone' | 'none';
+  autoComplete?: string;
+  validate?: (value: string) => boolean;
 }
 
 export const Input: React.FC<InputProps> = ({
@@ -18,8 +21,12 @@ export const Input: React.FC<InputProps> = ({
   value,
   onChange,
   required = true,
-  mask = 'none'
+  mask = 'none',
+  autoComplete,
+  validate
 }) => {
+  const [touched, setTouched] = useState(false);
+
   const formatValue = (val: string) => {
     if (mask === 'cpf') {
       return val
@@ -43,19 +50,61 @@ export const Input: React.FC<InputProps> = ({
     onChange(formatValue(e.target.value));
   };
 
+  const handleBlur = () => setTouched(true);
+
+  // Default validators per mask/type
+  const isValid = (): boolean => {
+    if (!value) return false;
+    if (validate) return validate(value);
+    if (mask === 'cpf') return value.replace(/\D/g, '').length === 11;
+    if (mask === 'phone') return value.replace(/\D/g, '').length >= 10;
+    if (type === 'email') return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    return value.trim().length >= 2;
+  };
+
+  const valid = touched && value ? isValid() : null;
+
   return (
     <div className="space-y-1.5">
       <label className="block text-[11px] sm:text-[10px] font-black uppercase text-gray-500 tracking-[0.12em] sm:tracking-widest ml-1">
         {label}
       </label>
-      <input
-        type={type}
-        required={required}
-        placeholder={placeholder}
-        value={value}
-        onChange={handleChange}
-        className="w-full px-4 sm:px-5 py-3.5 sm:py-4 rounded-2xl border-2 border-gray-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-bold text-[16px] sm:text-base text-gray-700 bg-gray-50/50 hover:bg-white hover:border-gray-200 leading-normal"
-      />
+      <div className="relative">
+        <input
+          type={type}
+          required={required}
+          placeholder={placeholder}
+          value={value}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          autoComplete={autoComplete}
+          className={`w-full px-4 sm:px-5 py-3.5 sm:py-4 pr-12 rounded-2xl border-2 outline-none focus:ring-2 focus:border-transparent transition-all font-bold text-[16px] sm:text-base text-gray-700 bg-gray-50/50 hover:bg-white leading-normal ${
+            valid === true
+              ? 'border-emerald-400 focus:ring-emerald-400 bg-emerald-50/30'
+              : valid === false
+              ? 'border-red-300 focus:ring-red-400 bg-red-50/20'
+              : 'border-gray-100 focus:ring-blue-500 hover:border-gray-200'
+          }`}
+        />
+        {touched && value && (
+          <div className={`absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+            valid ? 'bg-emerald-500' : 'bg-red-400'
+          }`}>
+            {valid
+              ? <Check size={13} className="text-white" strokeWidth={3} />
+              : <X size={13} className="text-white" strokeWidth={3} />
+            }
+          </div>
+        )}
+      </div>
+      {valid === false && touched && (
+        <p className="text-[10px] font-bold text-red-500 ml-1 animate-in fade-in slide-in-from-top-1 duration-200">
+          {mask === 'cpf' ? 'CPF incompleto (11 dígitos)'
+            : mask === 'phone' ? 'Telefone incompleto'
+            : type === 'email' ? 'E-mail inválido'
+            : `${label} é obrigatório`}
+        </p>
+      )}
     </div>
   );
 };
