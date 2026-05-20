@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Send, GraduationCap, Loader2, Check, AlertCircle, FileCheck, XCircle, Eye, ExternalLink, X } from 'lucide-react';
+import { Send, GraduationCap, Loader2, Check, AlertCircle, FileCheck, XCircle, Eye, ExternalLink, X, Mail, CheckSquare, Square } from 'lucide-react';
 import { Lead, AppConfig } from '../../types';
 
 interface CertificateSenderProps {
@@ -219,6 +219,8 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
   const [selectedCertificate, setSelectedCertificate] = useState<GeneratedCertificate | null>(null);
   const [sendingStatus, setSendingStatus] = useState<'idle' | 'generating' | 'sending' | 'completed' | 'error'>('idle');
   const [statusMessage, setStatusMessage] = useState('');
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [sendingIndividualId, setSendingIndividualId] = useState<string | null>(null);
 
   const turmas = useMemo(() => {
     const turmaSet = new Set<string>();
@@ -345,6 +347,74 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
     setStatusMessage(`✓ ${successful} certificado(s) enviado(s)${failed > 0 ? `, ${failed} falharam` : ''}`);
   };
 
+  const toggleChecked = (id: string) => {
+    setCheckedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllCertificates = () => {
+    setCheckedIds(new Set(generatedCertificates.filter(c => c.status !== 'sent').map(c => c.id)));
+  };
+
+  const deselectAllCertificates = () => {
+    setCheckedIds(new Set());
+  };
+
+  const handleSendSelected = async () => {
+    const certificatesToSend = generatedCertificates.filter(c => checkedIds.has(c.id) && c.status !== 'sent');
+    if (certificatesToSend.length === 0) return alert('Selecione ao menos um certificado para enviar');
+    if (!confirm(`Enviar ${certificatesToSend.length} certificado(s) selecionado(s) por email?`)) return;
+
+    setIsSending(true);
+    setSendingStatus('sending');
+    setSentCount(0);
+    setFailedCount(0);
+    setStatusMessage('Enviando certificados selecionados...');
+
+    let successful = 0;
+    let failed = 0;
+    for (const certificate of certificatesToSend) {
+      try {
+        setStatusMessage(`Enviando certificado para ${certificate.name}...`);
+        await sendCertificateEmail(certificate);
+        successful += 1;
+        setSentCount(successful);
+        updateCertificateStatus(certificate.id, 'sent', 'Enviado com layout oficial');
+        await new Promise(resolve => setTimeout(resolve, 350));
+      } catch (err) {
+        console.error(`Erro ao enviar para ${certificate.name}:`, err);
+        failed += 1;
+        setFailedCount(failed);
+        updateCertificateStatus(certificate.id, 'error', err instanceof Error ? err.message : 'Erro ao enviar');
+      }
+    }
+
+    setIsSending(false);
+    setCheckedIds(new Set());
+    setSendingStatus(failed > 0 && successful === 0 ? 'error' : 'completed');
+    setStatusMessage(`✓ ${successful} certificado(s) enviado(s)${failed > 0 ? `, ${failed} falharam` : ''}`);
+  };
+
+  const handleSendIndividual = async (certificate: GeneratedCertificate) => {
+    if (!confirm(`Enviar certificado para ${certificate.name} (${certificate.email})?`)) return;
+    setSendingIndividualId(certificate.id);
+    try {
+      await sendCertificateEmail(certificate);
+      updateCertificateStatus(certificate.id, 'sent', 'Enviado com layout oficial');
+      setSentCount(prev => prev + 1);
+    } catch (err) {
+      console.error(`Erro ao enviar para ${certificate.name}:`, err);
+      updateCertificateStatus(certificate.id, 'error', err instanceof Error ? err.message : 'Erro ao enviar');
+      setFailedCount(prev => prev + 1);
+    } finally {
+      setSendingIndividualId(null);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between">
@@ -415,14 +485,57 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
           {generatedCertificates.length > 0 && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
               <div className="bg-gray-50 rounded-2xl p-4">
+                {/* Toolbar de envio */}
+                <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-2xl p-4 mb-4 shadow-lg">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div>
+                      <div className="text-white font-black text-sm flex items-center gap-2"><Mail size={16} /> Enviar por Email</div>
+                      <div className="text-emerald-100 text-[10px] font-bold mt-0.5">
+                        {checkedIds.size > 0 ? `${checkedIds.size} selecionado(s)` : 'Selecione certificados abaixo'}
+                      </div>
+                    </div>
+                    <div className="text-[10px] font-black text-white/80 bg-white/20 px-3 py-1 rounded-full">Enviados: {sentCount} | Falhas: {failedCount}</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={handleSendGeneratedCertificates}
+                      disabled={isSending || pendingToSend === 0}
+                      className="py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 bg-white text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                    >
+                      {isSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                      Enviar Todos ({pendingToSend})
+                    </button>
+                    <button
+                      onClick={handleSendSelected}
+                      disabled={isSending || checkedIds.size === 0}
+                      className="py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 bg-white/20 text-white hover:bg-white/30 disabled:opacity-50 disabled:cursor-not-allowed border border-white/30"
+                    >
+                      {isSending ? <Loader2 size={14} className="animate-spin" /> : <CheckSquare size={14} />}
+                      Enviar Selecionados ({checkedIds.size})
+                    </button>
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-between gap-4 mb-3">
                   <div className="text-xs font-bold text-gray-600 uppercase tracking-widest">Certificados gerados</div>
-                  <div className="text-[10px] font-black text-gray-500 bg-white border border-gray-200 px-3 py-1 rounded-full">Enviados: {sentCount} | Falhas: {failedCount}</div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={selectAllCertificates} className="text-[10px] font-black text-purple-600 hover:text-purple-800 transition-all">Selecionar todos</button>
+                    <span className="text-gray-300">|</span>
+                    <button onClick={deselectAllCertificates} className="text-[10px] font-black text-gray-500 hover:text-gray-700 transition-all">Limpar</button>
+                  </div>
                 </div>
                 <div className="space-y-2 max-h-[520px] overflow-y-auto">
                   {generatedCertificates.map((cert, idx) => (
-                    <div key={cert.id} className={`p-3 bg-white rounded-xl border transition-all ${selectedCertificate?.id === cert.id ? 'border-purple-400 ring-2 ring-purple-100' : 'border-gray-200 hover:border-purple-300'}`}>
+                    <div key={cert.id} className={`p-3 bg-white rounded-xl border transition-all ${selectedCertificate?.id === cert.id ? 'border-purple-400 ring-2 ring-purple-100' : checkedIds.has(cert.id) ? 'border-emerald-400 ring-2 ring-emerald-100' : 'border-gray-200 hover:border-purple-300'}`}>
                       <div className="flex items-center gap-3">
+                        {/* Checkbox */}
+                        <button
+                          onClick={() => toggleChecked(cert.id)}
+                          className={`flex-shrink-0 transition-all ${cert.status === 'sent' ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+                          disabled={cert.status === 'sent'}
+                        >
+                          {checkedIds.has(cert.id) ? <CheckSquare size={20} className="text-emerald-600" /> : <Square size={20} className="text-gray-400" />}
+                        </button>
                         <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center text-xs font-black text-purple-600 flex-shrink-0">{idx + 1}</div>
                         <div className="flex-1 min-w-0">
                           <div className="font-bold text-gray-900 text-sm truncate">{cert.name}</div>
@@ -432,9 +545,17 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
                         </div>
                         <div className={`text-[10px] font-black px-2 py-1 rounded-lg flex-shrink-0 ${cert.status === 'sent' ? 'text-emerald-600 bg-emerald-50' : cert.status === 'error' ? 'text-red-600 bg-red-50' : 'text-purple-600 bg-purple-50'}`}>{cert.status === 'sent' ? '✓ Enviado' : cert.status === 'error' ? 'Falhou' : 'Gerado'}</div>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 mt-3">
+                      <div className="grid grid-cols-3 gap-2 mt-3">
                         <button onClick={() => setSelectedCertificate(cert)} className="px-3 py-2 bg-purple-50 text-purple-700 rounded-xl text-[10px] font-black uppercase hover:bg-purple-100 transition-all flex items-center justify-center gap-1"><Eye size={13} /> Visualizar</button>
                         <button onClick={() => openOfficialCertificate(cert)} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-xl text-[10px] font-black uppercase hover:bg-gray-200 transition-all flex items-center justify-center gap-1"><ExternalLink size={13} /> Abrir</button>
+                        <button
+                          onClick={() => handleSendIndividual(cert)}
+                          disabled={cert.status === 'sent' || sendingIndividualId === cert.id || isSending}
+                          className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-1 ${cert.status === 'sent' ? 'bg-emerald-50 text-emerald-600 cursor-not-allowed' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'} disabled:opacity-50`}
+                        >
+                          {sendingIndividualId === cert.id ? <Loader2 size={13} className="animate-spin" /> : cert.status === 'sent' ? <Check size={13} /> : <Mail size={13} />}
+                          {cert.status === 'sent' ? 'Enviado' : 'Enviar'}
+                        </button>
                       </div>
                     </div>
                   ))}
