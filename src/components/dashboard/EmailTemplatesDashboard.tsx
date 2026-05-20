@@ -159,8 +159,8 @@ export const EmailTemplatesDashboard: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {emailTemplates.map((template) => (
                     <div key={template.id} className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col">
-                        <div className={\`h-24 bg-gradient-to-r \${template.color} flex items-center justify-center p-6\`}>
-                            <h3 className={\`text-lg font-black text-center \${template.id === 'payment' ? 'text-gray-800' : 'text-white'}\`}>
+                        <div className={`h-24 bg-gradient-to-r ${template.color} flex items-center justify-center p-6`}>
+                            <h3 className={`text-lg font-black text-center ${template.id === 'payment' ? 'text-gray-800' : 'text-white'}`}>
                                 {template.name}
                             </h3>
                         </div>
@@ -179,11 +179,11 @@ export const EmailTemplatesDashboard: React.FC = () => {
                                 </button>
                                 <button
                                     onClick={() => handleCopy(template.id, template.html)}
-                                    className={\`flex-1 px-4 py-2.5 rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2 \${
+                                    className={`flex-1 px-4 py-2.5 rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2 ${
                                         copiedId === template.id
                                             ? 'bg-green-100 text-green-700'
                                             : 'bg-blue-600 hover:bg-blue-700 text-white'
-                                    }\`}
+                                    }`}
                                 >
                                     {copiedId === template.id ? (
                                         <>
