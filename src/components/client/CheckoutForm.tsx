@@ -207,7 +207,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     };
 
     return (
-        <div className="max-w-md w-full bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100 animate-in fade-in slide-in-from-bottom-8 duration-700 flex flex-col mx-auto">
+        <div className="max-w-md lg:max-w-xl w-full bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100 animate-in fade-in slide-in-from-bottom-8 duration-700 flex flex-col mx-auto">
 
             {/* ── Banner ── */}
             <div
