@@ -151,7 +151,7 @@ export const ClientView: React.FC<ClientViewProps> = ({
     }, [effectiveConfig, supabase]);
 
     return (
-        <div className="min-h-screen bg-[#f1f5f9] flex flex-col lg:flex-row items-center justify-start lg:justify-center px-3 py-4 sm:p-6 lg:p-12 gap-5 sm:gap-8 lg:gap-20 sm:py-10 lg:py-16 overflow-x-hidden">
+        <div className="min-h-screen bg-[#f1f5f9] flex flex-col lg:flex-row items-center justify-start lg:justify-center px-3 py-4 sm:p-6 lg:p-8 gap-5 sm:gap-8 lg:gap-8 sm:py-10 lg:py-12 overflow-x-hidden">
             {showSuccess && (
                 <RegistrationSuccess
                     customer={customer}
