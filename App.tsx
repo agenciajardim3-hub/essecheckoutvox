@@ -963,14 +963,28 @@ export default function App() {
   const handleSaveManualLead = async (leadData: any) => {
     if (!supabase) return;
     try {
+      // Build an explicit payload to avoid sending undefined values or react-internal fields
+      const payload: Record<string, any> = {};
+      const allowedFields = [
+        'name', 'email', 'phone', 'cpf', 'city', 'status',
+        'product_id', 'product_name', 'turma', 'paid_amount',
+        'payment_method', 'coupon_code', 'date', 'time',
+        'notes', 'utm_source', 'utm_medium', 'utm_campaign'
+      ];
+      for (const field of allowedFields) {
+        if (leadData[field] !== undefined) {
+          payload[field] = leadData[field];
+        }
+      }
+
       if (leadData.id) {
-        const { error } = await supabase.from('leads').update(leadData).eq('id', leadData.id);
+        const { error } = await supabase.from('leads').update(payload).eq('id', leadData.id);
         if (error) throw error;
-        setLeads(prev => prev.map(l => l.id === leadData.id ? { ...l, ...leadData } : l));
+        setLeads(prev => prev.map(l => l.id === leadData.id ? { ...l, ...payload } : l));
         alert('Registro atualizado!');
       } else {
-        const payload = { ...leadData, utm_source: 'Manual_Entry' };
-        const { error } = await supabase.from('leads').insert(payload);
+        const insertPayload = { ...payload, utm_source: 'Manual_Entry' };
+        const { error } = await supabase.from('leads').insert(insertPayload);
         if (error) throw error;
         fetchData(); // Refresh to get the new ID and data 
         alert('Aluno cadastrado com sucesso!');
