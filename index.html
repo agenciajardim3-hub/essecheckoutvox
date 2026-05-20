@@ -115,6 +115,11 @@
     .vox-cert-tab.active { background: #2563eb; color: #fff; box-shadow: 0 10px 22px rgba(37,99,235,.18); }
 
     @media print {
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
       body.vox-certificate-page,
       body.vox-certificate-page #root {
         background: #ffffff !important;
