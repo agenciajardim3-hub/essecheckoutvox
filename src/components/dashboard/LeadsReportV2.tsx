@@ -1196,6 +1196,30 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                                         <Edit2 size={12} />
                                                     </button>
                                                 )}
+                                                {lead.email && (() => {
+                                                    let subject = "Contato - Vox Marketing Academy";
+                                                    let body = `Olá ${lead.name || 'Aluno'},\n\n`;
+
+                                                    if (lead.status === 'Abandonado') {
+                                                        subject = `Finalize sua inscrição - ${lead.product_name || 'Vox'}`;
+                                                        body = `Olá ${lead.name || 'Aluno'},\n\nVimos que você iniciou sua compra para o ${lead.product_name || 'curso'} mas não finalizou.\n\nSe precisar de ajuda com o pagamento ou tiver alguma dúvida, estamos à disposição!\n\nAtenciosamente,\nEquipe Vox Marketing Academy`;
+                                                    } else if (lead.status === 'Pago' || lead.status === 'Aprovado') {
+                                                        subject = `Inscrição Confirmada - ${lead.product_name || 'Vox'}`;
+                                                        body = `Olá ${lead.name || 'Aluno'},\n\nSua inscrição para o ${lead.product_name || 'curso'} foi confirmada com sucesso!\n\nSeja muito bem-vindo(a)!\n\nAtenciosamente,\nEquipe Vox Marketing Academy`;
+                                                    }
+
+                                                    return (
+                                                        <a
+                                                            href={`mailto:${lead.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="px-2 py-1 rounded-lg bg-blue-50 text-blue-600 font-bold text-[10px] uppercase hover:bg-blue-100 transition-all flex items-center gap-1"
+                                                            title="Enviar Email"
+                                                        >
+                                                            <Mail size={12} />
+                                                        </a>
+                                                    );
+                                                })()}
                                                 {lead.phone && (
                                                     <a
                                                         href={`https://wa.me/55${lead.phone?.replace(/\D/g, '') || ''}?text=${encodeURIComponent(generateWhatsAppMessage(lead))}`}
