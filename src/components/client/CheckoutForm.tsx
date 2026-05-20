@@ -267,16 +267,16 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
             {/* ── "X pessoas vendo" bar ── */}
             {viewerCount > 0 && !isRegistrationMode && !isTicketMode && (
-                <div className="flex items-center justify-center gap-2 py-2 px-4 bg-amber-50 border-b border-amber-100">
+                <div className="flex items-center justify-center gap-3 py-4 px-5 bg-gradient-to-r from-amber-400 via-orange-400 to-red-500 border-b-4 border-red-600 shadow-lg">
                     <div className="relative flex items-center">
-                        <Eye size={13} className="text-amber-600" />
-                        <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-amber-500 rounded-full animate-ping" />
+                        <Eye size={20} className="text-white drop-shadow-lg" />
+                        <span className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full animate-pulse" />
                     </div>
-                    <span className="text-[11px] font-black text-amber-700">
-                        🔥 <span className="text-amber-900 tabular-nums">{viewerCount}</span> {viewerCount === 1 ? 'pessoa vendo' : 'pessoas vendo'} agora
+                    <span className="text-sm font-black text-white drop-shadow-md">
+                        🔥 <span className="text-white tabular-nums text-base">{viewerCount}</span> {viewerCount === 1 ? 'pessoa vendo' : 'pessoas vendo'} agora
                     </span>
                     {availableSpots !== undefined && availableSpots <= 10 && (
-                        <span className="ml-1 text-[9px] font-black uppercase text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
+                        <span className="ml-2 text-xs font-black uppercase text-white bg-red-700 px-3 py-1 rounded-full shadow-md">
                             só {availableSpots} vagas!
                         </span>
                     )}
