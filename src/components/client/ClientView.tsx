@@ -151,7 +151,7 @@ export const ClientView: React.FC<ClientViewProps> = ({
     }, [effectiveConfig, supabase]);
 
     return (
-        <div className="min-h-screen bg-[#f1f5f9] flex flex-col lg:flex-row items-center justify-start lg:justify-center px-3 py-4 sm:p-6 lg:p-8 gap-5 sm:gap-8 lg:gap-8 sm:py-10 lg:py-12 overflow-x-hidden">
+        <div className="min-h-screen bg-[#f1f5f9] flex flex-col items-center justify-start lg:justify-center py-4 sm:py-8 lg:py-12 px-3 sm:px-6 overflow-x-hidden">
             {showSuccess && (
                 <RegistrationSuccess
                     customer={customer}
@@ -193,44 +193,53 @@ export const ClientView: React.FC<ClientViewProps> = ({
                 </div>
             )}
 
-            <div className="hidden lg:block max-w-md w-full animate-in fade-in slide-in-from-left-8 duration-700">
-                <div className="bg-white p-12 rounded-[4rem] shadow-2xl border border-gray-100">
-                    <div className="relative group">
-                        <img src={effectiveConfig.productImage} onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=800'; }} className="w-full aspect-square object-cover rounded-[3rem] mb-10 shadow-2xl shadow-blue-200/40 group-hover:scale-[1.02] transition-transform duration-500" alt="Produto" />
-                    </div>
-                    <div className="mb-6">
-                        {effectiveConfig.turma && <span className="bg-gray-100 px-4 py-2 rounded-xl text-[10px] font-black uppercase text-gray-500 flex w-fit items-center gap-2 mb-4"><GraduationCap size={14} className="text-blue-500" /> {effectiveConfig.turma}</span>}
-                        <h2 className="text-3xl font-black text-gray-900 leading-tight tracking-tight">{effectiveConfig.productName}</h2>
-                    </div>
-                    <div className="p-8 bg-blue-50/50 rounded-[2.5rem] border border-blue-100 mb-10 text-center">
-                        <span className="text-5xl font-black text-blue-600 tracking-tighter">R$ {effectiveConfig.productPrice}</span>
-                    </div>
-                    <div className="space-y-4">
-                        {(effectiveConfig.benefits || []).filter(b => b.trim() !== '').map((benefit, idx) => (
-                            <div key={idx} className="flex items-start gap-3">
-                                <div className="mt-1 w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
-                                    <Check size={12} strokeWidth={4} />
+            {/* Inner wrapper: groups card + form and caps total width */}
+            <div className="w-full max-w-5xl flex flex-col lg:flex-row lg:items-start gap-5 sm:gap-6 lg:gap-8">
+
+                {/* Left product card */}
+                <div className="hidden lg:block lg:w-80 xl:w-96 flex-shrink-0 animate-in fade-in slide-in-from-left-8 duration-700">
+                    <div className="bg-white p-8 xl:p-10 rounded-[3rem] shadow-2xl border border-gray-100 sticky top-8">
+                        <div className="relative group">
+                            <img src={effectiveConfig.productImage} onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=800'; }} className="w-full aspect-square object-cover rounded-[2rem] mb-8 shadow-xl shadow-blue-200/40 group-hover:scale-[1.02] transition-transform duration-500" alt="Produto" />
+                        </div>
+                        <div className="mb-5">
+                            {effectiveConfig.turma && <span className="bg-gray-100 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase text-gray-500 flex w-fit items-center gap-2 mb-3"><GraduationCap size={13} className="text-blue-500" /> {effectiveConfig.turma}</span>}
+                            <h2 className="text-2xl xl:text-3xl font-black text-gray-900 leading-tight tracking-tight">{effectiveConfig.productName}</h2>
+                        </div>
+                        <div className="p-5 bg-blue-50/50 rounded-[2rem] border border-blue-100 mb-7 text-center">
+                            <span className="text-4xl xl:text-5xl font-black text-blue-600 tracking-tighter">R$ {effectiveConfig.productPrice}</span>
+                        </div>
+                        <div className="space-y-3">
+                            {(effectiveConfig.benefits || []).filter(b => b.trim() !== '').map((benefit, idx) => (
+                                <div key={idx} className="flex items-start gap-3">
+                                    <div className="mt-0.5 w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                                        <Check size={12} strokeWidth={4} />
+                                    </div>
+                                    <span className="text-gray-600 font-bold text-sm tracking-tight leading-snug">{benefit}</span>
                                 </div>
-                                <span className="text-gray-600 font-bold text-sm tracking-tight leading-snug">{benefit}</span>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <CheckoutForm
-                config={effectiveConfig}
-                onSubmit={handleSubmitWithVariation}
-                isSubmitting={isSubmitting}
-                isTicketMode={isTicketMode}
-                isRegistrationMode={isRegistrationMode}
-                onClickHeader={onHeaderClick}
-                isSoldOut={isSoldOut}
-                availableSpots={availableSpots}
-                appliedCoupon={appliedCoupon}
-                onApplyCoupon={onApplyCoupon}
-                onSaveAbandonment={onSaveAbandonment}
-            />
+                {/* Right: checkout form */}
+                <div className="flex-1 min-w-0">
+                    <CheckoutForm
+                        config={effectiveConfig}
+                        onSubmit={handleSubmitWithVariation}
+                        isSubmitting={isSubmitting}
+                        isTicketMode={isTicketMode}
+                        isRegistrationMode={isRegistrationMode}
+                        onClickHeader={onHeaderClick}
+                        isSoldOut={isSoldOut}
+                        availableSpots={availableSpots}
+                        appliedCoupon={appliedCoupon}
+                        onApplyCoupon={onApplyCoupon}
+                        onSaveAbandonment={onSaveAbandonment}
+                    />
+                </div>
+
+            </div>
         </div>
     );
 };
