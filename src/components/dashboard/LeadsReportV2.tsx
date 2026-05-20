@@ -1339,6 +1339,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                         </table>
                     </div>
                 </div>
+                </>
             )}
 
             {/* Paginação */}
