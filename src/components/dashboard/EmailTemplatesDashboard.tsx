@@ -1,142 +1,15 @@
 import React, { useState } from 'react';
-import { Mail, Copy, Check, Eye } from 'lucide-react';
-
-interface EmailTemplate {
-    id: string;
-    name: string;
-    description: string;
-    html: string;
-    color: string;
-}
-
-export const emailTemplates: EmailTemplate[] = [
-    {
-        id: 'welcome',
-        name: 'Boas Vindas (Azul/Roxo)',
-        description: 'Ideal para dar as boas-vindas para novos alunos logo após a compra.',
-        color: 'from-indigo-500 to-purple-600',
-        html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
-  <div style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 30px 20px; text-align: center; color: white;">
-    <h1 style="margin: 0; font-size: 24px;">Bem-vindo(a) à Vox! 🚀</h1>
-  </div>
-  <div style="padding: 30px 20px; color: #374151; line-height: 1.6;">
-    <p>Olá <b>{name}</b>,</p>
-    <p>É um prazer ter você conosco! Sua jornada de aprendizado acaba de começar.</p>
-    <p>Prepare-se para ter acesso aos melhores conteúdos e um suporte de primeira linha.</p>
-    <br/>
-    <p>Qualquer dúvida, estamos à disposição!</p>
-  </div>
-  <div style="background: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 12px;">
-    &copy; ${new Date().getFullYear()} Vox Marketing Academy. Todos os direitos reservados.
-  </div>
-</div>`
-    },
-    {
-        id: 'promo',
-        name: 'Oferta Exclusiva (Escuro/Dourado)',
-        description: 'Perfeito para vender upsells, mentorias ou novos treinamentos.',
-        color: 'from-gray-900 to-gray-800',
-        html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
-  <div style="background: #111827; padding: 30px 20px; text-align: center; color: white;">
-    <h1 style="margin: 0; font-size: 24px; color: #f59e0b;">Oferta Exclusiva Liberada! ⚡</h1>
-  </div>
-  <div style="padding: 30px 20px; color: #374151; line-height: 1.6; text-align: center;">
-    <p>Olá <b>{name}</b>,</p>
-    <p>Liberamos uma oportunidade única para você dar o próximo passo.</p>
-    <p>Garanta sua vaga no nosso novo treinamento com <b>condições especiais</b> apenas para quem já é aluno!</p>
-    <div style="margin: 30px 0;">
-      <a href="SEU_LINK_AQUI" style="background: #f59e0b; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: bold; display: inline-block;">GARANTIR MINHA VAGA</a>
-    </div>
-    <p style="font-size: 12px; color: #9ca3af;">Atenção: Oferta válida por tempo limitadíssimo.</p>
-  </div>
-</div>`
-    },
-    {
-        id: 'notice',
-        name: 'Aviso Urgente (Vermelho)',
-        description: 'Usado para comunicados sérios, atualizações de sistema ou mudanças.',
-        color: 'from-red-500 to-red-600',
-        html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border-left: 4px solid #ef4444; background: #fef2f2; border-radius: 8px; overflow: hidden;">
-  <div style="padding: 30px 20px; color: #7f1d1d; line-height: 1.6;">
-    <h2 style="margin-top: 0; color: #991b1b;">⚠️ Aviso Importante</h2>
-    <p>Olá <b>{name}</b>,</p>
-    <p>Gostaríamos de informar sobre uma atualização importante no seu acesso ao sistema.</p>
-    <p>[Descreva sua atualização aqui]</p>
-    <br/>
-    <p>Atenciosamente,<br/><b>Equipe Vox</b></p>
-  </div>
-</div>`
-    },
-    {
-        id: 'reminder',
-        name: 'Tá Chegando a Hora (Verde)',
-        description: 'Lembrete de véspera para eventos, imersões ou mentorias.',
-        color: 'from-emerald-500 to-emerald-600',
-        html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
-  <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px 20px; text-align: center; color: white;">
-    <h1 style="margin: 0; font-size: 24px;">Falta Pouco! ⏳</h1>
-  </div>
-  <div style="padding: 30px 20px; color: #374151; line-height: 1.6;">
-    <p>Olá <b>{name}</b>,</p>
-    <p>O grande dia está chegando! Faltam poucos dias para o nosso encontro.</p>
-    <p>Recomendamos que você se prepare, separe seu material e chegue com antecedência para aproveitar tudo ao máximo.</p>
-    <div style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0; border-radius: 0 8px 8px 0;">
-      <b>📅 Data:</b> [Data do Evento]<br/>
-      <b>📍 Local:</b> [Local / Link do Zoom]
-    </div>
-    <p>Estamos muito animados para te ver lá!</p>
-  </div>
-</div>`
-    },
-    {
-        id: 'payment',
-        name: 'Pagamento Confirmado (Clean)',
-        description: 'Recibo moderno de confirmação de pagamento para passar confiança.',
-        color: 'from-slate-100 to-slate-200',
-        html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
-  <div style="background: #ffffff; padding: 30px 20px; text-align: center; border-bottom: 1px solid #f3f4f6;">
-    <div style="font-size: 48px; margin-bottom: 10px;">✅</div>
-    <h1 style="margin: 0; font-size: 24px; color: #111827;">Pagamento Confirmado!</h1>
-  </div>
-  <div style="padding: 30px 20px; color: #374151; line-height: 1.6;">
-    <p>Olá <b>{name}</b>,</p>
-    <p>Recebemos o seu pagamento com sucesso. Sua vaga já está 100% garantida.</p>
-    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px dashed #cbd5e1;">
-      <p style="margin: 0; font-size: 14px; color: #64748b;">Resumo da Compra</p>
-      <p style="margin: 5px 0 0 0; font-weight: bold; font-size: 18px; color: #0f172a;">[Nome do Curso / Treinamento]</p>
-    </div>
-    <p>Em breve você receberá mais instruções sobre os próximos passos. Se precisar de ajuda, basta responder este email.</p>
-    <p>Bem-vindo(a) ao time!</p>
-  </div>
-</div>`
-    },
-    {
-        id: 'whatsapp',
-        name: 'Link do Grupo VIP (Verde Zap)',
-        description: 'O melhor template para garantir que as pessoas entrem no grupo do WhatsApp.',
-        color: 'from-green-400 to-green-500',
-        html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
-  <div style="background: #25D366; padding: 30px 20px; text-align: center; color: white;">
-    <h1 style="margin: 0; font-size: 24px;">Entre no Grupo VIP 💬</h1>
-  </div>
-  <div style="padding: 30px 20px; color: #374151; line-height: 1.6; text-align: center;">
-    <p>Olá <b>{name}</b>,</p>
-    <p>Toda a nossa comunicação oficial, links de aulas, materiais e avisos importantes serão enviados <b>exclusivamente</b> através do nosso Grupo VIP no WhatsApp.</p>
-    <p>Não fique de fora! Clique no botão abaixo para entrar agora mesmo:</p>
-    <div style="margin: 30px 0;">
-      <a href="SEU_LINK_DO_GRUPO_AQUI" style="background: #128C7E; color: white; text-decoration: none; padding: 16px 32px; border-radius: 50px; font-weight: bold; font-size: 16px; display: inline-block;">ENTRAR NO GRUPO VIP</a>
-    </div>
-    <p style="font-size: 13px; color: #6b7280; background: #f3f4f6; padding: 15px; border-radius: 8px;">
-      <b>Regra importante:</b> O grupo é silenciado e apenas os administradores enviam mensagens. Fique tranquilo, você não será incomodado!
-    </p>
-  </div>
-</div>`
-    }
-];
+import { Mail, Copy, Check, Eye, Plus, Edit2, Trash2 } from 'lucide-react';
+import { useEmailTemplates, EmailTemplate } from '../../hooks/useEmailTemplates';
 
 export const EmailTemplatesDashboard: React.FC = () => {
+    const { templates, saveTemplate, deleteTemplate } = useEmailTemplates();
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+    
+    // Modal state
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingTemplate, setEditingTemplate] = useState<Partial<EmailTemplate> | null>(null);
 
     const handleCopy = (id: string, html: string) => {
         navigator.clipboard.writeText(html);
@@ -144,22 +17,94 @@ export const EmailTemplatesDashboard: React.FC = () => {
         setTimeout(() => setCopiedId(null), 2000);
     };
 
+    const handleOpenCreate = () => {
+        setEditingTemplate({
+            name: '',
+            description: '',
+            color: 'from-blue-500 to-blue-600',
+            html: '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">\n  <div style="background: #3b82f6; padding: 30px 20px; text-align: center; color: white;">\n    <h1 style="margin: 0; font-size: 24px;">Meu Título</h1>\n  </div>\n  <div style="padding: 30px 20px; color: #374151; line-height: 1.6;">\n    <p>Olá <b>{name}</b>,</p>\n    <p>Escreva sua mensagem aqui.</p>\n  </div>\n</div>'
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleOpenEdit = (template: EmailTemplate) => {
+        setEditingTemplate({ ...template });
+        setIsModalOpen(true);
+    };
+
+    const handleSave = () => {
+        if (!editingTemplate?.name || !editingTemplate?.html) {
+            alert('Nome e HTML são obrigatórios!');
+            return;
+        }
+
+        const templateToSave: EmailTemplate = {
+            id: editingTemplate.id || `custom_${Date.now()}`,
+            name: editingTemplate.name,
+            description: editingTemplate.description || 'Modelo personalizado criado por você.',
+            color: editingTemplate.color || 'from-gray-500 to-gray-600',
+            html: editingTemplate.html
+        };
+
+        saveTemplate(templateToSave);
+        setIsModalOpen(false);
+        setEditingTemplate(null);
+    };
+
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-3 mb-8">
-                <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
-                    <Mail size={24} className="text-blue-600" />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
+                        <Mail size={24} className="text-blue-600" />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-black text-gray-900">Modelos de Email</h2>
+                        <p className="text-gray-500 font-medium">Crie, edite e copie os códigos HTML para seus disparos.</p>
+                    </div>
                 </div>
-                <div>
-                    <h2 className="text-2xl font-black text-gray-900">Modelos de Email</h2>
-                    <p className="text-gray-500 font-medium">Copie o código HTML dos modelos para usar nos seus disparos.</p>
-                </div>
+                
+                <button
+                    onClick={handleOpenCreate}
+                    className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20"
+                >
+                    <Plus size={20} />
+                    Criar Novo Modelo
+                </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {emailTemplates.map((template) => (
-                    <div key={template.id} className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col">
-                        <div className={`h-24 bg-gradient-to-r ${template.color} flex items-center justify-center p-6`}>
+                {templates.map((template) => (
+                    <div key={template.id} className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group relative">
+                        {template.isCustom && (
+                            <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                <button 
+                                    onClick={() => handleOpenEdit(template)}
+                                    className="w-8 h-8 bg-white text-blue-600 rounded-full flex items-center justify-center shadow-md hover:bg-blue-50"
+                                    title="Editar Modelo"
+                                >
+                                    <Edit2 size={14} />
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        if (window.confirm('Tem certeza que deseja excluir este modelo?')) {
+                                            deleteTemplate(template.id);
+                                        }
+                                    }}
+                                    className="w-8 h-8 bg-white text-red-600 rounded-full flex items-center justify-center shadow-md hover:bg-red-50"
+                                    title="Excluir Modelo"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
+                        )}
+                        
+                        <div className={`h-24 bg-gradient-to-r ${template.color} flex items-center justify-center p-6 relative`}>
+                            {template.isCustom && (
+                                <span className="absolute top-4 left-4 bg-white/20 text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">
+                                    Custom
+                                </span>
+                            )}
                             <h3 className={`text-lg font-black text-center ${template.id === 'payment' ? 'text-gray-800' : 'text-white'}`}>
                                 {template.name}
                             </h3>
@@ -205,7 +150,7 @@ export const EmailTemplatesDashboard: React.FC = () => {
 
             {/* Modal de Preview */}
             {previewHtml && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" onClick={() => setPreviewHtml(null)}>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" onClick={() => setPreviewHtml(null)}>
                     <div 
                         className="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
                         onClick={e => e.stopPropagation()}
@@ -225,6 +170,101 @@ export const EmailTemplatesDashboard: React.FC = () => {
                                 style={{ maxWidth: '600px', minHeight: '400px' }}
                                 dangerouslySetInnerHTML={{ __html: previewHtml }}
                             />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Edição/Criação */}
+            {isModalOpen && editingTemplate && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 className="text-xl font-black text-gray-900">
+                                {editingTemplate.id ? 'Editar Modelo' : 'Criar Novo Modelo'}
+                            </h3>
+                            <button 
+                                onClick={() => {
+                                    setIsModalOpen(false);
+                                    setEditingTemplate(null);
+                                }}
+                                className="w-8 h-8 flex items-center justify-center bg-white rounded-full text-gray-500 hover:text-gray-900 shadow-sm"
+                            >
+                                x
+                            </button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Nome do Modelo</label>
+                                    <input 
+                                        type="text" 
+                                        value={editingTemplate.name || ''}
+                                        onChange={e => setEditingTemplate({...editingTemplate, name: e.target.value})}
+                                        placeholder="Ex: Confirmação de Assinatura"
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Cor de Fundo (Card)</label>
+                                    <select 
+                                        value={editingTemplate.color || ''}
+                                        onChange={e => setEditingTemplate({...editingTemplate, color: e.target.value})}
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold"
+                                    >
+                                        <option value="from-blue-500 to-blue-600">Azul</option>
+                                        <option value="from-emerald-500 to-emerald-600">Verde</option>
+                                        <option value="from-purple-500 to-purple-600">Roxo</option>
+                                        <option value="from-orange-500 to-orange-600">Laranja</option>
+                                        <option value="from-rose-500 to-rose-600">Rosa</option>
+                                        <option value="from-gray-800 to-gray-900">Escuro</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Descrição Curta</label>
+                                <input 
+                                    type="text" 
+                                    value={editingTemplate.description || ''}
+                                    onChange={e => setEditingTemplate({...editingTemplate, description: e.target.value})}
+                                    placeholder="Ex: Usado para enviar acesso à comunidade."
+                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+
+                            <div>
+                                <div className="flex justify-between items-end mb-2">
+                                    <label className="block text-sm font-bold text-gray-700">Código HTML</label>
+                                    <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded">Dica: Use {'{name}'} para o nome do aluno</span>
+                                </div>
+                                <textarea 
+                                    value={editingTemplate.html || ''}
+                                    onChange={e => setEditingTemplate({...editingTemplate, html: e.target.value})}
+                                    rows={12}
+                                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm text-gray-700"
+                                    placeholder="Cole aqui o seu código HTML..."
+                                />
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+                            <button 
+                                onClick={() => {
+                                    setIsModalOpen(false);
+                                    setEditingTemplate(null);
+                                }}
+                                className="px-6 py-3 font-bold text-gray-600 hover:bg-gray-200 rounded-xl transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                onClick={handleSave}
+                                className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl transition-colors shadow-lg shadow-blue-600/20"
+                            >
+                                Salvar Modelo
+                            </button>
                         </div>
                     </div>
                 </div>
