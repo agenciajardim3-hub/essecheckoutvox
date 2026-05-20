@@ -462,24 +462,28 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
           </div>
 
           {selectedTurma && turmaLeads.length > 0 && generatedCertificates.length === 0 && (
-            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-6 shadow-xl shadow-purple-200/50">
-              <div className="flex items-center justify-between gap-4 mb-4">
+            <button
+              onClick={handleGenerateCertificates}
+              disabled={isGenerating}
+              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-6 shadow-xl shadow-purple-200/50 hover:from-purple-700 hover:to-indigo-700 hover:-translate-y-1 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed text-left"
+            >
+              <div className="flex items-center justify-between gap-4">
                 <div>
-                  <div className="text-white font-black text-lg">Pronto para gerar!</div>
-                  <div className="text-purple-200 text-sm font-bold mt-1">{turmaLeads.length} aluno{turmaLeads.length !== 1 ? 's' : ''} encontrado{turmaLeads.length !== 1 ? 's' : ''} na turma "{selectedTurma}"</div>
+                  <div className="text-white font-black text-xl">
+                    {isGenerating ? '⏳ Gerando certificados...' : '📜 Criar Certificados em Massa'}
+                  </div>
+                  <div className="text-purple-200 text-sm font-bold mt-2">
+                    {turmaLeads.length} aluno{turmaLeads.length !== 1 ? 's' : ''} encontrado{turmaLeads.length !== 1 ? 's' : ''} na turma "{selectedTurma}"
+                  </div>
+                  <div className="text-white/70 text-xs font-bold mt-1">
+                    Clique aqui para gerar todos os certificados
+                  </div>
                 </div>
-                <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
-                  <FileCheck size={28} className="text-white" />
+                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center flex-shrink-0">
+                  {isGenerating ? <Loader2 size={32} className="text-white animate-spin" /> : <FileCheck size={32} className="text-white" />}
                 </div>
               </div>
-              <button
-                onClick={handleGenerateCertificates}
-                disabled={isGenerating}
-                className="w-full py-5 rounded-2xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 bg-white text-purple-700 hover:bg-purple-50 hover:-translate-y-1 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isGenerating ? <><Loader2 size={20} className="animate-spin" /> Gerando certificados...</> : <><FileCheck size={20} /> Criar Certificados em Massa</>}
-              </button>
-            </div>
+            </button>
           )}
 
           {generatedCertificates.length > 0 && (
