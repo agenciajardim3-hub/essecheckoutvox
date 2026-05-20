@@ -27,6 +27,7 @@ import { GlobalSettings } from './GlobalSettings';
 import { TurmasDashboard } from './TurmasDashboard';
 import { EmailMarketingDashboard } from './EmailMarketingDashboard';
 import { CheckoutsDashboard } from './CheckoutsDashboard';
+import { EmailTemplatesDashboard } from './EmailTemplatesDashboard';
 
 interface DashboardProps {
     userRole: UserRole;
@@ -60,7 +61,7 @@ interface DashboardProps {
     onSync: () => Promise<void>;
 }
 
-type TabId = 'list' | 'product' | 'integrations' | 'leads' | 'tickets' | 'ticket_logs' | 'send_tickets' | 'certificates' | 'send_certificates' | 'custom_email' | 'automacao' | 'scanner' | 'coupons' | 'overview' | 'checkin' | 'materials' | 'solicitacoes' | 'financeiro' | 'signatures' | 'views' | 'remarketing' | 'global_settings' | 'turmas' | 'email_marketing';
+type TabId = 'list' | 'product' | 'integrations' | 'leads' | 'tickets' | 'ticket_logs' | 'send_tickets' | 'certificates' | 'send_certificates' | 'custom_email' | 'automacao' | 'scanner' | 'coupons' | 'overview' | 'checkin' | 'materials' | 'solicitacoes' | 'financeiro' | 'signatures' | 'views' | 'remarketing' | 'global_settings' | 'turmas' | 'email_marketing' | 'email_templates';
 
 export const Dashboard: React.FC<DashboardProps> = ({
     userRole,
@@ -167,6 +168,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         { id: 'custom_email', label: 'Email Personalizado', icon: Mail, roles: ['master'], category: 'operacoes' },
         { id: 'automacao', label: 'Automação WhatsApp', icon: Smartphone, roles: ['master'], category: 'operacoes' },
         { id: 'email_marketing', label: 'Email Marketing', icon: Send, roles: ['master'], category: 'operacoes' },
+        { id: 'email_templates', label: 'Modelos de Email', icon: Mail, roles: ['master'], category: 'operacoes' },
         { id: 'solicitacoes', label: 'Pedidos de Certificado', icon: FileCheck, roles: ['master'], category: 'operacoes' },
         { id: 'scanner', label: 'Escanear QR Code', icon: QrCode, roles: ['master', 'manager'], category: 'operacoes' },
 
@@ -360,6 +362,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     {setupTab === 'views' && <CheckoutViews checkouts={checkouts} />}
                     {setupTab === 'remarketing' && <RemarketingDashboard checkouts={checkouts} />}
                     {setupTab === 'email_marketing' && <EmailMarketingDashboard leads={leads} checkouts={checkouts} />}
+                    {setupTab === 'email_templates' && <EmailTemplatesDashboard />}
                 </div>
             </main>
         </div>
