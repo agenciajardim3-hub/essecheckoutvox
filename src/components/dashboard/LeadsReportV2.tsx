@@ -1124,10 +1124,11 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
 
             {/* Table View */}
             {viewMode === 'table' && (
-                <BulkCertificatePanel selectedLeads={selectedLeads} />
-                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                <>
+                    <BulkCertificatePanel selectedLeads={selectedLeads} />
+                    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
                             <thead>
                                 <tr className="bg-gray-900 text-white">
                                     <th className="px-4 py-3 text-center font-black uppercase text-xs w-12">#</th>
