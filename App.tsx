@@ -91,7 +91,10 @@ export default function App() {
   const isRegistrationMode = query.get('mode') === 'reg';
   const isTicketMode = query.get('mode') === 'ticket';
   const isCertificateMode = query.get('mode') === 'certificate';
-  const checkoutParam = query.get('checkout') || query.get('p') || '';
+  // Support all checkout param styles: ?checkout=, ?p=, ?slug= (for variation links: /?slug=X&variant=Y)
+  const checkoutParam = query.get('checkout') || query.get('p') || query.get('slug') || '';
+  // Also treat 'variant' param as a checkout indicator (variation links only have ?slug=&variant=)
+  const hasVariantParam = !!query.get('variant');
   const utms = {
     source: query.get('utm_source') || 'direct',
     medium: query.get('utm_medium') || 'cpc',
@@ -99,7 +102,7 @@ export default function App() {
   };
 
   // Check if should show login (APK without checkout param shows login)
-  const isLogin = query.get('mode') === 'login' || window.location.pathname === '/login' || (window.location.pathname !== '/solicitacaoformulario' && !checkoutParam && !isCertificateMode && !isTicketMode && userRole === 'none');
+  const isLogin = query.get('mode') === 'login' || window.location.pathname === '/login' || (window.location.pathname !== '/solicitacaoformulario' && !checkoutParam && !hasVariantParam && !isCertificateMode && !isTicketMode && userRole === 'none');
   const isPaymentSuccess = query.get('success') === 'true';
   const isSolicitacaoForm = window.location.pathname === '/solicitacaoformulario' || query.get('mode') === 'solicitacao';
 
