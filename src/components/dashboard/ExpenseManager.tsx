@@ -2,23 +2,26 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Loader2, DollarSign, TrendingUp, TrendingDown, Save, X } from 'lucide-react';
 import { useSupabase } from '../../hooks/useSupabase';
-import { Expense } from '../../types';
+import { Expense, AppConfig } from '../../types';
 
 interface ExpenseManagerProps {
     leads: any[];
+    checkouts?: AppConfig[];
 }
 
-export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads }) => {
+export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads, checkouts = [] }) => {
     const supabase = useSupabase();
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [selectedCheckout, setSelectedCheckout] = useState('all');
     const [newExpense, setNewExpense] = useState<Partial<Expense>>({
         description: '',
         amount: 0,
         category: 'material',
-        date: new Date().toISOString().split('T')[0]
+        date: new Date().toISOString().split('T')[0],
+        checkout_id: 'global'
     });
 
     useEffect(() => {
@@ -55,7 +58,8 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads }) => {
                 description: newExpense.description,
                 amount: newExpense.amount,
                 category: newExpense.category,
-                date: newExpense.date
+                date: newExpense.date,
+                checkout_id: newExpense.checkout_id || 'global'
             });
             if (error) {
                 console.error('Error creating expense:', error);
@@ -63,7 +67,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads }) => {
                 return;
             }
             setShowForm(false);
-            setNewExpense({ description: '', amount: 0, category: 'material', date: new Date().toISOString().split('T')[0] });
+            setNewExpense({ description: '', amount: 0, category: 'material', date: new Date().toISOString().split('T')[0], checkout_id: selectedCheckout === 'all' ? 'global' : selectedCheckout });
             fetchExpenses();
             alert('Despesa cadastrada com sucesso!');
         } catch (err: any) {
@@ -85,24 +89,33 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads }) => {
         }
     };
 
+    const filteredExpenses = useMemo(() => {
+        if (selectedCheckout === 'all') return expenses;
+        return expenses.filter(e => e.checkout_id === selectedCheckout);
+    }, [expenses, selectedCheckout]);
+
     const totalExpenses = useMemo(() => {
-        return expenses.reduce((acc, exp) => acc + (exp.amount || 0), 0);
-    }, [expenses]);
+        return filteredExpenses.reduce((acc, exp) => acc + (exp.amount || 0), 0);
+    }, [filteredExpenses]);
 
     const totalRevenue = useMemo(() => {
-        return leads.filter(l => l.status === 'Pago').reduce((acc, l) => acc + (l.paid_amount || 0), 0);
-    }, [leads]);
+        let l = leads.filter(l => l.status === 'Pago' || l.status === 'Aprovado');
+        if (selectedCheckout !== 'all') {
+            l = l.filter(lead => lead.product_id === selectedCheckout);
+        }
+        return l.reduce((acc, l) => acc + (l.paid_amount || 0), 0);
+    }, [leads, selectedCheckout]);
 
     const netProfit = totalRevenue - totalExpenses;
 
     const expensesByCategory = useMemo(() => {
         const grouped: Record<string, number> = {};
-        expenses.forEach(exp => {
+        filteredExpenses.forEach(exp => {
             if (!grouped[exp.category]) grouped[exp.category] = 0;
             grouped[exp.category] += exp.amount || 0;
         });
         return Object.entries(grouped).sort((a, b) => b[1] - a[1]);
-    }, [expenses]);
+    }, [filteredExpenses]);
 
     const getCategoryLabel = (cat: string) => {
         const labels: Record<string, string> = {
@@ -130,16 +143,31 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads }) => {
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h3 className="font-black text-gray-900 text-lg flex items-center gap-3">
                     <DollarSign className="text-red-500" /> Registro de Despesas
                 </h3>
-                <button
-                    onClick={() => setShowForm(!showForm)}
-                    className="bg-gray-900 text-white px-5 py-2.5 rounded-xl font-black text-xs uppercase shadow-lg hover:bg-black transition-all flex items-center gap-2"
-                >
-                    <Plus size={16} /> Nova Despesa
-                </button>
+                
+                <div className="flex items-center gap-4 w-full md:w-auto">
+                    <select
+                        value={selectedCheckout}
+                        onChange={(e) => setSelectedCheckout(e.target.value)}
+                        className="bg-white border border-gray-200 text-sm font-bold rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                        <option value="all">Visão Geral (Todos)</option>
+                        <option value="global">Custos Globais (Sem Turma)</option>
+                        {checkouts.map(c => (
+                            <option key={c.id} value={c.id}>{c.productName} {c.turma ? `- ${c.turma}` : ''}</option>
+                        ))}
+                    </select>
+
+                    <button
+                        onClick={() => setShowForm(!showForm)}
+                        className="bg-gray-900 whitespace-nowrap text-white px-5 py-2.5 rounded-xl font-black text-xs uppercase shadow-lg hover:bg-black transition-all flex items-center gap-2"
+                    >
+                        <Plus size={16} /> Nova Despesa
+                    </button>
+                </div>
             </div>
 
             {showForm && (
@@ -178,6 +206,19 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads }) => {
                                 <option value="infraestrutura">Infraestrutura</option>
                                 <option value="servico">Serviço</option>
                                 <option value="outro">Outro</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-sm font-black text-gray-700">Vincular à Turma</label>
+                            <select
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-red-500 font-bold"
+                                value={newExpense.checkout_id || 'global'}
+                                onChange={(e) => setNewExpense({ ...newExpense, checkout_id: e.target.value })}
+                            >
+                                <option value="global">Custo Global (Sem turma)</option>
+                                {checkouts.map(c => (
+                                    <option key={c.id} value={c.id}>{c.productName} {c.turma ? `- ${c.turma}` : ''}</option>
+                                ))}
                             </select>
                         </div>
                     </div>
@@ -244,7 +285,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads }) => {
                     <div className="p-10 text-center">
                         <Loader2 className="animate-spin text-red-500 w-6 h-6 mx-auto" />
                     </div>
-                ) : expenses.length === 0 ? (
+                ) : filteredExpenses.length === 0 ? (
                     <div className="p-10 text-center text-gray-400">
                         <DollarSign size={32} className="mx-auto mb-2 opacity-50" />
                         <p className="text-xs font-bold uppercase">Nenhuma despesa registrada</p>
@@ -254,6 +295,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads }) => {
                         <thead>
                             <tr className="bg-gray-50">
                                 <th className="p-4 text-[10px] font-black uppercase text-left text-gray-500">Descrição</th>
+                                <th className="p-4 text-[10px] font-black uppercase text-left text-gray-500">Turma</th>
                                 <th className="p-4 text-[10px] font-black uppercase text-left text-gray-500">Categoria</th>
                                 <th className="p-4 text-[10px] font-black uppercase text-left text-gray-500">Data</th>
                                 <th className="p-4 text-[10px] font-black uppercase text-right text-gray-500">Valor</th>
@@ -261,9 +303,14 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {expenses.map((exp) => (
+                            {filteredExpenses.map((exp) => (
                                 <tr key={exp.id} className="hover:bg-gray-50">
                                     <td className="p-4 font-bold text-gray-900 text-sm">{exp.description}</td>
+                                    <td className="p-4 text-xs font-bold text-gray-500">
+                                        {exp.checkout_id && exp.checkout_id !== 'global' 
+                                            ? checkouts.find(c => c.id === exp.checkout_id)?.turma || 'Turma' 
+                                            : 'Global'}
+                                    </td>
                                     <td className="p-4">
                                         <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase ${getCategoryColor(exp.category)}`}>
                                             {getCategoryLabel(exp.category)}

@@ -345,7 +345,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     {setupTab === 'financeiro' && (
                         <div className="animate-in fade-in duration-500">
                             <FinancialDashboard leads={leads} checkouts={checkouts} />
-                            <div className="mt-8"><ExpenseManager leads={leads} /></div>
+                            <div className="mt-8"><ExpenseManager leads={leads} checkouts={checkouts} /></div>
                         </div>
                     )}
                     {setupTab === 'signatures' && (

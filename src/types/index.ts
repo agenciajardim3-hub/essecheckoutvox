@@ -43,6 +43,7 @@ export interface Expense {
   category: 'material' | 'equipamento' | 'marketing' | 'infraestrutura' | 'servico' | 'outro';
   date: string;
   created_at?: string;
+  checkout_id?: string;
 }
 
 export interface FormRequest {

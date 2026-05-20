@@ -50,7 +50,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
   const [selectedProduct, setSelectedProduct] = useState('all');
   const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | 'all'>('all');
   const [expenses, setExpenses] = useState<Record<string, Expenses>>(loadExpenses);
-  const [globalExpenses, setGlobalExpenses] = useState<number>(0);
+  const [globalExpenseItems, setGlobalExpenseItems] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -58,10 +58,9 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
     const fetchGlobalExpenses = async () => {
       if (!supabase) return;
       try {
-        const { data } = await supabase.from('expenses').select('amount');
+        const { data } = await supabase.from('expenses').select('*');
         if (data) {
-          const total = data.reduce((acc, curr) => acc + (curr.amount || 0), 0);
-          setGlobalExpenses(total);
+          setGlobalExpenseItems(data);
         }
       } catch (err) {
         console.error(err);
@@ -98,9 +97,27 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
   const allPaidLeads = useMemo(() => leads.filter((lead) => lead.status === 'Pago' || lead.status === 'Aprovado'), [leads]);
 
   const totalExpenses = useMemo(() => {
-    const local = Object.values(expenses).reduce((sum, item) => sum + Object.values(item).reduce((s, v) => s + (Number(v) || 0), 0), 0);
-    return local + globalExpenses;
-  }, [expenses, globalExpenses]);
+    let local = 0;
+    if (selectedProduct !== 'all') {
+      const exp = expenses[selectedProduct] || EMPTY_EXPENSES;
+      local = Object.values(exp).reduce((s, v) => s + (Number(v) || 0), 0);
+    } else {
+      local = Object.values(expenses).reduce((sum, item) => sum + Object.values(item).reduce((s, v) => s + (Number(v) || 0), 0), 0);
+    }
+
+    let globalSum = 0;
+    if (selectedProduct !== 'all') {
+      globalSum = globalExpenseItems
+        .filter(e => e.checkout_id === selectedProduct || (!e.checkout_id && selectedProduct === 'all') || e.checkout_id === 'global') // Wait, global costs should be excluded or included? 
+        // If viewing specific checkout, they only want the costs of THAT checkout.
+        .filter(e => e.checkout_id === selectedProduct)
+        .reduce((sum, curr) => sum + (curr.amount || 0), 0);
+    } else {
+      globalSum = globalExpenseItems.reduce((sum, curr) => sum + (curr.amount || 0), 0);
+    }
+
+    return local + globalSum;
+  }, [expenses, globalExpenseItems, selectedProduct]);
 
   const metrics = useMemo(() => {
     const revenue = paidLeads.reduce((sum, lead) => sum + (lead.paid_amount || 0), 0);
@@ -149,7 +166,12 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
       const productPaid = productLeads.filter((lead) => lead.status === 'Pago' || lead.status === 'Aprovado');
       const revenue = productPaid.reduce((sum, lead) => sum + (lead.paid_amount || 0), 0);
       const exp = expenses[checkout.id] || EMPTY_EXPENSES;
-      const cost = Object.values(exp).reduce((sum, value) => sum + (Number(value) || 0), 0);
+      
+      const globalCost = globalExpenseItems
+        .filter((e) => e.checkout_id === checkout.id)
+        .reduce((sum, curr) => sum + (curr.amount || 0), 0);
+
+      const cost = Object.values(exp).reduce((sum, value) => sum + (Number(value) || 0), 0) + globalCost;
 
       return {
         checkout,
