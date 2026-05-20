@@ -6,7 +6,8 @@ export const EmailTemplatesDashboard: React.FC = () => {
     const { templates, saveTemplate, deleteTemplate } = useEmailTemplates();
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [previewHtml, setPreviewHtml] = useState<string | null>(null);
-    
+    const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState<Partial<EmailTemplate> | null>(null);
@@ -34,25 +35,43 @@ export const EmailTemplatesDashboard: React.FC = () => {
 
     const handleSave = () => {
         if (!editingTemplate?.name || !editingTemplate?.html) {
-            alert('Nome e HTML são obrigatórios!');
+            setSaveMessage('Nome e HTML são obrigatórios!');
+            setTimeout(() => setSaveMessage(null), 3000);
             return;
         }
 
-        const templateToSave: EmailTemplate = {
-            id: editingTemplate.id || `custom_${Date.now()}`,
-            name: editingTemplate.name,
-            description: editingTemplate.description || 'Modelo personalizado criado por você.',
-            color: editingTemplate.color || 'from-gray-500 to-gray-600',
-            html: editingTemplate.html
-        };
+        try {
+            const templateToSave: EmailTemplate = {
+                id: editingTemplate.id || `custom_${Date.now()}`,
+                name: editingTemplate.name,
+                description: editingTemplate.description || 'Modelo personalizado criado por você.',
+                color: editingTemplate.color || 'from-gray-500 to-gray-600',
+                html: editingTemplate.html
+            };
 
-        saveTemplate(templateToSave);
-        setIsModalOpen(false);
-        setEditingTemplate(null);
+            saveTemplate(templateToSave);
+            setSaveMessage(`✅ Modelo "${templateToSave.name}" salvo com sucesso!`);
+            setTimeout(() => {
+                setSaveMessage(null);
+                setIsModalOpen(false);
+                setEditingTemplate(null);
+            }, 1500);
+        } catch (err) {
+            setSaveMessage('❌ Erro ao salvar modelo. Tente novamente.');
+            console.error('Erro ao salvar template:', err);
+            setTimeout(() => setSaveMessage(null), 3000);
+        }
     };
 
     return (
         <div className="space-y-6">
+            {/* Toast message */}
+            {saveMessage && (
+                <div className="fixed top-4 right-4 bg-white border border-gray-100 rounded-xl shadow-lg p-4 max-w-sm animate-in slide-in-from-right-4 duration-300 z-[110]">
+                    <p className="text-sm font-bold text-gray-900">{saveMessage}</p>
+                </div>
+            )}
+
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center">
