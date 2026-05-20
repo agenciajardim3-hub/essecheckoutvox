@@ -150,7 +150,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
         setSendingEmailId(lead.id);
 
         try {
-            const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+            const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || localStorage.getItem('supabase_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtZHNndnVxcmhwamRncmdhc2xvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NjcyMTIsImV4cCI6MjA4MzU0MzIxMn0.Emfi9OyHn9SrrY4AugAVGzLSm2YkBzAKwsZ1XGQ5DD0';
             const FRONTEND_URL = window.location.origin;
 
             let subject = "Contato - Vox Marketing Academy";
@@ -169,25 +169,27 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                  body = `<p>Olá ${lead.name || 'Aluno'},</p><p>Gostaríamos de entrar em contato sobre a sua inscrição no <b>${lead.product_name || 'curso'}</b>.</p><p>Atenciosamente,<br>Equipe Vox Marketing Academy</p>`;
             }
 
-            const response = await fetch('https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-email', {
+            const response = await fetch('https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'apikey': SUPABASE_ANON_KEY
                 },
                 body: JSON.stringify({
-                    email: lead.email,
+                    to: lead.email,
                     name: lead.name || 'Aluno',
                     subject: subject,
-                    body: body,
+                    message: body,
                     ticketUrl: ticketUrl,
-                    type: 'automated'
+                    productName: lead.product_name || 'Vox Marketing Academy',
+                    preserveCertificateLayout: true
                 })
             });
 
             const result = await response.json().catch(() => ({}));
-            if (!response.ok || !result.success) {
-                throw new Error(result.message || 'Erro ao enviar email');
+            if (!response.ok || result.error) {
+                throw new Error(result.error || result.message || 'Erro ao enviar email');
             }
 
             alert('✅ Email disparado com sucesso!');
