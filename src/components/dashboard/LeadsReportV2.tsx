@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { Lead, AppConfig, UserRole } from '../../types';
 import { useEmailTemplates } from '../../hooks/useEmailTemplates';
+import { useCertificateSelection } from '../../hooks/useCertificateSelection';
+import { BulkCertificatePanel } from './BulkCertificatePanel';
 
 interface LeadsReportV2Props {
     userRole: UserRole;
@@ -38,6 +40,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
     onSaveManualLead
 }) => {
     const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const { selectedLeads, toggleLead, selectAll, clearSelection } = useCertificateSelection();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedProduct, setSelectedProduct] = useState('all');
     const [selectedStatus, setSelectedStatus] = useState('all');
@@ -1121,13 +1124,15 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
 
             {/* Table View */}
             {viewMode === 'table' && (
+                <BulkCertificatePanel selectedLeads={selectedLeads} />
                 <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="bg-gray-900 text-white">
                                     <th className="px-4 py-3 text-center font-black uppercase text-xs w-12">#</th>
-                                    <th className="px-4 py-3 text-left font-black uppercase text-xs">Nome</th>
+                                    <th className="px-4 py-3 text-center font-black uppercase text-xs w-12"><input type="checkbox" checked={selectedLeads.length === paginatedLeads.length && paginatedLeads.length > 0} onChange={(e) => e.target.checked ? selectAll(paginatedLeads.map(l => l.id)) : clearSelection()} className="h-4 w-4" /></th>
+          <th className="px-4 py-3 text-left font-black uppercase text-xs">Nome</th>
                                     <th className="px-4 py-3 text-left font-black uppercase text-xs">Contato</th>
                                     <th className="px-4 py-3 text-left font-black uppercase text-xs">Pago por</th>
                                     <th className="px-4 py-3 text-left font-black uppercase text-xs">Local Pag.</th>
@@ -1145,6 +1150,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                     const leadNumber = (currentPage - 1) * itemsPerPage + index + 1;
                                     return (
                                     <tr key={lead.id} className="hover:bg-blue-50/30 transition-all">
+                <td className="px-4 py-3 text-center"><input type="checkbox" checked={selectedLeads.includes(lead.id)} onChange={() => toggleLead(lead.id)} className="h-4 w-4" /></td>
                                         <td className="px-4 py-3 text-center">
                                             <div className="flex items-center gap-2 justify-center flex-wrap">
                                                 <button
