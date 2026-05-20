@@ -41,7 +41,7 @@ const loadSentLogs = (): SentLog[] => {
   }
 };
 
-export const EmailMarketingDashboard: React.FC<EmailMarketingDashboardProps> = ({ leads }) => {
+export const EmailMarketingDashboard: React.FC<EmailMarketingDashboardProps> = ({ leads, checkouts }) => {
   const [activeTab, setActiveTab] = useState<'send' | 'config'>('send');
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [selectedTurma, setSelectedTurma] = useState('');
@@ -65,8 +65,11 @@ export const EmailMarketingDashboard: React.FC<EmailMarketingDashboardProps> = (
     };
   });
 
-  const turmas = Array.from(new Set(leads.filter((lead) => lead.turma).map((lead) => lead.turma)));
-  const filteredLeads = selectedTurma ? leads.filter((lead) => lead.turma === selectedTurma) : leads;
+  const turmas = Array.from(new Set([
+    ...checkouts.map(c => c.turma || c.productName).filter(Boolean),
+    ...leads.filter(lead => lead.turma).map(lead => lead.turma)
+  ]));
+  const filteredLeads = selectedTurma ? leads.filter((lead) => lead.turma === selectedTurma || lead.product_name === selectedTurma) : leads;
 
   const sentStats = useMemo(() => {
     const success = sentLogs.filter((log) => log.status === 'success').length;
@@ -120,7 +123,8 @@ export const EmailMarketingDashboard: React.FC<EmailMarketingDashboardProps> = (
         productName: lead.product_name || lead.turma || 'Vox Marketing Academy',
         message: personalizedBody,
         ticketUrl: '',
-        certificateUrl: ''
+        certificateUrl: '',
+        preserveCertificateLayout: true
       })
     });
 
