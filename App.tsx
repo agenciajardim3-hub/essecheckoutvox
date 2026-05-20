@@ -178,7 +178,8 @@ export default function App() {
         thankYouButtonText: c.thank_you_button_text,
         thankYouButtonUrl: c.thank_you_button_url,
         thankYouImageUrl: c.thank_you_image_url,
-        variations: typeof c.variations === 'string' ? JSON.parse(c.variations) : (c.variations || [])
+        variations: typeof c.variations === 'string' ? JSON.parse(c.variations) : (c.variations || []),
+        viewerCount: c.viewer_count || 0
       }));
 
       setAllCheckouts(mappedCheckouts);
@@ -479,7 +480,8 @@ export default function App() {
       thank_you_button_text: cfg.thankYouButtonText || '',
       thank_you_button_url: cfg.thankYouButtonUrl || '',
       thank_you_image_url: cfg.thankYouImageUrl || '',
-      variations: cfg.variations || []
+      variations: cfg.variations || [],
+      viewer_count: cfg.viewerCount || 0
     };
 
     try {

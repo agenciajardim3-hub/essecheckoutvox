@@ -355,6 +355,56 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
                                         <Input label="Meta Pixel ID" type="text" placeholder="123456789012345" value={config.metaPixelId || ''} onChange={v => setConfig({ ...config, metaPixelId: v })} />
                                     </div>
                                 </div>
+
+                                {/* Social Proof - Viewer Count */}
+                                <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-[2rem] border border-amber-100 space-y-5">
+                                    <div className="flex items-start gap-4">
+                                        <div className="bg-white p-3 rounded-2xl shadow-sm">
+                                            <Users className="text-amber-500" size={24} />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-black text-sm text-amber-900">Prova Social — "X pessoas vendo agora"</h4>
+                                            <p className="text-[10px] font-bold text-amber-700/60 uppercase">Aparece no checkout com variação automática ±3</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <div className="space-y-1.5">
+                                            <label className="block text-[10px] font-black uppercase text-amber-700 tracking-widest ml-1">
+                                                Número base de visualizações
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max="999"
+                                                placeholder="0 = desativado"
+                                                value={config.viewerCount || ''}
+                                                onChange={e => setConfig({ ...config, viewerCount: e.target.value === '' ? 0 : parseInt(e.target.value) || 0 })}
+                                                className="w-full px-5 py-4 rounded-2xl border-2 border-amber-100 outline-none focus:ring-2 focus:ring-amber-400 font-bold text-gray-700 bg-white text-center text-2xl"
+                                            />
+                                        </div>
+                                        <div className="bg-white/70 rounded-xl p-3 space-y-1">
+                                            <p className="text-[10px] font-black uppercase text-amber-700">Como funciona:</p>
+                                            <p className="text-[10px] text-amber-600 leading-relaxed">
+                                                O número configurado varia automaticamente em ±3 a cada 4–8 segundos. Ex: se colocar <strong>12</strong>, o visitante verá entre <strong>9 e 15</strong> pessoas.
+                                            </p>
+                                            <p className="text-[10px] text-amber-600 mt-1">
+                                                ⚪ <strong>0</strong> = banner desativado &nbsp;|&nbsp; 🟡 <strong>1–999</strong> = ativo
+                                            </p>
+                                        </div>
+
+                                        {config.viewerCount && config.viewerCount > 0 ? (
+                                            <div className="bg-amber-500 rounded-xl p-3 flex items-center gap-2">
+                                                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                                                <span className="text-[11px] font-black text-white">Preview: "🔥 {config.viewerCount} pessoas vendo agora"</span>
+                                            </div>
+                                        ) : (
+                                            <div className="bg-gray-100 rounded-xl p-3">
+                                                <span className="text-[11px] font-bold text-gray-400">Banner desativado (defina um número &gt; 0 para ativar)</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}

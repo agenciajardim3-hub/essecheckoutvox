@@ -106,6 +106,8 @@ export interface AppConfig {
   emission_date?: string;
   // Folder/Category
   folder?: string;
+  // Social Proof
+  viewerCount?: number; // Base number for "X people viewing now" (fluctuates ±3)
 }
 
 export interface MultiTicketPurchase {
