@@ -537,6 +537,15 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                     {allCheckouts.map(c => <option key={c.id} value={c.id}>{c.productName}</option>)}
                                 </select>
                             </div>
+                            <div className="grid grid-cols-1 gap-3">
+                                <input
+                                    type="text"
+                                    placeholder="Turma (Ex: Turma 1)"
+                                    value={manualLead.turma || ''}
+                                    onChange={(e) => setManualLead({ ...manualLead, turma: e.target.value })}
+                                    className="px-4 py-2.5 border border-gray-200 rounded-lg font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <select

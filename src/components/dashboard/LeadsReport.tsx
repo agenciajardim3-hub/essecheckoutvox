@@ -329,15 +329,28 @@ export const LeadsReport: React.FC<LeadsReportProps> = ({
                         <Input label="Cidade" type="text" placeholder="Ex: Rio de Janeiro" value={manualLead.city || ''} onChange={v => setManualLead({ ...manualLead, city: v })} />
 
                         <div className="space-y-1">
-                            <label className="block text-[10px] font-black uppercase text-gray-500">Produto / Turma</label>
+                            <label className="block text-[10px] font-black uppercase text-gray-500">Produto</label>
                             <select
                                 className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-blue-500 font-bold"
                                 value={manualLead.product_id || ''}
-                                onChange={e => setManualLead({ ...manualLead, product_id: e.target.value, product_name: allCheckouts.find(c => c.id === e.target.value)?.productName || '' })}
+                                onChange={e => {
+                                    const checkout = allCheckouts.find(c => c.id === e.target.value);
+                                    setManualLead({ 
+                                        ...manualLead, 
+                                        product_id: e.target.value, 
+                                        product_name: checkout?.productName || '',
+                                        turma: checkout?.turma || manualLead.turma
+                                    });
+                                }}
                             >
                                 <option value="">Selecione...</option>
-                                {allCheckouts.map(c => <option key={c.id} value={c.id}>{c.productName} ({c.turma || 'Geral'})</option>)}
+                                {allCheckouts.map(c => <option key={c.id} value={c.id}>{c.productName}</option>)}
                             </select>
+                        </div>
+
+                        <div className="space-y-1">
+                            <label className="block text-[10px] font-black uppercase text-gray-500">Turma (Manual)</label>
+                            <Input label="" type="text" placeholder="Ex: Turma 1" value={manualLead.turma || ''} onChange={v => setManualLead({ ...manualLead, turma: v })} />
                         </div>
 
                         <div className="space-y-1">
