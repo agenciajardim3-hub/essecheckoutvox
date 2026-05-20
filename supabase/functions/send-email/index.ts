@@ -1,7 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
   // Only POST allowed
   if (req.method !== "POST") {
     return new Response(
@@ -9,7 +17,7 @@ serve(async (req) => {
         success: false,
         message: "Apenas POST é permitido"
       }),
-      { status: 405, headers: { "Content-Type": "application/json" } }
+      { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
@@ -25,7 +33,7 @@ serve(async (req) => {
           success: false,
           message: "Corpo da requisição inválido. Certifique-se de enviar JSON válido."
         }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -38,7 +46,7 @@ serve(async (req) => {
           success: false,
           message: "Email, subject e body são obrigatórios"
         }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -50,7 +58,7 @@ serve(async (req) => {
           success: false,
           message: "Email inválido"
         }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -78,7 +86,7 @@ serve(async (req) => {
             hasSmtpPassword: !!smtpPassword
           }
         }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -125,7 +133,7 @@ serve(async (req) => {
           message: "Email enviado com sucesso!",
           timestamp: new Date().toISOString()
         }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     } catch (smtpError) {
       console.error("SMTP connection/send error:", smtpError);
@@ -140,7 +148,7 @@ serve(async (req) => {
         success: false,
         message: `Erro ao enviar email: ${errorMessage}`
       }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
