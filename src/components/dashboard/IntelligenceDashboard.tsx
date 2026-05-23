@@ -26,9 +26,10 @@ const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', {
 }).format(value || 0);
 
 export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ leads, checkouts }) => {
-  const [growthLayoutMode, setGrowthLayoutMode] = useState<'aggregated' | 'cards' | 'tabs'>('aggregated');
+  const [growthLayoutMode, setGrowthLayoutMode] = useState<'aggregated' | 'cards' | 'tabs' | 'single'>('aggregated');
   const [topCount, setTopCount] = useState<8 | 5 | 3>(8);
   const [visibleTurmas, setVisibleTurmas] = useState<Set<string>>(new Set());
+  const [selectedTurma, setSelectedTurma] = useState<string>('');
 
   const paidLeads = useMemo(() => leads.filter((l) => l.status === 'Pago' || l.status === 'Aprovado'), [leads]);
 
@@ -144,6 +145,46 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
 
     return result;
   }, [leads, checkouts, topTurmasList]);
+
+  // 📊 All turmas list for selector
+  const allTurmasList = useMemo(() => {
+    const turmaLeadCounts: Record<string, number> = {};
+    leads.forEach((lead) => {
+      const turma = lead.turma || 'Sem turma';
+      turmaLeadCounts[turma] = (turmaLeadCounts[turma] || 0) + 1;
+    });
+    return Object.entries(turmaLeadCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([turma]) => turma);
+  }, [leads]);
+
+  // 📊 Single turma growth data (for bar chart mode)
+  const singleTurmaGrowthData = useMemo(() => {
+    if (!selectedTurma) return [];
+
+    const turmaLeads = leads.filter((l) => (l.turma || 'Sem turma') === selectedTurma);
+    const sorted = turmaLeads.sort((a, b) => {
+      const dateA = safeDate(a.created_at || a.date)?.getTime() || 0;
+      const dateB = safeDate(b.created_at || b.date)?.getTime() || 0;
+      return dateA - dateB;
+    });
+
+    const dateMap: Record<string, number> = {};
+    sorted.forEach((lead) => {
+      const date = safeDate(lead.created_at || lead.date);
+      if (!date) return;
+      const dateStr = date.toLocaleDateString('pt-BR');
+      dateMap[dateStr] = (dateMap[dateStr] || 0) + 1;
+    });
+
+    return Object.entries(dateMap)
+      .sort((a, b) => new Date(a[0].split('/').reverse().join('-')).getTime() - new Date(b[0].split('/').reverse().join('-')).getTime())
+      .slice(-20)
+      .map(([dateStr, count]) => ({
+        dateStr,
+        pessoas: count,
+      }));
+  }, [leads, selectedTurma]);
 
   // 📈 Curva de crescimento acumulado por turma (aggregated mode)
   const growthCurves = useMemo(() => {
@@ -366,6 +407,16 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
             >
               Cards
             </button>
+            <button
+              onClick={() => setGrowthLayoutMode('single')}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                growthLayoutMode === 'single'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Selecionar
+            </button>
           </div>
         </div>
 
@@ -510,6 +561,50 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* Option 4: Single Turma with Bar Chart */}
+            {growthLayoutMode === 'single' && (
+              <div className="animate-in fade-in duration-300">
+                <div className="mb-6">
+                  <label className="block text-xs font-black text-gray-700 mb-2">Selecione a Turma</label>
+                  <select
+                    value={selectedTurma}
+                    onChange={(e) => setSelectedTurma(e.target.value)}
+                    className="w-full px-4 py-2 rounded-lg border border-gray-200 text-sm font-bold text-gray-900 bg-white hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">-- Selecione uma turma --</option>
+                    {allTurmasList.map((turma) => (
+                      <option key={turma} value={turma}>
+                        {turma}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedTurma && singleTurmaGrowthData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={singleTurmaGrowthData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                      <XAxis dataKey="dateStr" tick={{ fontSize: 12, fontWeight: 600 }} angle={-45} height={80} />
+                      <YAxis tick={{ fontSize: 12 }} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '8px',
+                        }}
+                        formatter={(value: any) => [value, 'Pessoas']}
+                      />
+                      <Bar dataKey="pessoas" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : selectedTurma ? (
+                  <p className="text-sm text-gray-400 font-bold text-center py-12">Sem dados para esta turma</p>
+                ) : (
+                  <p className="text-sm text-gray-400 font-bold text-center py-12">Selecione uma turma para visualizar</p>
+                )}
               </div>
             )}
           </>
