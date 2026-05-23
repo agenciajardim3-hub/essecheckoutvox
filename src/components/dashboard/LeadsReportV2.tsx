@@ -4,7 +4,7 @@ import {
     Download, Mail, MessageCircle, Eye, Edit2, Trash2, Check,
     AlertCircle, Calendar, MapPin, Phone, GraduationCap, Loader2,
     Copy, FileText, Printer, Smartphone, Send, Ticket, Award, UserCheck,
-    UserPlus, X, Wallet
+    UserPlus, X, Wallet, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { Lead, AppConfig, UserRole } from '../../types';
 import { useEmailTemplates } from '../../hooks/useEmailTemplates';
@@ -26,6 +26,7 @@ interface LeadsReportV2Props {
 
 type ViewMode = 'grid' | 'table' | 'stats';
 type SortBy = 'date' | 'name' | 'status' | 'amount';
+type SortDirection = 'asc' | 'desc';
 
 export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
     userRole,
@@ -45,6 +46,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
     const [selectedProduct, setSelectedProduct] = useState('all');
     const [selectedStatus, setSelectedStatus] = useState('all');
     const [sortBy, setSortBy] = useState<SortBy>('date');
+    const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPageOption, setItemsPerPageOption] = useState<12 | 24 | 50 | 'todos'>(12);
 
@@ -75,6 +77,17 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
     const [showFilters, setShowFilters] = useState(true);
     const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | 'all' | 'custom'>('all');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+
+    // Handle column header click for sorting
+    const handleColumnSort = (newSort: SortBy) => {
+        if (sortBy === newSort) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortBy(newSort);
+            setSortDirection('asc');
+        }
+        setCurrentPage(1);
+    };
 
     // Filtrar e ordenar leads
     const filteredAndSortedLeads = useMemo(() => {
@@ -116,22 +129,28 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
 
         // Ordenação
         result.sort((a, b) => {
+            let comparison = 0;
             switch (sortBy) {
                 case 'date':
-                    return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime();
+                    comparison = new Date(a.created_at || '').getTime() - new Date(b.created_at || '').getTime();
+                    break;
                 case 'name':
-                    return (a.name || '').localeCompare(b.name || '');
+                    comparison = (a.name || '').localeCompare(b.name || '');
+                    break;
                 case 'status':
-                    return (a.status || '').localeCompare(b.status || '');
+                    comparison = (a.status || '').localeCompare(b.status || '');
+                    break;
                 case 'amount':
-                    return (b.paid_amount || 0) - (a.paid_amount || 0);
+                    comparison = (a.paid_amount || 0) - (b.paid_amount || 0);
+                    break;
                 default:
                     return 0;
             }
+            return sortDirection === 'desc' ? -comparison : comparison;
         });
 
         return result;
-    }, [leads, selectedProduct, selectedStatus, searchTerm, sortBy]);
+    }, [leads, selectedProduct, selectedStatus, searchTerm, sortBy, sortDirection]);
 
     // Paginação com memoização otimizada
     const paginatedLeads = useMemo(() => {
@@ -1151,7 +1170,14 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                     {userRole === 'master' && (
                                         <th className="px-4 py-3 text-left font-black uppercase text-xs">Valor</th>
                                     )}
-                                    <th className="px-4 py-3 text-left font-black uppercase text-xs">Data</th>
+                                    <th className="px-4 py-3 text-left font-black uppercase text-xs cursor-pointer hover:bg-gray-800 transition-colors" onClick={() => handleColumnSort('date')}>
+                                        <div className="flex items-center gap-2">
+                                            <span>Data</span>
+                                            {sortBy === 'date' && (
+                                                sortDirection === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />
+                                            )}
+                                        </div>
+                                    </th>
                                     <th className="px-4 py-3 text-center font-black uppercase text-xs">Ações</th>
                                 </tr>
                             </thead>
