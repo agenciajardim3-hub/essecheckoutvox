@@ -146,17 +146,32 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
     return result;
   }, [leads, checkouts, topTurmasList]);
 
-  // 📊 All turmas list for selector
+  // 📊 All turmas list for selector (includes all checkouts + turmas with leads)
   const allTurmasList = useMemo(() => {
+    const turmaSet = new Set<string>();
+
+    // Add all turmas from checkouts
+    checkouts.forEach((checkout) => {
+      const turma = checkout.turma || checkout.productName;
+      if (turma) turmaSet.add(turma);
+    });
+
+    // Add all turmas from leads
+    leads.forEach((lead) => {
+      const turma = lead.turma || 'Sem turma';
+      turmaSet.add(turma);
+    });
+
+    // Count leads per turma for sorting
     const turmaLeadCounts: Record<string, number> = {};
     leads.forEach((lead) => {
       const turma = lead.turma || 'Sem turma';
       turmaLeadCounts[turma] = (turmaLeadCounts[turma] || 0) + 1;
     });
-    return Object.entries(turmaLeadCounts)
-      .sort((a, b) => b[1] - a[1])
-      .map(([turma]) => turma);
-  }, [leads]);
+
+    return Array.from(turmaSet)
+      .sort((a, b) => (turmaLeadCounts[b] || 0) - (turmaLeadCounts[a] || 0));
+  }, [leads, checkouts]);
 
   // 📊 Single turma growth data (for bar chart mode)
   const singleTurmaGrowthData = useMemo(() => {
@@ -429,7 +444,13 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={growthCurves}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                    <XAxis dataKey="dateStr" tick={{ fontSize: 11, fontWeight: 600 }} angle={-45} height={80} />
+                    <XAxis
+                      dataKey="dateStr"
+                      tick={{ fontSize: 11, fontWeight: 600 }}
+                      interval={Math.max(0, Math.floor(growthCurves.length / 6))}
+                      angle={growthCurves.length > 10 ? -30 : 0}
+                      height={growthCurves.length > 10 ? 60 : 30}
+                    />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip
                       contentStyle={{
@@ -491,7 +512,13 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={growthCurves}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                    <XAxis dataKey="dateStr" tick={{ fontSize: 11, fontWeight: 600 }} angle={-45} height={80} />
+                    <XAxis
+                      dataKey="dateStr"
+                      tick={{ fontSize: 11, fontWeight: 600 }}
+                      interval={Math.max(0, Math.floor(growthCurves.length / 6))}
+                      angle={growthCurves.length > 10 ? -30 : 0}
+                      height={growthCurves.length > 10 ? 60 : 30}
+                    />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip
                       contentStyle={{
@@ -533,7 +560,13 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
                           <ResponsiveContainer width="100%" height={150}>
                             <LineChart data={turmaData}>
                               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                              <XAxis dataKey="dateStr" tick={{ fontSize: 10 }} angle={-45} height={50} />
+                              <XAxis
+                                dataKey="dateStr"
+                                tick={{ fontSize: 10 }}
+                                interval={Math.max(0, Math.floor(turmaData.length / 5))}
+                                angle={turmaData.length > 10 ? -30 : 0}
+                                height={turmaData.length > 10 ? 50 : 25}
+                              />
                               <YAxis tick={{ fontSize: 10 }} width={35} />
                               <Tooltip
                                 contentStyle={{
@@ -587,7 +620,13 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={singleTurmaGrowthData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                      <XAxis dataKey="dateStr" tick={{ fontSize: 12, fontWeight: 600 }} angle={-45} height={80} />
+                      <XAxis
+                        dataKey="dateStr"
+                        tick={{ fontSize: 11, fontWeight: 600 }}
+                        interval={Math.max(0, Math.floor(singleTurmaGrowthData.length / 6))}
+                        angle={singleTurmaGrowthData.length > 10 ? -30 : 0}
+                        height={singleTurmaGrowthData.length > 10 ? 60 : 30}
+                      />
                       <YAxis tick={{ fontSize: 12 }} />
                       <Tooltip
                         contentStyle={{
