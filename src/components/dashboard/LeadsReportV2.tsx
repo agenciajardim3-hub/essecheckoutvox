@@ -808,6 +808,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                     }}
                                     className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm"
                                 >
+                                    <option value="all">Todos os Status</option>
                                     <optgroup label="Confirmado">
                                         <option value="Pago">Pago</option>
                                         <option value="Aprovado">Aprovado</option>
