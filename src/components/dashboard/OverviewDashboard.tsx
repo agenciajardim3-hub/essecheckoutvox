@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Lead, AppConfig } from '../../types';
 import { DollarSign, UserPlus, Filter, Wallet, TrendingUp, BarChart3, Settings, Save } from 'lucide-react';
 import { useSupabase } from '../../hooks/useSupabase';
+import { IntelligenceDashboard } from './IntelligenceDashboard';
 
 interface OverviewDashboardProps {
   leads: Lead[];
@@ -333,19 +334,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
       )}
 
       {activeTab === 'inteligencia' && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <h3 className="font-black text-gray-900 mb-5">Inteligência por Turma</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-gray-50 text-[10px] uppercase tracking-widest text-gray-400 font-black">
-                <tr><th className="px-4 py-3">Produto</th><th className="px-4 py-3">Turma</th><th className="px-4 py-3">Cadastros</th><th className="px-4 py-3">Pagos</th><th className="px-4 py-3">Receita</th><th className="px-4 py-3">Conversão</th></tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {productRows.map((row) => <tr key={row.checkout.id}><td className="px-4 py-3 font-black text-xs">{row.checkout.productName}</td><td className="px-4 py-3 text-xs font-bold text-violet-600">{row.checkout.turma || '—'}</td><td className="px-4 py-3 text-xs font-bold">{row.leads}</td><td className="px-4 py-3 text-xs font-bold text-emerald-600">{row.paid}</td><td className="px-4 py-3 text-xs font-black">{formatCurrency(row.revenue)}</td><td className="px-4 py-3 text-xs font-bold">{row.conversion.toFixed(1)}%</td></tr>)}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <IntelligenceDashboard leads={leads} checkouts={checkouts} />
       )}
 
       {activeTab === 'configuracao' && (
