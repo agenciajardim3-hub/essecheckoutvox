@@ -1154,6 +1154,42 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
             {viewMode === 'table' && (
                 <>
                     <BulkCertificatePanel selectedLeads={selectedLeads} />
+
+                    {/* Data Sort Buttons */}
+                    <div className="flex items-center gap-3 mb-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                        <span className="text-sm font-black text-gray-700 uppercase">Ordenar por Data:</span>
+                        <button
+                            onClick={() => {
+                                setSortBy('date');
+                                setSortDirection('asc');
+                                setCurrentPage(1);
+                            }}
+                            className={`px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 ${
+                                sortBy === 'date' && sortDirection === 'asc'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'bg-white text-gray-700 border border-gray-200 hover:border-blue-600 hover:text-blue-600'
+                            }`}
+                        >
+                            <ArrowUp size={16} />
+                            Crescente
+                        </button>
+                        <button
+                            onClick={() => {
+                                setSortBy('date');
+                                setSortDirection('desc');
+                                setCurrentPage(1);
+                            }}
+                            className={`px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 ${
+                                sortBy === 'date' && sortDirection === 'desc'
+                                    ? 'bg-blue-600 text-white shadow-md'
+                                    : 'bg-white text-gray-700 border border-gray-200 hover:border-blue-600 hover:text-blue-600'
+                            }`}
+                        >
+                            <ArrowDown size={16} />
+                            Decrescente
+                        </button>
+                    </div>
+
                     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
