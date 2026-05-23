@@ -243,6 +243,45 @@ export default function App() {
     fetchData();
   }, [fetchData]);
 
+  // Fix missing dates in leads
+  useEffect(() => {
+    if (leads.length === 0 || !supabase || userRole === 'none') return;
+
+    const fixMissingDates = async () => {
+      const leadsWithoutDates = leads.filter(l => !l.created_at && !l.date);
+
+      if (leadsWithoutDates.length === 0) return;
+
+      console.log(`[Data Repair] Encontrado ${leadsWithoutDates.length} leads sem data. Corrigindo...`);
+
+      const now = new Date().toISOString();
+      const updates = leadsWithoutDates.map(l => ({
+        id: l.id,
+        created_at: now,
+        date: now
+      }));
+
+      for (const update of updates) {
+        try {
+          const { error } = await supabase
+            .from('leads')
+            .update({ created_at: update.created_at, date: update.date })
+            .eq('id', update.id);
+          if (error) console.error(`Erro ao corrigir lead ${update.id}:`, error);
+        } catch (err) {
+          console.error(`Erro ao corrigir lead ${update.id}:`, err);
+        }
+      }
+
+      // Refresh leads after fixing
+      if (updates.length > 0) {
+        await fetchData();
+      }
+    };
+
+    fixMissingDates();
+  }, [leads, supabase, userRole, fetchData]);
+
   // Update config when checkoutParam changes
   useEffect(() => {
     if (checkoutParam && allCheckouts.length > 0) {
