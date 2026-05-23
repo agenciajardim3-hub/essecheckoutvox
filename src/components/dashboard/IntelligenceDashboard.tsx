@@ -182,7 +182,7 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
       .slice(-20)
       .map(([dateStr, count]) => ({
         dateStr,
-        pessoas: count,
+        vendas: count,
       }));
   }, [leads, selectedTurma]);
 
@@ -595,9 +595,9 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
                           border: '1px solid #e5e7eb',
                           borderRadius: '8px',
                         }}
-                        formatter={(value: any) => [value, 'Pessoas']}
+                        formatter={(value: any) => [value, 'Vendas']}
                       />
-                      <Bar dataKey="pessoas" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                      <Bar dataKey="vendas" fill="#3b82f6" radius={[8, 8, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : selectedTurma ? (
