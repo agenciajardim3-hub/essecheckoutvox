@@ -5,6 +5,39 @@ PostgreSQL via Supabase. Todas as tabelas com timestamps e RLS policies.
 
 ---
 
+## 📧 email_templates (Modelos de Email)
+Armazena templates customizados de email salvos pelos admins.
+
+```sql
+CREATE TABLE email_templates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  description TEXT,
+  html TEXT NOT NULL,
+  color TEXT,
+  is_custom BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+**Campos:**
+- `id`: Identificador único
+- `name`: Nome do template (ex: "Boas Vindas", "Oferta Exclusiva")
+- `description`: Descrição do template
+- `html`: Conteúdo HTML do template
+- `color`: Cor do template (Tailwind gradient, ex: "from-blue-500 to-blue-600")
+- `is_custom`: Se é customizado (true) ou padrão (false)
+- `created_at`: Quando foi criado
+- `updated_at`: Última atualização
+
+**Notas:**
+- Todos os templates salvos têm `is_custom = true`
+- Default templates estão em código (useEmailTemplates.ts)
+- Usada pelo componente `EmailTemplatesDashboard` e `CustomEmailSender`
+
+---
+
 ## 🔑 Tabelas Principais
 
 ### **leads** (Vendas/Ingressos)

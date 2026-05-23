@@ -90,6 +90,24 @@ ALTER TABLE coupons ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on coupons" ON coupons;
 CREATE POLICY "Allow all on coupons" ON coupons FOR ALL USING (true) WITH CHECK (true);
 
+-- ============================================
+-- TABELA EMAIL_TEMPLATES - Modelos de email salvos
+-- ============================================
+CREATE TABLE IF NOT EXISTS email_templates (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  html TEXT NOT NULL,
+  color TEXT,
+  is_custom BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE email_templates ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on email_templates" ON email_templates;
+CREATE POLICY "Allow all on email_templates" ON email_templates FOR ALL USING (true) WITH CHECK (true);
+
 -- Verificar tabelas criadas
 SELECT 'leads' as table_name, COUNT(*) as count FROM leads
 UNION ALL

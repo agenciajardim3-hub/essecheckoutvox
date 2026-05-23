@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useSupabase } from './useSupabase';
 
 export interface EmailTemplate {
     id: string;
@@ -6,7 +7,9 @@ export interface EmailTemplate {
     description: string;
     html: string;
     color: string;
-    isCustom?: boolean;
+    is_custom?: boolean;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export const defaultTemplates: EmailTemplate[] = [
@@ -135,53 +138,100 @@ export const defaultTemplates: EmailTemplate[] = [
 ];
 
 export function useEmailTemplates() {
+    const supabase = useSupabase();
     const [templates, setTemplates] = useState<EmailTemplate[]>(defaultTemplates);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const stored = localStorage.getItem('vox_custom_email_templates');
-        if (stored) {
-            try {
-                const customTemplates: EmailTemplate[] = JSON.parse(stored);
-                setTemplates([...defaultTemplates, ...customTemplates]);
-            } catch (e) {
-                console.error('Error parsing custom templates', e);
-            }
-        }
+        loadTemplates();
     }, []);
 
-    const saveTemplate = (template: EmailTemplate) => {
-        const stored = localStorage.getItem('vox_custom_email_templates');
-        let customTemplates: EmailTemplate[] = [];
-        
-        if (stored) {
-            try {
-                customTemplates = JSON.parse(stored);
-            } catch (e) {}
-        }
+    const loadTemplates = useCallback(async () => {
+        try {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('email_templates')
+                .select('*')
+                .eq('is_custom', true);
 
-        const existingIndex = customTemplates.findIndex(t => t.id === template.id);
-        
-        if (existingIndex >= 0) {
-            customTemplates[existingIndex] = { ...template, isCustom: true };
-        } else {
-            customTemplates.push({ ...template, isCustom: true });
-        }
-
-        localStorage.setItem('vox_custom_email_templates', JSON.stringify(customTemplates));
-        setTemplates([...defaultTemplates, ...customTemplates]);
-    };
-
-    const deleteTemplate = (id: string) => {
-        const stored = localStorage.getItem('vox_custom_email_templates');
-        if (stored) {
-            try {
-                let customTemplates: EmailTemplate[] = JSON.parse(stored);
-                customTemplates = customTemplates.filter(t => t.id !== id);
-                localStorage.setItem('vox_custom_email_templates', JSON.stringify(customTemplates));
+            if (error) {
+                console.error('Error loading templates:', error);
+                // Fall back to localStorage if Supabase fails
+                const stored = localStorage.getItem('vox_custom_email_templates');
+                if (stored) {
+                    const customTemplates: EmailTemplate[] = JSON.parse(stored);
+                    setTemplates([...defaultTemplates, ...customTemplates]);
+                }
+            } else if (data) {
+                const customTemplates = data.map(t => ({
+                    id: t.id,
+                    name: t.name,
+                    description: t.description || '',
+                    html: t.html,
+                    color: t.color || 'from-blue-500 to-blue-600',
+                    is_custom: t.is_custom,
+                    created_at: t.created_at,
+                    updated_at: t.updated_at
+                }));
                 setTemplates([...defaultTemplates, ...customTemplates]);
-            } catch (e) {}
+            }
+        } catch (e) {
+            console.error('Unexpected error loading templates:', e);
+        } finally {
+            setLoading(false);
         }
-    };
+    }, [supabase]);
 
-    return { templates, saveTemplate, deleteTemplate };
+    const saveTemplate = useCallback(async (template: EmailTemplate) => {
+        try {
+            const templateData = {
+                name: template.name,
+                description: template.description,
+                html: template.html,
+                color: template.color,
+                is_custom: true
+            };
+
+            if (template.id && template.id.length === 36) { // UUID length
+                // Update existing
+                const { error } = await supabase
+                    .from('email_templates')
+                    .update({ ...templateData, updated_at: new Date().toISOString() })
+                    .eq('id', template.id);
+
+                if (error) throw error;
+            } else {
+                // Insert new
+                const { error } = await supabase
+                    .from('email_templates')
+                    .insert([templateData]);
+
+                if (error) throw error;
+            }
+
+            await loadTemplates();
+        } catch (err) {
+            console.error('Error saving template:', err);
+            throw err;
+        }
+    }, [supabase, loadTemplates]);
+
+    const deleteTemplate = useCallback(async (id: string) => {
+        try {
+            // Only delete custom templates (not defaults)
+            const { error } = await supabase
+                .from('email_templates')
+                .delete()
+                .eq('id', id)
+                .eq('is_custom', true);
+
+            if (error) throw error;
+            await loadTemplates();
+        } catch (err) {
+            console.error('Error deleting template:', err);
+            throw err;
+        }
+    }, [supabase, loadTemplates]);
+
+    return { templates, saveTemplate, deleteTemplate, loading };
 }
