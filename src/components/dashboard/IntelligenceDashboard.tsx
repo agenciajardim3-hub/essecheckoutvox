@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Lead, AppConfig } from '../../types';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -26,6 +26,10 @@ const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', {
 }).format(value || 0);
 
 export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ leads, checkouts }) => {
+  const [growthLayoutMode, setGrowthLayoutMode] = useState<'aggregated' | 'cards' | 'tabs'>('aggregated');
+  const [topCount, setTopCount] = useState<8 | 5 | 3>(8);
+  const [visibleTurmas, setVisibleTurmas] = useState<Set<string>>(new Set());
+
   const paidLeads = useMemo(() => leads.filter((l) => l.status === 'Pago' || l.status === 'Aprovado'), [leads]);
 
   // 📊 Melhor dias da semana
@@ -96,9 +100,53 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
       .slice(0, 8);
   }, [paidLeads]);
 
-  // 📈 Curva de crescimento acumulado por turma
+  // 🎯 Get top turmas list (with configurable count for tabs mode)
+  const topTurmasList = useMemo(() => {
+    const turmaLeadCounts: Record<string, number> = {};
+    leads.forEach((lead) => {
+      const turma = lead.turma || 'Sem turma';
+      turmaLeadCounts[turma] = (turmaLeadCounts[turma] || 0) + 1;
+    });
+
+    return Object.entries(turmaLeadCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, topCount)
+      .map(([turma]) => turma);
+  }, [leads, topCount]);
+
+  // 📊 Individual turma growth curves (for cards mode)
+  const individualTurmaGrowth = useMemo(() => {
+    const result: Record<string, any[]> = {};
+
+    checkouts.forEach((checkout) => {
+      const turmaName = checkout.turma || checkout.productName;
+      if (!topTurmasList.includes(turmaName)) return;
+
+      const classLeads = leads.filter((l) => l.product_id === checkout.id);
+      const sorted = classLeads.sort((a, b) => {
+        const dateA = safeDate(a.created_at || a.date)?.getTime() || 0;
+        const dateB = safeDate(b.created_at || b.date)?.getTime() || 0;
+        return dateA - dateB;
+      });
+
+      let accumulative = 0;
+      result[turmaName] = sorted
+        .slice(-20)
+        .map((lead) => {
+          accumulative++;
+          const date = safeDate(lead.created_at || lead.date);
+          return {
+            dateStr: date ? date.toLocaleDateString('pt-BR') : 'N/A',
+            cumulativeCount: accumulative,
+          };
+        });
+    });
+
+    return result;
+  }, [leads, checkouts, topTurmasList]);
+
+  // 📈 Curva de crescimento acumulado por turma (aggregated mode)
   const growthCurves = useMemo(() => {
-    // Get top 8 classes by number of leads
     const turmaLeadCounts: Record<string, number> = {};
     leads.forEach((lead) => {
       const turma = lead.turma || 'Sem turma';
@@ -114,7 +162,6 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
 
     checkouts.forEach((checkout) => {
       const turmaName = checkout.turma || checkout.productName;
-      // Only include top 8 turmas
       if (!topTurmas.includes(turmaName)) return;
 
       const classLeads = leads.filter((l) => l.product_id === checkout.id);
@@ -136,7 +183,6 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
       });
     });
 
-    // Consolidar todas as turmas em um único array com campos dinâmicos
     const allDates = new Set<string>();
     Object.values(turmaData).forEach((data) => {
       data.forEach((item) => allDates.add(item.dateStr));
@@ -144,7 +190,7 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
 
     const consolidated = Array.from(allDates)
       .sort((a, b) => new Date(a.split('/').reverse().join('-')).getTime() - new Date(b.split('/').reverse().join('-')).getTime())
-      .slice(-20) // Últimas 20 datas
+      .slice(-20)
       .map((dateStr) => {
         const entry: any = { dateStr };
         Object.entries(turmaData).forEach(([turma, data]) => {
@@ -156,6 +202,14 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
 
     return consolidated;
   }, [leads, checkouts]);
+
+  // Initialize visible turmas on first render
+  useMemo(() => {
+    if (visibleTurmas.size === 0 && growthCurves.length > 0) {
+      const initialTurmas = Object.keys(growthCurves[0] || {}).filter((key) => key !== 'dateStr');
+      setVisibleTurmas(new Set(initialTurmas));
+    }
+  }, [growthCurves, visibleTurmas]);
 
   // 📊 Média por turma
   const classAverages = useMemo(() => {
@@ -275,41 +329,190 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
         </div>
       </div>
 
-      {/* Curva de Crescimento */}
+      {/* Curva de Crescimento com 3 layouts */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
-          <TrendingUp size={18} /> Curva de Crescimento por Turma (Pré-Evento)
-        </h3>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-black text-gray-900 flex items-center gap-2">
+            <TrendingUp size={18} /> Curva de Crescimento por Turma (Pré-Evento)
+          </h3>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setGrowthLayoutMode('aggregated')}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                growthLayoutMode === 'aggregated'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Gráfico
+            </button>
+            <button
+              onClick={() => setGrowthLayoutMode('tabs')}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                growthLayoutMode === 'tabs'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Abas
+            </button>
+            <button
+              onClick={() => setGrowthLayoutMode('cards')}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                growthLayoutMode === 'cards'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Cards
+            </button>
+          </div>
+        </div>
+
         {growthCurves.length > 0 ? (
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={growthCurves}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-              <XAxis dataKey="dateStr" tick={{ fontSize: 11, fontWeight: 600 }} angle={-45} height={80} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                }}
-                formatter={(value: any) => [value, 'Pessoas']}
-              />
-              <Legend />
-              {Object.keys(growthCurves[0] || {})
-                .filter((key) => key !== 'dateStr')
-                .map((key, idx) => (
-                  <Line
-                    key={key}
-                    type="monotone"
-                    dataKey={key}
-                    stroke={COLORS[idx % COLORS.length]}
-                    strokeWidth={2}
-                    dot={false}
-                    isAnimationActive={false}
-                  />
-                ))}
-            </LineChart>
-          </ResponsiveContainer>
+          <>
+            {/* Option 3: Aggregated Interactive Chart */}
+            {growthLayoutMode === 'aggregated' && (
+              <div className="animate-in fade-in duration-300">
+                <p className="text-xs text-gray-500 font-bold mb-4">💡 Clique na legenda para mostrar/ocultar turmas</p>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={growthCurves}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                    <XAxis dataKey="dateStr" tick={{ fontSize: 11, fontWeight: 600 }} angle={-45} height={80} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: any) => [value, 'Pessoas']}
+                    />
+                    <Legend
+                      onClick={(e) => {
+                        const turma = e.dataKey;
+                        const newVisible = new Set(visibleTurmas);
+                        if (newVisible.has(turma)) {
+                          newVisible.delete(turma);
+                        } else {
+                          newVisible.add(turma);
+                        }
+                        setVisibleTurmas(newVisible);
+                      }}
+                      wrapperStyle={{ cursor: 'pointer' }}
+                    />
+                    {Object.keys(growthCurves[0] || {})
+                      .filter((key) => key !== 'dateStr' && visibleTurmas.has(key))
+                      .map((key, idx) => (
+                        <Line
+                          key={key}
+                          type="monotone"
+                          dataKey={key}
+                          stroke={COLORS[idx % COLORS.length]}
+                          strokeWidth={2}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Option 2: Tabs Mode */}
+            {growthLayoutMode === 'tabs' && (
+              <div className="animate-in fade-in duration-300">
+                <div className="flex gap-3 mb-4">
+                  {[8, 5, 3].map((count) => (
+                    <button
+                      key={count}
+                      onClick={() => setTopCount(count as 8 | 5 | 3)}
+                      className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                        topCount === count
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Top {count}
+                    </button>
+                  ))}
+                </div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={growthCurves}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                    <XAxis dataKey="dateStr" tick={{ fontSize: 11, fontWeight: 600 }} angle={-45} height={80} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: any) => [value, 'Pessoas']}
+                    />
+                    <Legend />
+                    {Object.keys(growthCurves[0] || {})
+                      .filter((key) => key !== 'dateStr' && topTurmasList.includes(key))
+                      .map((key, idx) => (
+                        <Line
+                          key={key}
+                          type="monotone"
+                          dataKey={key}
+                          stroke={COLORS[idx % COLORS.length]}
+                          strokeWidth={2}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Option 1: Individual Cards */}
+            {growthLayoutMode === 'cards' && (
+              <div className="animate-in fade-in duration-300">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {topTurmasList.map((turma, idx) => {
+                    const turmaData = individualTurmaGrowth[turma] || [];
+                    return (
+                      <div key={turma} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                        <h4 className="text-sm font-black text-gray-900 mb-3 truncate">{turma}</h4>
+                        {turmaData.length > 0 ? (
+                          <ResponsiveContainer width="100%" height={150}>
+                            <LineChart data={turmaData}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                              <XAxis dataKey="dateStr" tick={{ fontSize: 10 }} angle={-45} height={50} />
+                              <YAxis tick={{ fontSize: 10 }} width={35} />
+                              <Tooltip
+                                contentStyle={{
+                                  backgroundColor: '#ffffff',
+                                  border: '1px solid #e5e7eb',
+                                  borderRadius: '8px',
+                                  fontSize: '11px',
+                                }}
+                                formatter={(value: any) => [value, 'Pessoas']}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="cumulativeCount"
+                                stroke={COLORS[idx % COLORS.length]}
+                                strokeWidth={2}
+                                dot={false}
+                                isAnimationActive={false}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <p className="text-xs text-gray-400 font-bold text-center py-8">Sem dados</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <p className="text-sm text-gray-400 font-bold">Sem dados</p>
         )}
