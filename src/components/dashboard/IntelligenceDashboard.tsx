@@ -32,6 +32,7 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
   const bestDaysOfWeek = useMemo(() => {
     const daysMap: Record<number, { count: number; revenue: number }> = {};
     const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    const dayOrder = [1, 2, 3, 4, 5, 6, 0]; // Segunda to Domingo
 
     paidLeads.forEach((lead) => {
       const date = safeDate(lead.created_at || lead.date);
@@ -42,13 +43,13 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
       daysMap[dayOfWeek].revenue += lead.paid_amount || 0;
     });
 
-    return Object.entries(daysMap)
-      .map(([day, data]) => ({
-        name: dayNames[parseInt(day)],
-        vendas: data.count,
-        receita: data.revenue,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    return dayOrder
+      .filter(day => daysMap[day])
+      .map(day => ({
+        name: dayNames[day],
+        vendas: daysMap[day].count,
+        receita: daysMap[day].revenue,
+      }));
   }, [paidLeads]);
 
   // 📅 Melhor dias do mês
@@ -97,9 +98,25 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
 
   // 📈 Curva de crescimento acumulado por turma
   const growthCurves = useMemo(() => {
+    // Get top 8 classes by number of leads
+    const turmaLeadCounts: Record<string, number> = {};
+    leads.forEach((lead) => {
+      const turma = lead.turma || 'Sem turma';
+      turmaLeadCounts[turma] = (turmaLeadCounts[turma] || 0) + 1;
+    });
+
+    const topTurmas = Object.entries(turmaLeadCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([turma]) => turma);
+
     const turmaData: Record<string, any[]> = {};
 
     checkouts.forEach((checkout) => {
+      const turmaName = checkout.turma || checkout.productName;
+      // Only include top 8 turmas
+      if (!topTurmas.includes(turmaName)) return;
+
       const classLeads = leads.filter((l) => l.product_id === checkout.id);
       const sorted = classLeads.sort((a, b) => {
         const dateA = safeDate(a.created_at || a.date)?.getTime() || 0;
@@ -108,7 +125,7 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
       });
 
       let accumulative = 0;
-      turmaData[checkout.turma || checkout.productName] = sorted.map((lead) => {
+      turmaData[turmaName] = sorted.map((lead) => {
         accumulative++;
         const date = safeDate(lead.created_at || lead.date);
         return {
