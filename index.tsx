@@ -4,6 +4,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { ToastProvider } from './src/context/ToastContext';
+import { ToastContainer } from './src/components/Toast/ToastContainer';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -13,8 +15,11 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
+    <ToastProvider>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+      <ToastContainer />
+    </ToastProvider>
   </React.StrictMode>
 );

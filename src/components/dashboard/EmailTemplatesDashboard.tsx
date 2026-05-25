@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { Mail, Copy, Check, Eye, Plus, Edit2, Trash2 } from 'lucide-react';
 import { useEmailTemplates, EmailTemplate } from '../../hooks/useEmailTemplates';
+import { useToast } from '../../hooks/useToast';
 
 export const EmailTemplatesDashboard: React.FC = () => {
-    const { templates, saveTemplate, deleteTemplate } = useEmailTemplates();
+    const { templates, saveTemplate, deleteTemplate, loading } = useEmailTemplates();
+    const toast = useToast();
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [previewHtml, setPreviewHtml] = useState<string | null>(null);
-    
+    const [isSaving, setIsSaving] = useState(false);
+
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState<Partial<EmailTemplate> | null>(null);
@@ -14,6 +17,7 @@ export const EmailTemplatesDashboard: React.FC = () => {
     const handleCopy = (id: string, html: string) => {
         navigator.clipboard.writeText(html);
         setCopiedId(id);
+        toast.success('HTML copiado para a área de transferência!');
         setTimeout(() => setCopiedId(null), 2000);
     };
 
@@ -32,9 +36,9 @@ export const EmailTemplatesDashboard: React.FC = () => {
         setIsModalOpen(true);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!editingTemplate?.name || !editingTemplate?.html) {
-            alert('Nome e HTML são obrigatórios!');
+            toast.error('Nome e HTML são obrigatórios!');
             return;
         }
 
@@ -46,9 +50,17 @@ export const EmailTemplatesDashboard: React.FC = () => {
             html: editingTemplate.html
         };
 
-        saveTemplate(templateToSave);
-        setIsModalOpen(false);
-        setEditingTemplate(null);
+        try {
+            setIsSaving(true);
+            await saveTemplate(templateToSave);
+            toast.success('Modelo salvo com sucesso!');
+            setIsModalOpen(false);
+            setEditingTemplate(null);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Erro ao salvar modelo');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -85,10 +97,15 @@ export const EmailTemplatesDashboard: React.FC = () => {
                                 >
                                     <Edit2 size={14} />
                                 </button>
-                                <button 
-                                    onClick={() => {
+                                <button
+                                    onClick={async () => {
                                         if (window.confirm('Tem certeza que deseja excluir este modelo?')) {
-                                            deleteTemplate(template.id);
+                                            try {
+                                                await deleteTemplate(template.id);
+                                                toast.success('Modelo deletado com sucesso!');
+                                            } catch (err) {
+                                                toast.error(err instanceof Error ? err.message : 'Erro ao deletar modelo');
+                                            }
                                         }
                                     }}
                                     className="w-8 h-8 bg-white text-red-600 rounded-full flex items-center justify-center shadow-md hover:bg-red-50"

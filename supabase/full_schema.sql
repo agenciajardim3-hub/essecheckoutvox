@@ -108,6 +108,25 @@ ALTER TABLE email_templates ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on email_templates" ON email_templates;
 CREATE POLICY "Allow all on email_templates" ON email_templates FOR ALL USING (true) WITH CHECK (true);
 
+-- Trigger para atualizar updated_at automaticamente
+CREATE OR REPLACE FUNCTION public.update_email_templates_updated_at()
+RETURNS TRIGGER AS $
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_email_templates_updated_at ON email_templates;
+CREATE TRIGGER trigger_email_templates_updated_at
+  BEFORE UPDATE ON email_templates
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_email_templates_updated_at();
+
+-- Índices para performance
+CREATE INDEX IF NOT EXISTS idx_email_templates_is_custom ON email_templates(is_custom);
+CREATE INDEX IF NOT EXISTS idx_email_templates_created_at ON email_templates(created_at DESC);
+
 -- Verificar tabelas criadas
 SELECT 'leads' as table_name, COUNT(*) as count FROM leads
 UNION ALL

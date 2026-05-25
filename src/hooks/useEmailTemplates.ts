@@ -196,7 +196,7 @@ export function useEmailTemplates() {
                 // Update existing
                 const { error } = await supabase
                     .from('email_templates')
-                    .update({ ...templateData, updated_at: new Date().toISOString() })
+                    .update(templateData)
                     .eq('id', template.id);
 
                 if (error) throw error;
