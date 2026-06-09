@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Send, GraduationCap, Loader2, Check, AlertCircle, FileCheck, XCircle, Eye, ExternalLink, X, Mail, CheckSquare, Square } from 'lucide-react';
+import { AlertCircle, Check, ExternalLink, FileCheck, GraduationCap, Loader2, Mail, Send } from 'lucide-react';
 import { Lead, AppConfig } from '../../types';
 
 interface CertificateSenderProps {
@@ -12,7 +12,6 @@ type GeneratedCertificate = {
   leadId: string;
   name: string;
   email: string;
-  cpf: string;
   productName: string;
   turma: string;
   date: string;
@@ -33,9 +32,8 @@ const SUPABASE_ANON_KEY =
   import.meta.env.VITE_SUPABASE_KEY ||
   '';
 
-const isPaid = (lead: Lead) => lead.status === 'Pago' || lead.status === 'Aprovado';
 const normalize = (value?: string | null) => String(value || '').trim().toLowerCase();
-
+const isPaid = (lead: Lead) => lead.status === 'Pago' || lead.status === 'Aprovado';
 const escapeHtml = (value: string) => String(value || '')
   .replace(/&/g, '&amp;')
   .replace(/</g, '&lt;')
@@ -65,160 +63,120 @@ const getCertificateUrl = (name: string, productName: string, date: string, hour
 };
 
 const getCertificateCardHtml = (certificate: Pick<GeneratedCertificate, 'name' | 'productName' | 'hours' | 'date' | 'instructorName' | 'signatureUrl'>) => `
-  <div class="certificate-wrapper" style="width:1122px;height:794px;background:#ffffff;position:relative;overflow:hidden;box-sizing:border-box;box-shadow:0 22px 70px rgba(15,23,42,0.16);border-radius:8px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;page-break-after:always;">
-    <div style="position:relative;z-index:10;padding:50px 80px;text-align:center;height:100%;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;">
-      <div style="margin-top:20px;">
-        <div style="font-size:72px;font-weight:900;color:#4b5563;margin:0;line-height:1;letter-spacing:10px;">VOX</div>
-        <div style="font-size:14px;font-weight:700;color:#0ea5e9;letter-spacing:8px;margin-top:5px;margin-bottom:30px;">MARKETING ACADEMY</div>
-      </div>
-      <div style="font-size:28px;font-weight:700;color:#6b7280;letter-spacing:4px;margin-bottom:40px;">CERTIFICADO DE CONCLUSÃO</div>
-      <div style="font-size:42px;font-weight:400;color:#6b7280;margin-bottom:40px;text-transform:uppercase;letter-spacing:1px;">${escapeHtml(certificate.name || 'NOME')}</div>
-      <div style="font-size:18px;font-weight:700;color:#000;margin-bottom:20px;max-width:850px;line-height:1.35;">
-        Completou com êxito o ${escapeHtml(certificate.productName || 'Curso de Tráfego Pago - Meta Ads')}, com carga horária de ${escapeHtml(certificate.hours || '8')} horas.
-      </div>
-      <div style="font-size:16px;line-height:1.6;color:#111827;max-width:900px;margin:0 auto;font-weight:400;text-align:center;">
-        Na Vox Marketing Academy, ministrado por ${escapeHtml(certificate.instructorName || 'Rodrigo Jardim')}, no dia ${escapeHtml(certificate.date)}. Durante o curso, demonstrou dedicação e empenho exemplares, adquirindo habilidades valiosas em estratégias de tráfego pago. Parabéns pela conclusão bem-sucedida deste curso!
-      </div>
-      <div style="margin-top:auto;width:100%;display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:20px;">
-        <div style="position:relative;width:180px;height:240px;margin-left:20px;margin-bottom:15px;">
-          <div style="position:absolute;bottom:20px;left:20px;width:50px;height:100px;background:linear-gradient(to right,#9ca3af,#d1d5db,#9ca3af);z-index:1;transform:rotate(25deg);"></div>
-          <div style="position:absolute;bottom:20px;right:20px;width:50px;height:100px;background:linear-gradient(to right,#9ca3af,#d1d5db,#9ca3af);z-index:1;transform:rotate(-25deg);"></div>
-          <div style="position:absolute;top:0;left:0;width:180px;height:180px;border-radius:50%;background:linear-gradient(135deg,#e5e7eb 0%,#ffffff 50%,#9ca3af 100%);border:4px solid #f3f4f6;box-shadow:0 10px 20px rgba(0,0,0,0.2), inset 0 0 20px rgba(255,255,255,0.8);z-index:2;display:flex;justify-content:center;align-items:center;text-align:center;">
-            <div style="width:160px;height:160px;border-radius:50%;border:1px solid #d1d5db;display:flex;justify-content:center;align-items:center;"><div style="font-size:80px;color:#4b5563;line-height:1;">★</div></div>
-          </div>
-        </div>
-        <div style="text-align:center;margin-right:60px;width:300px;margin-bottom:30px;">
-          ${certificate.signatureUrl ? `<img src="${escapeHtml(certificate.signatureUrl)}" alt="Assinatura" style="height:80px;max-width:280px;object-fit:contain;margin-bottom:-10px;display:inline-block;" />` : `<div style="font-size:32px;color:#000;margin-bottom:8px;line-height:1.1;">${escapeHtml(certificate.instructorName || 'Rodrigo Jardim')}</div>`}
-          <div style="width:100%;height:2px;background:#1e3a8a;margin-top:10px;"></div>
-        </div>
+  <div class="certificate-wrapper">
+    <div class="brand">VOX</div>
+    <div class="academy">MARKETING ACADEMY</div>
+    <div class="title">CERTIFICADO DE CONCLUSÃO</div>
+    <div class="student">${escapeHtml(certificate.name || 'NOME')}</div>
+    <div class="main-text">Completou com êxito o ${escapeHtml(certificate.productName || 'Curso de Tráfego Pago - Meta Ads')}, com carga horária de ${escapeHtml(certificate.hours || '8')} horas.</div>
+    <div class="desc">Na Vox Marketing Academy, ministrado por ${escapeHtml(certificate.instructorName || 'Rodrigo Jardim')}, no dia ${escapeHtml(certificate.date)}. Durante o curso, demonstrou dedicação e empenho exemplares, adquirindo habilidades valiosas em estratégias de tráfego pago. Parabéns pela conclusão bem-sucedida deste curso!</div>
+    <div class="footer">
+      <div class="medal">★</div>
+      <div class="signature">
+        ${certificate.signatureUrl ? `<img src="${escapeHtml(certificate.signatureUrl)}" alt="Assinatura" />` : `<span>${escapeHtml(certificate.instructorName || 'Rodrigo Jardim')}</span>`}
+        <b></b>
       </div>
     </div>
   </div>
 `;
 
-const getOfficialCertificateHtml = (certificate: GeneratedCertificate | Omit<GeneratedCertificate, 'certificateHtml' | 'emailHtml'>) => `
-<!DOCTYPE html>
+const getCertificateDocument = (title: string, certificatesHtml: string) => `<!DOCTYPE html>
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Certificado - ${escapeHtml(certificate.name)}</title>
+  <title>${escapeHtml(title)}</title>
   <style>
     * { box-sizing: border-box; }
-    body { margin:0;padding:28px;min-height:100vh;display:flex;justify-content:center;align-items:center;background:#f3f4f6;-webkit-print-color-adjust:exact;print-color-adjust:exact; }
-    .controls { position:fixed;top:16px;right:16px;z-index:9999; }
-    .controls button { border:0;border-radius:12px;padding:12px 16px;color:white;font-weight:800;cursor:pointer;background:#2563eb; }
-    @media print { body{background:white;padding:0;} .certificate-wrapper{box-shadow:none!important;border-radius:0!important;} .controls{display:none!important;} @page{size:landscape;margin:0;} }
+    body { margin:0; padding:28px; background:#f3f4f6; font-family:Arial,Helvetica,sans-serif; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .controls { position:fixed; top:16px; right:16px; z-index:9999; display:flex; gap:10px; }
+    .controls button { border:0; border-radius:12px; padding:12px 16px; color:white; font-weight:800; cursor:pointer; background:#2563eb; }
+    .stack { display:flex; flex-direction:column; gap:28px; align-items:center; }
+    .certificate-wrapper { width:1122px; height:794px; background:#fff; position:relative; overflow:hidden; box-shadow:0 22px 70px rgba(15,23,42,.16); border-radius:8px; margin:0 auto; padding:50px 80px; text-align:center; display:flex; flex-direction:column; align-items:center; page-break-after:always; }
+    .brand { font-size:72px; font-weight:900; color:#4b5563; line-height:1; letter-spacing:10px; margin-top:20px; }
+    .academy { font-size:14px; font-weight:700; color:#0ea5e9; letter-spacing:8px; margin-top:5px; margin-bottom:30px; }
+    .title { font-size:28px; font-weight:700; color:#6b7280; letter-spacing:4px; margin-bottom:40px; }
+    .student { font-size:42px; font-weight:400; color:#6b7280; margin-bottom:40px; text-transform:uppercase; letter-spacing:1px; }
+    .main-text { font-size:18px; font-weight:700; color:#000; margin-bottom:20px; max-width:850px; line-height:1.35; }
+    .desc { font-size:16px; line-height:1.6; color:#111827; max-width:900px; margin:0 auto; font-weight:400; text-align:center; }
+    .footer { margin-top:auto; width:100%; display:flex; justify-content:space-between; align-items:flex-end; padding-bottom:20px; }
+    .medal { width:180px; height:180px; border-radius:50%; background:linear-gradient(135deg,#e5e7eb,#fff,#9ca3af); display:grid; place-items:center; font-size:80px; color:#4b5563; box-shadow:0 10px 20px rgba(0,0,0,.2); }
+    .signature { text-align:center; margin-right:60px; width:300px; margin-bottom:30px; }
+    .signature img { height:80px; max-width:280px; object-fit:contain; margin-bottom:-10px; display:inline-block; }
+    .signature span { display:block; font-size:32px; color:#000; margin-bottom:8px; line-height:1.1; }
+    .signature b { display:block; width:100%; height:2px; background:#1e3a8a; margin-top:10px; }
+    @media print { body{background:white;padding:0;} .stack{gap:0;} .certificate-wrapper{box-shadow:none!important;border-radius:0!important;margin:0;} .controls{display:none!important;} @page{size:landscape;margin:0;} }
   </style>
 </head>
 <body>
-  <div class="controls"><button onclick="window.print()">📥 Baixar certificado em PDF</button></div>
-  ${getCertificateCardHtml(certificate)}
+  <div class="controls"><button onclick="window.print()">📥 Baixar em PDF</button></div>
+  <div class="stack">${certificatesHtml}</div>
 </body>
 </html>`;
-
-const getBulkCertificatesHtml = (certificates: GeneratedCertificate[]) => `
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Certificados em Massa</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { margin:0;padding:28px;background:#f3f4f6;-webkit-print-color-adjust:exact;print-color-adjust:exact; }
-    .controls { position:fixed;top:16px;right:16px;z-index:9999;display:flex;gap:10px; }
-    .controls button { border:0;border-radius:12px;padding:12px 16px;color:white;font-weight:800;cursor:pointer;background:#2563eb; }
-    .stack { display:flex;flex-direction:column;gap:28px;align-items:center; }
-    @media print { body{background:white;padding:0;} .stack{gap:0;} .certificate-wrapper{box-shadow:none!important;border-radius:0!important;} .controls{display:none!important;} @page{size:landscape;margin:0;} }
-  </style>
-</head>
-<body>
-  <div class="controls"><button onclick="window.print()">📥 Baixar todos em PDF</button></div>
-  <div class="stack">${certificates.map(getCertificateCardHtml).join('')}</div>
-</body>
-</html>`;
-
-const getCertificateEmailHtml = (certificate: GeneratedCertificate) => `
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0;padding:0;background:#eef1f5;font-family:Arial,Helvetica,sans-serif;">
-  <tr>
-    <td align="center" style="padding:40px 20px;">
-      <table role="presentation" width="100%" max-width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background:#ffffff;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,0.05);overflow:hidden;margin:0 auto;">
-        <tr><td align="center" style="padding:40px 30px 20px;"><h1 style="margin:0;color:#1e3a8a;font-size:36px;letter-spacing:4px;font-weight:900;">VOX</h1><p style="margin:5px 0 0;color:#0ea5e9;font-size:12px;letter-spacing:2px;font-weight:bold;">MARKETING ACADEMY</p></td></tr>
-        <tr><td align="center" style="padding:0 30px;"><h2 style="margin:0 0 15px;color:#1f2937;font-size:24px;">Seu Certificado está pronto!</h2><p style="margin:0 0 25px;color:#4b5563;font-size:16px;line-height:1.6;">Olá <strong>${escapeHtml(certificate.name)}</strong>, parabéns por concluir com êxito o <strong>${escapeHtml(certificate.productName)}</strong>.</p></td></tr>
-        <tr><td align="center" style="padding:10px 30px 40px;"><a href="${escapeHtml(certificate.certificateUrl)}" target="_blank" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:16px 32px;border-radius:8px;font-size:16px;font-weight:bold;">Abrir e Baixar PDF</a></td></tr>
-      </table>
-      <p style="margin:20px auto 0;max-width:600px;font-size:12px;line-height:1.5;color:#6b7280;text-align:center;">Se o botão não funcionar, copie e cole este link no navegador:<br/><a href="${escapeHtml(certificate.certificateUrl)}" style="color:#2563eb;word-break:break-all;">${escapeHtml(certificate.certificateUrl)}</a></p>
-    </td>
-  </tr>
-</table>`;
 
 const createCertificate = (lead: Lead, selectedTurma: string): GeneratedCertificate => {
-  const savedSignature = getSavedSignature();
+  const signatureUrl = getSavedSignature();
   const name = lead.name || 'Aluno';
   const productName = lead.product_name || selectedTurma || 'Curso de Tráfego Pago - Meta Ads';
   const date = new Date().toLocaleDateString('pt-BR');
   const hours = '8';
   const instructorName = 'Rodrigo Jardim';
+  const certificateUrl = getCertificateUrl(name, productName, date, hours, instructorName, signatureUrl);
 
-  const generated = {
+  const base = {
     id: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${lead.id}-${Date.now()}`,
     leadId: lead.id,
     name,
     email: lead.email || '',
-    cpf: lead.cpf || '',
     productName,
     turma: lead.turma || selectedTurma,
     date,
     hours,
     instructorName,
-    signatureUrl: savedSignature,
-    certificateUrl: getCertificateUrl(name, productName, date, hours, instructorName, savedSignature),
+    signatureUrl,
+    certificateUrl,
     certificateHtml: '',
     emailHtml: '',
     status: 'generated' as const,
-    message: savedSignature ? 'Certificado gerado com assinatura e layout oficial' : 'Certificado gerado sem assinatura salva',
+    message: signatureUrl ? 'Gerado com assinatura salva' : 'Gerado sem assinatura salva',
   } as GeneratedCertificate;
 
-  generated.certificateHtml = getOfficialCertificateHtml(generated);
-  generated.emailHtml = getCertificateEmailHtml(generated);
-  return generated;
+  base.certificateHtml = getCertificateDocument(`Certificado - ${name}`, getCertificateCardHtml(base));
+  base.emailHtml = `<p>Olá <strong>${escapeHtml(name)}</strong>, seu certificado está pronto.</p><p><a href="${escapeHtml(certificateUrl)}">Abrir certificado</a></p>`;
+  return base;
 };
 
-const postJson = async (url: string, payload: any, headers: Record<string, string>) => {
-  const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
-  const text = await response.text();
-  let result: any = {};
-  try { result = text ? JSON.parse(text) : {}; } catch { result = { raw: text }; }
-  if (!response.ok || result.error) throw new Error(result.error || result.message || `Erro HTTP ${response.status}`);
-  return result;
+const openHtml = (html: string) => {
+  const newWindow = window.open('', '_blank');
+  if (!newWindow) {
+    alert('O navegador bloqueou a nova aba. Libere pop-ups para abrir os certificados.');
+    return false;
+  }
+  newWindow.document.write(html);
+  newWindow.document.close();
+  return true;
 };
 
 export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, checkouts }) => {
-  const [selectedTurma, setSelectedTurma] = useState<string>('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [sentCount, setSentCount] = useState(0);
-  const [failedCount, setFailedCount] = useState(0);
+  const [selectedTurma, setSelectedTurma] = useState('');
   const [generatedCertificates, setGeneratedCertificates] = useState<GeneratedCertificate[]>([]);
   const [selectedCertificate, setSelectedCertificate] = useState<GeneratedCertificate | null>(null);
-  const [sendingStatus, setSendingStatus] = useState<'idle' | 'generating' | 'sending' | 'completed' | 'error'>('idle');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
-  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
-  const [sendingIndividualId, setSendingIndividualId] = useState<string | null>(null);
 
   const turmas = useMemo(() => {
-    const turmaSet = new Set<string>();
+    const set = new Set<string>();
     checkouts.forEach((checkout) => {
-      if (checkout.turma?.trim()) turmaSet.add(checkout.turma.trim());
-      if (checkout.productName?.trim()) turmaSet.add(checkout.productName.trim());
+      if (checkout.turma?.trim()) set.add(checkout.turma.trim());
+      if (checkout.productName?.trim()) set.add(checkout.productName.trim());
     });
     leads.forEach((lead) => {
-      if (lead.turma?.trim()) turmaSet.add(lead.turma.trim());
-      if (lead.product_name?.trim()) turmaSet.add(lead.product_name.trim());
+      if (lead.turma?.trim()) set.add(lead.turma.trim());
+      if (lead.product_name?.trim()) set.add(lead.product_name.trim());
     });
-    return Array.from(turmaSet).sort((a, b) => a.localeCompare(b));
-  }, [leads, checkouts]);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [checkouts, leads]);
 
   const getCheckoutIdsForTurma = (turma: string) => new Set(
     checkouts
@@ -234,52 +192,30 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
     });
   };
 
-  const turmaLeads = useMemo(() => selectedTurma ? getLeadsForTurma(selectedTurma) : [], [leads, checkouts, selectedTurma]);
-  const generatedCount = generatedCertificates.length;
-  const pendingToSend = generatedCertificates.filter((cert) => cert.status === 'generated' && Boolean(cert.email)).length;
+  const turmaLeads = useMemo(() => selectedTurma ? getLeadsForTurma(selectedTurma) : [], [selectedTurma, leads, checkouts]);
+  const withEmailCount = generatedCertificates.filter(cert => Boolean(cert.email) && cert.status !== 'sent').length;
 
-  const handleGenerateCertificates = async () => {
+  const handleGenerateCertificates = () => {
     if (!selectedTurma) return alert('Selecione uma turma');
-    if (turmaLeads.length === 0) return alert('Nenhum aluno pago/aprovado encontrado nesta turma. Agora CPF e e-mail não são mais obrigatórios para gerar, apenas para enviar por e-mail.');
-
-    const savedSignature = getSavedSignature();
-    if (!savedSignature && !confirm('Não encontrei assinatura salva em Assinaturas. Deseja gerar mesmo assim sem imagem de assinatura?')) return;
+    if (turmaLeads.length === 0) return alert('Nenhum aluno pago/aprovado encontrado nessa turma.');
 
     setIsGenerating(true);
-    setSendingStatus('generating');
-    setStatusMessage('Gerando certificados em massa com layout oficial...');
-    setGeneratedCertificates([]);
-    setSelectedCertificate(null);
-    setCheckedIds(new Set());
-    setSentCount(0);
-    setFailedCount(0);
+    setStatusMessage('Gerando certificados...');
 
     try {
       const generated = turmaLeads.map((lead) => createCertificate(lead, selectedTurma));
       setGeneratedCertificates(generated);
       setSelectedCertificate(generated[0] || null);
-      setSendingStatus('completed');
-      setStatusMessage(`✓ ${generated.length} certificado(s) gerado(s). ${generated.filter(c => !c.email).length} sem e-mail foram gerados, mas não entram no envio.`);
-    } catch (error) {
-      console.error('Erro ao gerar certificados em massa:', error);
-      setSendingStatus('error');
-      setStatusMessage(error instanceof Error ? error.message : 'Erro ao gerar certificados');
+      setStatusMessage(`✅ ${generated.length} certificado(s) gerado(s).`);
+      openHtml(getCertificateDocument('Certificados em Massa', generated.map(getCertificateCardHtml).join('')));
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const openHtml = (html: string) => {
-    const newWindow = window.open('', '_blank');
-    if (!newWindow) return alert('O navegador bloqueou a nova aba. Libere pop-ups para abrir os certificados.');
-    newWindow.document.write(html);
-    newWindow.document.close();
-  };
-
-  const openOfficialCertificate = (certificate: GeneratedCertificate) => openHtml(certificate.certificateHtml);
   const openAllCertificates = () => {
-    if (generatedCertificates.length === 0) return alert('Primeiro gere os certificados em massa');
-    openHtml(getBulkCertificatesHtml(generatedCertificates));
+    if (generatedCertificates.length === 0) return alert('Primeiro clique em GERAR CERTIFICADOS AGORA.');
+    openHtml(getCertificateDocument('Certificados em Massa', generatedCertificates.map(getCertificateCardHtml).join('')));
   };
 
   const sendCertificateEmail = async (certificate: GeneratedCertificate) => {
@@ -289,239 +225,167 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
       headers.Authorization = `Bearer ${SUPABASE_ANON_KEY}`;
       headers.apikey = SUPABASE_ANON_KEY;
     }
-    return postJson(SEND_EMAIL_ENDPOINT, {
-      to: certificate.email,
-      name: certificate.name,
-      subject: `Seu Certificado - ${certificate.productName}`,
-      productName: certificate.productName,
-      message: certificate.emailHtml,
-      ticketUrl: '',
-      certificateUrl: certificate.certificateUrl,
-      signatureUrl: certificate.signatureUrl,
-      preserveCertificateLayout: true,
-    }, headers);
+
+    const response = await fetch(SEND_EMAIL_ENDPOINT, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        to: certificate.email,
+        name: certificate.name,
+        subject: `Seu Certificado - ${certificate.productName}`,
+        productName: certificate.productName,
+        message: certificate.emailHtml,
+        ticketUrl: '',
+        certificateUrl: certificate.certificateUrl,
+        signatureUrl: certificate.signatureUrl,
+        preserveCertificateLayout: true,
+      }),
+    });
+
+    const text = await response.text();
+    let result: any = {};
+    try { result = text ? JSON.parse(text) : {}; } catch { result = { raw: text }; }
+    if (!response.ok || result.error) throw new Error(result.error || result.message || `Erro HTTP ${response.status}`);
   };
 
-  const updateCertificateStatus = (id: string, status: GeneratedCertificate['status'], message: string) => {
-    setGeneratedCertificates((previous) => previous.map((cert) => cert.id === id ? { ...cert, status, message } : cert));
-    setSelectedCertificate((previous) => previous?.id === id ? { ...previous, status, message } : previous);
-  };
-
-  const sendCertificates = async (certificates: GeneratedCertificate[]) => {
-    const certificatesToSend = certificates.filter((cert) => cert.status !== 'sent' && Boolean(cert.email));
-    if (certificatesToSend.length === 0) return alert('Nenhum certificado com e-mail disponível para enviar');
+  const sendAllWithEmail = async () => {
+    const certificatesToSend = generatedCertificates.filter(cert => cert.email && cert.status !== 'sent');
+    if (certificatesToSend.length === 0) return alert('Nenhum certificado com e-mail disponível para enviar.');
     if (!confirm(`Enviar ${certificatesToSend.length} certificado(s) por e-mail?`)) return;
 
     setIsSending(true);
-    setSendingStatus('sending');
-    setSentCount(0);
-    setFailedCount(0);
-    setStatusMessage('Enviando certificados...');
-
-    let successful = 0;
+    let sent = 0;
     let failed = 0;
-    for (const certificate of certificatesToSend) {
+
+    for (const cert of certificatesToSend) {
       try {
-        setStatusMessage(`Enviando certificado para ${certificate.name}...`);
-        await sendCertificateEmail(certificate);
-        successful += 1;
-        setSentCount(successful);
-        updateCertificateStatus(certificate.id, 'sent', 'Enviado com layout oficial');
-        await new Promise(resolve => setTimeout(resolve, 350));
-      } catch (err) {
+        setStatusMessage(`Enviando para ${cert.name}...`);
+        await sendCertificateEmail(cert);
+        sent += 1;
+        setGeneratedCertificates(prev => prev.map(item => item.id === cert.id ? { ...item, status: 'sent', message: 'Enviado por e-mail' } : item));
+      } catch (error) {
         failed += 1;
-        setFailedCount(failed);
-        updateCertificateStatus(certificate.id, 'error', err instanceof Error ? err.message : 'Erro ao enviar');
+        setGeneratedCertificates(prev => prev.map(item => item.id === cert.id ? { ...item, status: 'error', message: error instanceof Error ? error.message : 'Erro ao enviar' } : item));
       }
     }
 
+    setStatusMessage(`✅ ${sent} enviado(s)${failed ? `, ${failed} falharam` : ''}.`);
     setIsSending(false);
-    setCheckedIds(new Set());
-    setSendingStatus(failed > 0 && successful === 0 ? 'error' : 'completed');
-    setStatusMessage(`✓ ${successful} certificado(s) enviado(s)${failed > 0 ? `, ${failed} falharam` : ''}`);
-  };
-
-  const toggleChecked = (id: string) => {
-    setCheckedIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const selectAllCertificates = () => setCheckedIds(new Set(generatedCertificates.filter(c => c.status !== 'sent' && c.email).map(c => c.id)));
-  const deselectAllCertificates = () => setCheckedIds(new Set());
-  const selectedToSend = generatedCertificates.filter(c => checkedIds.has(c.id));
-
-  const handleSendIndividual = async (certificate: GeneratedCertificate) => {
-    setSendingIndividualId(certificate.id);
-    try {
-      await sendCertificates([certificate]);
-    } finally {
-      setSendingIndividualId(null);
-    }
   };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-gray-900">Certificados em Massa</h2>
-          <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Gere certificados em lote e envie por e-mail quando houver e-mail cadastrado</p>
+          <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Selecione uma turma e gere todos os certificados</p>
         </div>
         <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center">
           <FileCheck size={32} className="text-purple-600" />
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-5 md:p-8 space-y-5">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
           <Stat label="Turmas" value={turmas.length} tone="blue" />
           <Stat label="Alunos" value={turmaLeads.length} tone="emerald" />
-          <Stat label="Gerados" value={generatedCount} tone="purple" />
-          <Stat label="Pendentes" value={pendingToSend} tone="orange" />
+          <Stat label="Gerados" value={generatedCertificates.length} tone="purple" />
+          <Stat label="Com e-mail" value={withEmailCount} tone="orange" />
         </div>
 
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-black uppercase text-gray-700 tracking-widest mb-3"><GraduationCap size={16} className="inline mr-2" /> Selecione a Turma *</label>
-            <select
-              value={selectedTurma}
-              onChange={(e) => {
-                setSelectedTurma(e.target.value);
-                setSendingStatus('idle');
-                setStatusMessage('');
-                setGeneratedCertificates([]);
-                setSelectedCertificate(null);
-                setCheckedIds(new Set());
-                setSentCount(0);
-                setFailedCount(0);
-              }}
-              disabled={isGenerating || isSending}
-              className="w-full px-6 py-4 rounded-2xl border-2 border-gray-200 bg-white text-gray-900 font-bold focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">-- Selecione uma turma --</option>
-              {turmas.map(turma => {
-                const turmaLeadCount = getLeadsForTurma(turma).length;
-                return <option key={turma} value={turma}>{turma} ({turmaLeadCount} aluno{turmaLeadCount !== 1 ? 's' : ''})</option>;
-              })}
-            </select>
-            <p className="text-xs text-gray-400 font-bold mt-2">Para gerar: aluno pago/aprovado. Para enviar por e-mail: precisa ter e-mail cadastrado.</p>
+        <div>
+          <label className="block text-sm font-black uppercase text-gray-700 tracking-widest mb-3">
+            <GraduationCap size={16} className="inline mr-2" /> Selecione a Turma *
+          </label>
+          <select
+            value={selectedTurma}
+            onChange={(event) => {
+              setSelectedTurma(event.target.value);
+              setGeneratedCertificates([]);
+              setSelectedCertificate(null);
+              setStatusMessage('');
+            }}
+            disabled={isGenerating || isSending}
+            className="w-full px-5 py-4 rounded-2xl border-2 border-gray-200 bg-white text-gray-900 font-bold focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+          >
+            <option value="">-- Selecione uma turma --</option>
+            {turmas.map((turma) => {
+              const count = getLeadsForTurma(turma).length;
+              return <option key={turma} value={turma}>{turma} ({count} aluno{count !== 1 ? 's' : ''})</option>;
+            })}
+          </select>
+        </div>
+
+        {selectedTurma && (
+          <button
+            type="button"
+            onClick={handleGenerateCertificates}
+            disabled={isGenerating || isSending || turmaLeads.length === 0}
+            className="w-full rounded-2xl p-5 bg-blue-600 text-white font-black text-base md:text-xl uppercase tracking-widest shadow-xl shadow-blue-200 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isGenerating ? <Loader2 size={22} className="animate-spin" /> : <FileCheck size={22} />}
+            {isGenerating ? 'Gerando...' : `Gerar ${turmaLeads.length} Certificados Agora`}
+          </button>
+        )}
+
+        {selectedTurma && turmaLeads.length === 0 && (
+          <div className="rounded-2xl p-4 border-2 bg-amber-50 border-amber-200 text-sm font-bold text-amber-800">
+            Nenhum aluno pago/aprovado encontrado nessa turma.
           </div>
+        )}
 
-          {selectedTurma && turmaLeads.length > 0 && (
-            <button
-              onClick={handleGenerateCertificates}
-              disabled={isGenerating || isSending}
-              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-6 shadow-xl shadow-purple-200/50 hover:from-purple-700 hover:to-indigo-700 hover:-translate-y-1 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed text-left"
-            >
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-white font-black text-xl">{isGenerating ? '⏳ Gerando certificados...' : generatedCertificates.length > 0 ? '📜 Regenerar Certificados' : '📜 Criar Certificados em Massa'}</div>
-                  <div className="text-purple-200 text-sm font-bold mt-2">{turmaLeads.length} aluno{turmaLeads.length !== 1 ? 's' : ''} pago/aprovado encontrado{turmaLeads.length !== 1 ? 's' : ''}</div>
-                  <div className="text-white/70 text-xs font-bold mt-1">CPF e e-mail não bloqueiam mais a geração</div>
-                </div>
-                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center flex-shrink-0">
-                  {isGenerating ? <Loader2 size={32} className="text-white animate-spin" /> : <FileCheck size={32} className="text-white" />}
-                </div>
-              </div>
-            </button>
-          )}
+        {statusMessage && (
+          <div className="rounded-2xl p-4 border-2 bg-emerald-50 border-emerald-200 text-sm font-bold text-emerald-800 flex items-center gap-2">
+            <Check size={18} /> {statusMessage}
+          </div>
+        )}
 
-          {selectedTurma && turmaLeads.length === 0 && (
-            <div className="rounded-2xl p-4 border-2 bg-amber-50 border-amber-200 text-sm font-bold text-amber-800">Nenhum aluno pago/aprovado encontrado nessa turma.</div>
-          )}
-
-          {sendingStatus !== 'idle' && (
-            <div className={`rounded-2xl p-4 border-2 ${sendingStatus === 'sending' || sendingStatus === 'generating' ? 'bg-blue-50 border-blue-200' : sendingStatus === 'completed' ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
-              <div className="flex items-center gap-3">
-                {(sendingStatus === 'sending' || sendingStatus === 'generating') && <Loader2 size={20} className="text-blue-600 animate-spin" />}
-                {sendingStatus === 'completed' && <Check size={20} className="text-emerald-600" />}
-                {sendingStatus === 'error' && <XCircle size={20} className="text-red-600" />}
-                <div className="font-bold text-sm text-gray-900">{statusMessage}</div>
-              </div>
+        {generatedCertificates.length > 0 && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <button onClick={openAllCertificates} className="w-full rounded-2xl p-4 bg-indigo-600 text-white font-black uppercase tracking-widest flex items-center justify-center gap-2">
+                <ExternalLink size={18} /> Abrir Todos / Baixar PDF
+              </button>
+              <button onClick={sendAllWithEmail} disabled={isSending || withEmailCount === 0} className="w-full rounded-2xl p-4 bg-emerald-600 text-white font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                {isSending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />} Enviar por E-mail ({withEmailCount})
+              </button>
             </div>
-          )}
 
-          {generatedCertificates.length > 0 && (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-              <div className="bg-gray-50 rounded-2xl p-4">
-                <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-2xl p-4 mb-4 shadow-lg">
-                  <div className="flex items-center justify-between gap-3 mb-3">
-                    <div>
-                      <div className="text-white font-black text-sm flex items-center gap-2"><Mail size={16} /> Enviar por Email</div>
-                      <div className="text-emerald-100 text-[10px] font-bold mt-0.5">{checkedIds.size > 0 ? `${checkedIds.size} selecionado(s)` : `${pendingToSend} com e-mail disponível(is)`}</div>
+            <div className="space-y-2 max-h-[520px] overflow-y-auto">
+              {generatedCertificates.map((cert, index) => (
+                <div key={cert.id} className={`p-4 bg-gray-50 rounded-2xl border ${selectedCertificate?.id === cert.id ? 'border-purple-400 ring-2 ring-purple-100' : 'border-gray-200'}`}>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center text-xs font-black text-purple-600 flex-shrink-0">{index + 1}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-black text-gray-900 text-sm truncate">{cert.name}</div>
+                      <div className="text-xs text-gray-500 truncate">{cert.email || 'Sem e-mail cadastrado'}</div>
+                      <div className="text-[10px] text-purple-600 font-bold mt-1">{cert.message}</div>
                     </div>
-                    <div className="text-[10px] font-black text-white/80 bg-white/20 px-3 py-1 rounded-full">Enviados: {sentCount} | Falhas: {failedCount}</div>
+                    <div className={`text-[10px] font-black px-2 py-1 rounded-lg ${cert.status === 'sent' ? 'text-emerald-600 bg-emerald-50' : cert.status === 'error' ? 'text-red-600 bg-red-50' : 'text-purple-600 bg-purple-50'}`}>{cert.status === 'sent' ? 'Enviado' : cert.status === 'error' ? 'Falhou' : 'Gerado'}</div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <button onClick={() => sendCertificates(generatedCertificates)} disabled={isSending || pendingToSend === 0} className="py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 bg-white text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-md">{isSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Enviar Todos ({pendingToSend})</button>
-                    <button onClick={() => sendCertificates(selectedToSend)} disabled={isSending || checkedIds.size === 0} className="py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 bg-white/20 text-white hover:bg-white/30 disabled:opacity-50 disabled:cursor-not-allowed border border-white/30">{isSending ? <Loader2 size={14} className="animate-spin" /> : <CheckSquare size={14} />} Selecionados ({checkedIds.size})</button>
-                    <button onClick={openAllCertificates} disabled={isSending} className="py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 bg-indigo-900/30 text-white hover:bg-indigo-900/40 border border-white/30"><ExternalLink size={14} /> Abrir Todos</button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between gap-4 mb-3">
-                  <div className="text-xs font-bold text-gray-600 uppercase tracking-widest">Certificados gerados</div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={selectAllCertificates} className="text-[10px] font-black text-purple-600 hover:text-purple-800 transition-all">Selecionar com e-mail</button>
-                    <span className="text-gray-300">|</span>
-                    <button onClick={deselectAllCertificates} className="text-[10px] font-black text-gray-500 hover:text-gray-700 transition-all">Limpar</button>
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                    <button onClick={() => setSelectedCertificate(cert)} className="px-3 py-2 bg-purple-50 text-purple-700 rounded-xl text-[10px] font-black uppercase">Visualizar</button>
+                    <button onClick={() => openHtml(cert.certificateHtml)} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-xl text-[10px] font-black uppercase">Abrir</button>
                   </div>
                 </div>
+              ))}
+            </div>
 
-                <div className="space-y-2 max-h-[520px] overflow-y-auto">
-                  {generatedCertificates.map((cert, idx) => (
-                    <div key={cert.id} className={`p-3 bg-white rounded-xl border transition-all ${selectedCertificate?.id === cert.id ? 'border-purple-400 ring-2 ring-purple-100' : checkedIds.has(cert.id) ? 'border-emerald-400 ring-2 ring-emerald-100' : 'border-gray-200 hover:border-purple-300'}`}>
-                      <div className="flex items-center gap-3">
-                        <button onClick={() => toggleChecked(cert.id)} className={`flex-shrink-0 transition-all ${cert.status === 'sent' || !cert.email ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`} disabled={cert.status === 'sent' || !cert.email}>
-                          {checkedIds.has(cert.id) ? <CheckSquare size={20} className="text-emerald-600" /> : <Square size={20} className="text-gray-400" />}
-                        </button>
-                        <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center text-xs font-black text-purple-600 flex-shrink-0">{idx + 1}</div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-bold text-gray-900 text-sm truncate">{cert.name}</div>
-                          <div className={`text-xs truncate ${cert.email ? 'text-gray-500' : 'text-amber-600 font-bold'}`}>{cert.email || 'Sem e-mail: certificado gerado, envio indisponível'}</div>
-                          <div className="text-[10px] text-purple-600 font-bold mt-1">{cert.signatureUrl ? 'Com assinatura salva' : 'Sem assinatura salva'}</div>
-                          {cert.message && <div className="text-[10px] text-gray-500 font-bold mt-1">{cert.message}</div>}
-                        </div>
-                        <div className={`text-[10px] font-black px-2 py-1 rounded-lg flex-shrink-0 ${cert.status === 'sent' ? 'text-emerald-600 bg-emerald-50' : cert.status === 'error' ? 'text-red-600 bg-red-50' : 'text-purple-600 bg-purple-50'}`}>{cert.status === 'sent' ? '✓ Enviado' : cert.status === 'error' ? 'Falhou' : 'Gerado'}</div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 mt-3">
-                        <button onClick={() => setSelectedCertificate(cert)} className="px-3 py-2 bg-purple-50 text-purple-700 rounded-xl text-[10px] font-black uppercase hover:bg-purple-100 transition-all flex items-center justify-center gap-1"><Eye size={13} /> Visualizar</button>
-                        <button onClick={() => openOfficialCertificate(cert)} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-xl text-[10px] font-black uppercase hover:bg-gray-200 transition-all flex items-center justify-center gap-1"><ExternalLink size={13} /> Abrir</button>
-                        <button onClick={() => handleSendIndividual(cert)} disabled={cert.status === 'sent' || sendingIndividualId === cert.id || isSending || !cert.email} className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center justify-center gap-1 ${cert.status === 'sent' ? 'bg-emerald-50 text-emerald-600 cursor-not-allowed' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'} disabled:opacity-50`}>
-                          {sendingIndividualId === cert.id ? <Loader2 size={13} className="animate-spin" /> : cert.status === 'sent' ? <Check size={13} /> : <Mail size={13} />}
-                          {cert.status === 'sent' ? 'Enviado' : 'Enviar'}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 min-h-[520px]">
+            {selectedCertificate && (
+              <div className="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800">
                 <div className="bg-slate-800 px-4 py-3 flex items-center justify-between gap-3">
                   <div>
                     <p className="text-white font-black text-sm">Prévia do certificado oficial</p>
-                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest truncate max-w-[260px]">{selectedCertificate ? selectedCertificate.name : 'Selecione um certificado'}</p>
+                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest truncate max-w-[260px]">{selectedCertificate.name}</p>
                   </div>
-                  {selectedCertificate && (
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => openOfficialCertificate(selectedCertificate)} className="bg-white/10 text-white p-2 rounded-lg hover:bg-white/20" title="Abrir em nova aba"><ExternalLink size={15} /></button>
-                      <button onClick={() => setSelectedCertificate(null)} className="bg-white/10 text-white p-2 rounded-lg hover:bg-white/20" title="Fechar prévia"><X size={15} /></button>
-                    </div>
-                  )}
                 </div>
-                {selectedCertificate ? (
-                  <div className="h-[620px] bg-white"><iframe title={`Prévia certificado ${selectedCertificate.name}`} srcDoc={selectedCertificate.certificateHtml} className="w-full h-full border-0" /></div>
-                ) : (
-                  <div className="h-[620px] flex items-center justify-center text-center p-8"><div><Eye size={42} className="text-slate-600 mx-auto mb-4" /><p className="text-white font-black">Nenhum certificado selecionado</p><p className="text-slate-400 text-sm font-bold mt-2">Clique em “Visualizar” para conferir o certificado.</p></div></div>
-                )}
+                <div className="h-[620px] bg-white">
+                  <iframe title={`Prévia certificado ${selectedCertificate.name}`} srcDoc={selectedCertificate.certificateHtml} className="w-full h-full border-0" />
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
@@ -530,9 +394,9 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
           <div className="text-sm text-amber-800">
             <div className="font-bold mb-2">ℹ️ Como funciona:</div>
             <ul className="space-y-1 text-xs list-disc list-inside">
-              <li>Agora a geração em massa aceita aluno pago/aprovado mesmo sem CPF ou e-mail.</li>
-              <li>O botão “Abrir Todos” abre todos os certificados para imprimir/salvar em PDF.</li>
-              <li>O envio por e-mail só considera alunos que têm e-mail cadastrado.</li>
+              <li>O botão de geração agora aparece sempre que uma turma for selecionada.</li>
+              <li>Ao gerar, os certificados abrem automaticamente em uma nova aba.</li>
+              <li>Depois da geração, o botão “Abrir Todos / Baixar PDF” fica visível.</li>
             </ul>
           </div>
         </div>
@@ -550,9 +414,9 @@ const Stat: React.FC<{ label: string; value: number; tone: 'blue' | 'emerald' | 
   } as const;
   const classes = tones[tone];
   return (
-    <div className={`bg-gradient-to-br ${classes[0]} ${classes[1]} p-6 rounded-2xl border ${classes[2]}`}>
-      <div className={`text-sm font-bold ${classes[3]} uppercase tracking-widest mb-2`}>{label}</div>
-      <div className={`text-3xl font-black ${classes[4]}`}>{value}</div>
+    <div className={`bg-gradient-to-br ${classes[0]} ${classes[1]} p-4 md:p-6 rounded-2xl border ${classes[2]}`}>
+      <div className={`text-[10px] md:text-sm font-bold ${classes[3]} uppercase tracking-widest mb-2`}>{label}</div>
+      <div className={`text-2xl md:text-3xl font-black ${classes[4]}`}>{value}</div>
     </div>
   );
 };
