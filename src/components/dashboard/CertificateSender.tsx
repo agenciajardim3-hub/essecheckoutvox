@@ -41,6 +41,15 @@ const escapeHtml = (value: string) => String(value || '')
   .replace(/\"/g, '&quot;')
   .replace(/'/g, '&#039;');
 
+const todayInputValue = () => new Date().toISOString().slice(0, 10);
+
+const formatInputDateToBr = (value: string) => {
+  if (!value) return new Date().toLocaleDateString('pt-BR');
+  const [year, month, day] = value.split('-');
+  if (!year || !month || !day) return value;
+  return `${day}/${month}/${year}`;
+};
+
 const getSavedSignature = () => {
   try {
     const saved = localStorage.getItem('vox_selected_signature') || '';
@@ -114,11 +123,11 @@ const getCertificateDocument = (title: string, certificatesHtml: string) => `<!D
 </body>
 </html>`;
 
-const createCertificate = (lead: Lead, selectedTurma: string): GeneratedCertificate => {
+const createCertificate = (lead: Lead, selectedTurma: string, certificateDateBr: string): GeneratedCertificate => {
   const signatureUrl = getSavedSignature();
   const name = lead.name || 'Aluno';
   const productName = lead.product_name || selectedTurma || 'Curso de Tráfego Pago - Meta Ads';
-  const date = new Date().toLocaleDateString('pt-BR');
+  const date = certificateDateBr;
   const hours = '8';
   const instructorName = 'Rodrigo Jardim';
   const certificateUrl = getCertificateUrl(name, productName, date, hours, instructorName, signatureUrl);
@@ -159,11 +168,14 @@ const openHtml = (html: string) => {
 
 export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, checkouts }) => {
   const [selectedTurma, setSelectedTurma] = useState('');
+  const [certificateDate, setCertificateDate] = useState(todayInputValue());
   const [generatedCertificates, setGeneratedCertificates] = useState<GeneratedCertificate[]>([]);
   const [selectedCertificate, setSelectedCertificate] = useState<GeneratedCertificate | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+
+  const certificateDateBr = useMemo(() => formatInputDateToBr(certificateDate), [certificateDate]);
 
   const turmas = useMemo(() => {
     const set = new Set<string>();
@@ -197,16 +209,17 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
 
   const handleGenerateCertificates = () => {
     if (!selectedTurma) return alert('Selecione uma turma');
+    if (!certificateDate) return alert('Informe a data oficial do certificado');
     if (turmaLeads.length === 0) return alert('Nenhum aluno pago/aprovado encontrado nessa turma.');
 
     setIsGenerating(true);
     setStatusMessage('Gerando certificados...');
 
     try {
-      const generated = turmaLeads.map((lead) => createCertificate(lead, selectedTurma));
+      const generated = turmaLeads.map((lead) => createCertificate(lead, selectedTurma, certificateDateBr));
       setGeneratedCertificates(generated);
       setSelectedCertificate(generated[0] || null);
-      setStatusMessage(`✅ ${generated.length} certificado(s) gerado(s).`);
+      setStatusMessage(`✅ ${generated.length} certificado(s) gerado(s) com a data ${certificateDateBr}.`);
       openHtml(getCertificateDocument('Certificados em Massa', generated.map(getCertificateCardHtml).join('')));
     } finally {
       setIsGenerating(false);
@@ -278,7 +291,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-gray-900">Certificados em Massa</h2>
-          <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Selecione uma turma e gere todos os certificados</p>
+          <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Selecione uma turma, defina a data e gere todos os certificados</p>
         </div>
         <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center">
           <FileCheck size={32} className="text-purple-600" />
@@ -316,11 +329,30 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
           </select>
         </div>
 
+        <div>
+          <label className="block text-sm font-black uppercase text-gray-700 tracking-widest mb-3">
+            📅 Data oficial do certificado *
+          </label>
+          <input
+            type="date"
+            value={certificateDate}
+            onChange={(event) => {
+              setCertificateDate(event.target.value);
+              setGeneratedCertificates([]);
+              setSelectedCertificate(null);
+              setStatusMessage('');
+            }}
+            disabled={isGenerating || isSending}
+            className="w-full px-5 py-4 rounded-2xl border-2 border-gray-200 bg-white text-gray-900 font-bold focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+          />
+          <p className="text-xs text-gray-400 font-bold mt-2">Essa data será aplicada em todos os certificados gerados nesta turma: {certificateDateBr}</p>
+        </div>
+
         {selectedTurma && (
           <button
             type="button"
             onClick={handleGenerateCertificates}
-            disabled={isGenerating || isSending || turmaLeads.length === 0}
+            disabled={isGenerating || isSending || turmaLeads.length === 0 || !certificateDate}
             className="w-full rounded-2xl p-5 bg-blue-600 text-white font-black text-base md:text-xl uppercase tracking-widest shadow-xl shadow-blue-200 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isGenerating ? <Loader2 size={22} className="animate-spin" /> : <FileCheck size={22} />}
@@ -359,7 +391,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
                     <div className="flex-1 min-w-0">
                       <div className="font-black text-gray-900 text-sm truncate">{cert.name}</div>
                       <div className="text-xs text-gray-500 truncate">{cert.email || 'Sem e-mail cadastrado'}</div>
-                      <div className="text-[10px] text-purple-600 font-bold mt-1">{cert.message}</div>
+                      <div className="text-[10px] text-purple-600 font-bold mt-1">{cert.message} • Data: {cert.date}</div>
                     </div>
                     <div className={`text-[10px] font-black px-2 py-1 rounded-lg ${cert.status === 'sent' ? 'text-emerald-600 bg-emerald-50' : cert.status === 'error' ? 'text-red-600 bg-red-50' : 'text-purple-600 bg-purple-50'}`}>{cert.status === 'sent' ? 'Enviado' : cert.status === 'error' ? 'Falhou' : 'Gerado'}</div>
                   </div>
@@ -394,9 +426,9 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
           <div className="text-sm text-amber-800">
             <div className="font-bold mb-2">ℹ️ Como funciona:</div>
             <ul className="space-y-1 text-xs list-disc list-inside">
-              <li>O botão de geração agora aparece sempre que uma turma for selecionada.</li>
-              <li>Ao gerar, os certificados abrem automaticamente em uma nova aba.</li>
-              <li>Depois da geração, o botão “Abrir Todos / Baixar PDF” fica visível.</li>
+              <li>Você escolhe a data oficial antes de gerar os certificados.</li>
+              <li>A mesma data será aplicada em todos os certificados da turma.</li>
+              <li>Se errar a data, altere o campo e gere novamente.</li>
             </ul>
           </div>
         </div>
