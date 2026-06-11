@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
 export interface EmailTemplate {
     id: string;
@@ -8,6 +9,21 @@ export interface EmailTemplate {
     color: string;
     isCustom?: boolean;
 }
+
+const LOCAL_STORAGE_KEY = 'vox_custom_email_templates';
+const TABLE_NAME = 'email_templates';
+
+const supabaseUrl =
+    import.meta.env.VITE_SUPABASE_URL ||
+    'https://emdsgvuqrhpjdgrgaslo.supabase.co';
+
+const supabaseKey =
+    import.meta.env.VITE_SUPABASE_ANON_KEY ||
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    import.meta.env.VITE_SUPABASE_KEY ||
+    '';
+
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 export const defaultTemplates: EmailTemplate[] = [
     {
@@ -134,54 +150,156 @@ export const defaultTemplates: EmailTemplate[] = [
     }
 ];
 
+const mapDbTemplate = (row: any): EmailTemplate => ({
+    id: row.id,
+    name: row.name,
+    description: row.description || '',
+    html: row.html || '',
+    color: row.color || 'from-blue-500 to-indigo-600',
+    isCustom: true,
+});
+
+const getLocalTemplates = (): EmailTemplate[] => {
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (!stored) return [];
+    try {
+        return JSON.parse(stored);
+    } catch {
+        return [];
+    }
+};
+
+const setLocalTemplates = (templates: EmailTemplate[]) => {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(templates));
+};
+
+const mergeTemplates = (customTemplates: EmailTemplate[]) => [
+    ...defaultTemplates,
+    ...customTemplates.filter(template => !defaultTemplates.some(defaultTemplate => defaultTemplate.id === template.id)),
+];
+
 export function useEmailTemplates() {
     const [templates, setTemplates] = useState<EmailTemplate[]>(defaultTemplates);
+    const [storageMode, setStorageMode] = useState<'supabase' | 'local'>('local');
 
     useEffect(() => {
-        const stored = localStorage.getItem('vox_custom_email_templates');
-        if (stored) {
-            try {
-                const customTemplates: EmailTemplate[] = JSON.parse(stored);
-                setTemplates([...defaultTemplates, ...customTemplates]);
-            } catch (e) {
-                console.error('Error parsing custom templates', e);
+        let mounted = true;
+
+        const loadTemplates = async () => {
+            const localTemplates = getLocalTemplates();
+            if (localTemplates.length > 0 && mounted) {
+                setTemplates(mergeTemplates(localTemplates));
             }
-        }
+
+            if (!supabase) return;
+
+            const { data, error } = await supabase
+                .from(TABLE_NAME)
+                .select('*')
+                .order('created_at', { ascending: true });
+
+            if (error) {
+                console.warn('Email templates table unavailable, using localStorage fallback:', error.message);
+                return;
+            }
+
+            const dbTemplates = (data || []).map(mapDbTemplate);
+
+            if (localTemplates.length > 0) {
+                const missingLocalTemplates = localTemplates.filter(
+                    localTemplate => !dbTemplates.some(dbTemplate => dbTemplate.id === localTemplate.id)
+                );
+
+                if (missingLocalTemplates.length > 0) {
+                    await supabase
+                        .from(TABLE_NAME)
+                        .upsert(missingLocalTemplates.map(template => ({
+                            id: template.id,
+                            name: template.name,
+                            description: template.description,
+                            html: template.html,
+                            color: template.color,
+                            is_custom: true,
+                        })), { onConflict: 'id' });
+                }
+            }
+
+            const refreshed = await supabase
+                .from(TABLE_NAME)
+                .select('*')
+                .order('created_at', { ascending: true });
+
+            if (!mounted) return;
+
+            const finalTemplates = refreshed.error ? dbTemplates : (refreshed.data || []).map(mapDbTemplate);
+            setTemplates(mergeTemplates(finalTemplates));
+            setLocalTemplates(finalTemplates);
+            setStorageMode('supabase');
+        };
+
+        loadTemplates();
+
+        return () => {
+            mounted = false;
+        };
     }, []);
 
     const saveTemplate = (template: EmailTemplate) => {
-        const stored = localStorage.getItem('vox_custom_email_templates');
-        let customTemplates: EmailTemplate[] = [];
-        
-        if (stored) {
-            try {
-                customTemplates = JSON.parse(stored);
-            } catch (e) {}
-        }
+        const customTemplates = getLocalTemplates();
+        const savedTemplate = { ...template, isCustom: true };
+        const existingIndex = customTemplates.findIndex(t => t.id === savedTemplate.id);
 
-        const existingIndex = customTemplates.findIndex(t => t.id === template.id);
-        
         if (existingIndex >= 0) {
-            customTemplates[existingIndex] = { ...template, isCustom: true };
+            customTemplates[existingIndex] = savedTemplate;
         } else {
-            customTemplates.push({ ...template, isCustom: true });
+            customTemplates.push(savedTemplate);
         }
 
-        localStorage.setItem('vox_custom_email_templates', JSON.stringify(customTemplates));
-        setTemplates([...defaultTemplates, ...customTemplates]);
+        setLocalTemplates(customTemplates);
+        setTemplates(mergeTemplates(customTemplates));
+
+        if (supabase) {
+            supabase
+                .from(TABLE_NAME)
+                .upsert({
+                    id: savedTemplate.id,
+                    name: savedTemplate.name,
+                    description: savedTemplate.description,
+                    html: savedTemplate.html,
+                    color: savedTemplate.color,
+                    is_custom: true,
+                }, { onConflict: 'id' })
+                .then(({ error }) => {
+                    if (error) {
+                        console.warn('Could not save email template in Supabase. Local fallback active:', error.message);
+                        setStorageMode('local');
+                    } else {
+                        setStorageMode('supabase');
+                    }
+                });
+        }
     };
 
     const deleteTemplate = (id: string) => {
-        const stored = localStorage.getItem('vox_custom_email_templates');
-        if (stored) {
-            try {
-                let customTemplates: EmailTemplate[] = JSON.parse(stored);
-                customTemplates = customTemplates.filter(t => t.id !== id);
-                localStorage.setItem('vox_custom_email_templates', JSON.stringify(customTemplates));
-                setTemplates([...defaultTemplates, ...customTemplates]);
-            } catch (e) {}
+        const customTemplates = getLocalTemplates().filter(t => t.id !== id);
+        setLocalTemplates(customTemplates);
+        setTemplates(mergeTemplates(customTemplates));
+
+        if (supabase) {
+            supabase
+                .from(TABLE_NAME)
+                .delete()
+                .eq('id', id)
+                .then(({ error }) => {
+                    if (error) {
+                        console.warn('Could not delete email template in Supabase. Local fallback active:', error.message);
+                        setStorageMode('local');
+                    } else {
+                        setStorageMode('supabase');
+                    }
+                });
         }
     };
 
-    return { templates, saveTemplate, deleteTemplate };
+    return { templates, saveTemplate, deleteTemplate, storageMode };
 }
