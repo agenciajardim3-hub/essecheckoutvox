@@ -38,7 +38,7 @@ const escapeHtml = (value: string) => String(value || '')
   .replace(/&/g, '&amp;')
   .replace(/</g, '&lt;')
   .replace(/>/g, '&gt;')
-  .replace(/\"/g, '&quot;')
+  .replace(/"/g, '&quot;')
   .replace(/'/g, '&#039;');
 
 const todayInputValue = () => new Date().toISOString().slice(0, 10);
@@ -123,10 +123,10 @@ const getCertificateDocument = (title: string, certificatesHtml: string) => `<!D
 </body>
 </html>`;
 
-const createCertificate = (lead: Lead, selectedTurma: string, certificateDateBr: string): GeneratedCertificate => {
+const createCertificate = (lead: Lead, selectedTurma: string, certificateDateBr: string, customCourseName: string): GeneratedCertificate => {
   const signatureUrl = getSavedSignature();
   const name = lead.name || 'Aluno';
-  const productName = lead.product_name || selectedTurma || 'Curso de Tráfego Pago - Meta Ads';
+  const productName = customCourseName.trim() || lead.product_name || selectedTurma || 'Curso de Tráfego Pago - Meta Ads';
   const date = certificateDateBr;
   const hours = '8';
   const instructorName = 'Rodrigo Jardim';
@@ -147,11 +147,11 @@ const createCertificate = (lead: Lead, selectedTurma: string, certificateDateBr:
     certificateHtml: '',
     emailHtml: '',
     status: 'generated' as const,
-    message: signatureUrl ? 'Gerado com assinatura salva' : 'Gerado sem assinatura salva',
+    message: signatureUrl ? `Gerado com assinatura salva • Curso: ${productName}` : `Gerado sem assinatura salva • Curso: ${productName}`,
   } as GeneratedCertificate;
 
   base.certificateHtml = getCertificateDocument(`Certificado - ${name}`, getCertificateCardHtml(base));
-  base.emailHtml = `<p>Olá <strong>${escapeHtml(name)}</strong>, seu certificado está pronto.</p><p><a href="${escapeHtml(certificateUrl)}">Abrir certificado</a></p>`;
+  base.emailHtml = `<p>Olá <strong>${escapeHtml(name)}</strong>, seu certificado do curso <strong>${escapeHtml(productName)}</strong> está pronto.</p><p><a href="${escapeHtml(certificateUrl)}">Abrir certificado</a></p>`;
   return base;
 };
 
@@ -168,6 +168,7 @@ const openHtml = (html: string) => {
 
 export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, checkouts }) => {
   const [selectedTurma, setSelectedTurma] = useState('');
+  const [customCourseName, setCustomCourseName] = useState('');
   const [certificateDate, setCertificateDate] = useState(todayInputValue());
   const [generatedCertificates, setGeneratedCertificates] = useState<GeneratedCertificate[]>([]);
   const [selectedCertificate, setSelectedCertificate] = useState<GeneratedCertificate | null>(null);
@@ -207,6 +208,12 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
   const turmaLeads = useMemo(() => selectedTurma ? getLeadsForTurma(selectedTurma) : [], [selectedTurma, leads, checkouts]);
   const withEmailCount = generatedCertificates.filter(cert => Boolean(cert.email) && cert.status !== 'sent').length;
 
+  const resetGenerated = () => {
+    setGeneratedCertificates([]);
+    setSelectedCertificate(null);
+    setStatusMessage('');
+  };
+
   const handleGenerateCertificates = () => {
     if (!selectedTurma) return alert('Selecione uma turma');
     if (!certificateDate) return alert('Informe a data oficial do certificado');
@@ -216,10 +223,11 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
     setStatusMessage('Gerando certificados...');
 
     try {
-      const generated = turmaLeads.map((lead) => createCertificate(lead, selectedTurma, certificateDateBr));
+      const generated = turmaLeads.map((lead) => createCertificate(lead, selectedTurma, certificateDateBr, customCourseName));
       setGeneratedCertificates(generated);
       setSelectedCertificate(generated[0] || null);
-      setStatusMessage(`✅ ${generated.length} certificado(s) gerado(s) com a data ${certificateDateBr}.`);
+      const courseLabel = (customCourseName.trim() || selectedTurma).trim();
+      setStatusMessage(`✅ ${generated.length} certificado(s) gerado(s) com a data ${certificateDateBr}${courseLabel ? ` • Curso/Turma: ${courseLabel}` : ''}.`);
       openHtml(getCertificateDocument('Certificados em Massa', generated.map(getCertificateCardHtml).join('')));
     } finally {
       setIsGenerating(false);
@@ -313,10 +321,10 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
           <select
             value={selectedTurma}
             onChange={(event) => {
-              setSelectedTurma(event.target.value);
-              setGeneratedCertificates([]);
-              setSelectedCertificate(null);
-              setStatusMessage('');
+              const turma = event.target.value;
+              setSelectedTurma(turma);
+              setCustomCourseName(turma);
+              resetGenerated();
             }}
             disabled={isGenerating || isSending}
             className="w-full px-5 py-4 rounded-2xl border-2 border-gray-200 bg-white text-gray-900 font-bold focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
@@ -331,6 +339,24 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
 
         <div>
           <label className="block text-sm font-black uppercase text-gray-700 tracking-widest mb-3">
+            🏷️ Nome da turma ou curso no certificado *
+          </label>
+          <input
+            type="text"
+            value={customCourseName}
+            onChange={(event) => {
+              setCustomCourseName(event.target.value);
+              resetGenerated();
+            }}
+            placeholder="Ex: IA Ads - Turma Julho / Google Meu Negócio Noturno"
+            disabled={isGenerating || isSending || !selectedTurma}
+            className="w-full px-5 py-4 rounded-2xl border-2 border-gray-200 bg-white text-gray-900 font-bold focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 disabled:bg-gray-50 disabled:text-gray-400"
+          />
+          <p className="text-xs text-gray-400 font-bold mt-2">Esse texto aparecerá no certificado e no assunto/e-mail enviado para todos da turma.</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-black uppercase text-gray-700 tracking-widest mb-3">
             📅 Data oficial do certificado *
           </label>
           <input
@@ -338,9 +364,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
             value={certificateDate}
             onChange={(event) => {
               setCertificateDate(event.target.value);
-              setGeneratedCertificates([]);
-              setSelectedCertificate(null);
-              setStatusMessage('');
+              resetGenerated();
             }}
             disabled={isGenerating || isSending}
             className="w-full px-5 py-4 rounded-2xl border-2 border-gray-200 bg-white text-gray-900 font-bold focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
@@ -352,7 +376,7 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
           <button
             type="button"
             onClick={handleGenerateCertificates}
-            disabled={isGenerating || isSending || turmaLeads.length === 0 || !certificateDate}
+            disabled={isGenerating || isSending || turmaLeads.length === 0 || !certificateDate || !customCourseName.trim()}
             className="w-full rounded-2xl p-5 bg-blue-600 text-white font-black text-base md:text-xl uppercase tracking-widest shadow-xl shadow-blue-200 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isGenerating ? <Loader2 size={22} className="animate-spin" /> : <FileCheck size={22} />}
@@ -426,9 +450,10 @@ export const CertificateSender: React.FC<CertificateSenderProps> = ({ leads, che
           <div className="text-sm text-amber-800">
             <div className="font-bold mb-2">ℹ️ Como funciona:</div>
             <ul className="space-y-1 text-xs list-disc list-inside">
-              <li>Você escolhe a data oficial antes de gerar os certificados.</li>
-              <li>A mesma data será aplicada em todos os certificados da turma.</li>
-              <li>Se errar a data, altere o campo e gere novamente.</li>
+              <li>Você escolhe a turma para localizar os alunos pagos/aprovados.</li>
+              <li>Você pode digitar o nome exato do curso ou turma que aparecerá no certificado.</li>
+              <li>A mesma data e o mesmo nome de curso/turma serão aplicados em todos os certificados gerados.</li>
+              <li>Se errar a data ou o nome, altere o campo e gere novamente.</li>
             </ul>
           </div>
         </div>
