@@ -241,12 +241,22 @@
         }
       }
 
+      function getCustomCertificateCourse() {
+        try {
+          return (localStorage.getItem('vox_certificate_custom_course_name') || '').trim();
+        } catch (_) {
+          return '';
+        }
+      }
+
       function addParams(url, signatureUrl) {
         try {
           if (!url) return '';
           const parsed = new URL(url, window.location.origin);
           parsed.searchParams.set('download', '1');
           if (signatureUrl) parsed.searchParams.set('sig', signatureUrl);
+          const customCourse = getCustomCertificateCourse();
+          if (customCourse) parsed.searchParams.set('course', customCourse);
           return parsed.toString();
         } catch (_) {
           return url || '';
@@ -255,7 +265,7 @@
 
       function buildCertificateEmail(payload) {
         const name = escapeMail(payload.name || 'aluno');
-        const product = escapeMail(payload.productName || 'Curso Vox Marketing Academy');
+        const product = escapeMail(payload.productName || getCustomCertificateCourse() || 'Curso Vox Marketing Academy');
         const signatureUrl = payload.signatureUrl || getSavedSignature();
         const certificateUrl = escapeMail(addParams(payload.certificateUrl || '', signatureUrl));
         return `
@@ -281,6 +291,8 @@
             const payload = JSON.parse(init.body);
             const isCertificate = String(payload.subject || '').toLowerCase().includes('certificado') || payload.certificateUrl;
             if (isCertificate) {
+              const customCourse = getCustomCertificateCourse();
+              if (customCourse) payload.productName = customCourse;
               payload.signatureUrl = payload.signatureUrl || getSavedSignature();
               payload.certificateUrl = addParams(payload.certificateUrl || '', payload.signatureUrl || '');
               payload.message = buildCertificateEmail(payload);
@@ -292,6 +304,78 @@
         }
         return originalFetch.call(this, input, init);
       };
+    })();
+  </script>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = 'vox_certificate_custom_course_name';
+
+      function getSavedCourse() {
+        try { return (localStorage.getItem(STORAGE_KEY) || '').trim(); } catch (_) { return ''; }
+      }
+
+      function saveCourse(value) {
+        try { localStorage.setItem(STORAGE_KEY, (value || '').trim()); } catch (_) {}
+      }
+
+      function syncCourseSelect(value) {
+        if (!value) return;
+        const labels = Array.from(document.querySelectorAll('label'));
+        const label = labels.find((el) => (el.textContent || '').toLowerCase().includes('selecione o treinamento'));
+        const container = label && (label.closest('.space-y-1') || label.parentElement);
+        const select = container && container.querySelector('select');
+        if (!select) return;
+        let option = Array.from(select.options).find((opt) => opt.value === value);
+        if (!option) {
+          option = document.createElement('option');
+          option.value = value;
+          option.textContent = value;
+          option.setAttribute('data-custom-course', 'true');
+          select.appendChild(option);
+        }
+        if (select.value !== value) {
+          select.value = value;
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+
+      function pageNeedsCourseInput() {
+        const text = document.querySelector('main')?.textContent || document.body.textContent || '';
+        return text.includes('Emissão de Certificados') || text.includes('Certificados em Massa') || text.includes('Enviar Certificados') || text.includes('Gerar Certificados em Massa');
+      }
+
+      function injectCustomCourseInput() {
+        if (!pageNeedsCourseInput()) return;
+        if (document.getElementById('vox-custom-certificate-course')) return;
+        const main = document.querySelector('main');
+        if (!main) return;
+        const target = document.getElementById('vox-certificate-tabs') || main.querySelector('.max-w-7xl') || main.firstElementChild || main;
+        const wrapper = document.createElement('div');
+        wrapper.id = 'vox-custom-certificate-course';
+        wrapper.style.cssText = 'background:#fff;border:1px solid #dbeafe;border-radius:20px;padding:16px 18px;margin:0 0 22px 0;box-shadow:0 10px 25px rgba(15,23,42,.06);max-width:620px;';
+        wrapper.innerHTML = `
+          <label style="display:block;font-size:12px;font-weight:900;color:#374151;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Nome da turma ou curso no certificado</label>
+          <input type="text" placeholder="Ex: IA Ads - Turma Julho / Google Meu Negócio Noturno" style="width:100%;padding:14px 16px;border:1px solid #d1d5db;border-radius:14px;outline:none;font-size:14px;font-weight:800;color:#111827;background:#fff;" />
+          <p style="margin:8px 0 0;font-size:11px;line-height:1.45;color:#64748b;font-weight:700;">Use antes de enviar em massa. Esse texto será usado como o curso/turma no e-mail e no link do certificado.</p>
+        `;
+        target.insertAdjacentElement('afterend', wrapper);
+        const input = wrapper.querySelector('input');
+        input.value = getSavedCourse();
+        if (input.value) syncCourseSelect(input.value);
+        input.addEventListener('input', function () {
+          const value = input.value.trim();
+          saveCourse(value);
+          syncCourseSelect(value);
+        });
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', injectCustomCourseInput);
+      } else {
+        injectCustomCourseInput();
+      }
+      new MutationObserver(injectCustomCourseInput).observe(document.documentElement, { childList: true, subtree: true });
     })();
   </script>
 
@@ -311,8 +395,30 @@
         }
       }
 
+      function getCourseFromUrl() {
+        try {
+          return (new URLSearchParams(window.location.search).get('course') || '').trim();
+        } catch (_) {
+          return '';
+        }
+      }
+
       function markCertificatePage() {
         if (isCertificatePage()) document.body.classList.add('vox-certificate-page');
+      }
+
+      function applyCourseFromUrl() {
+        if (!isCertificatePage()) return;
+        const course = getCourseFromUrl();
+        if (!course) return;
+        const elements = Array.from(document.querySelectorAll('#root *'));
+        const target = elements.find((el) => {
+          const text = (el.textContent || '').trim();
+          return text.includes('Completou com êxito o ') && text.includes('com carga horária');
+        });
+        if (target) {
+          target.textContent = target.textContent.replace(/Completou com êxito o .*?, com carga horária/i, 'Completou com êxito o ' + course + ', com carga horária');
+        }
       }
 
       function applySignatureFromUrl() {
@@ -336,6 +442,7 @@
       function injectDownloadButton() {
         if (!isCertificatePage()) return;
         document.body.classList.add('vox-certificate-page');
+        applyCourseFromUrl();
         applySignatureFromUrl();
         if (document.getElementById('vox-download-panel')) return;
         const cameFromEmail = new URLSearchParams(window.location.search).get('download') === '1';
@@ -362,15 +469,18 @@
         document.addEventListener('DOMContentLoaded', function () {
           markCertificatePage();
           injectDownloadButton();
+          applyCourseFromUrl();
           applySignatureFromUrl();
         });
       } else {
         injectDownloadButton();
+        applyCourseFromUrl();
         applySignatureFromUrl();
       }
       new MutationObserver(function () {
         markCertificatePage();
         injectDownloadButton();
+        applyCourseFromUrl();
         applySignatureFromUrl();
       }).observe(document.documentElement, { childList: true, subtree: true });
     })();
