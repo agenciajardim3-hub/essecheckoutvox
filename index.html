@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -145,6 +144,82 @@
                 }
                 return openedWindow;
             };
+        })();
+    </script>
+
+    <!-- Campo livre para nome da turma/curso na tela de certificados -->
+    <script>
+        (function () {
+            const STORAGE_KEY = 'vox_certificate_custom_course_name';
+
+            function findCourseSelect() {
+                const labels = Array.from(document.querySelectorAll('label'));
+                const label = labels.find(function (el) {
+                    return (el.textContent || '').trim().toLowerCase().includes('selecione o treinamento');
+                });
+                if (!label) return null;
+                const container = label.closest('.space-y-1') || label.parentElement;
+                return container ? container.querySelector('select') : null;
+            }
+
+            function syncSelectWithCustomCourse(select, value) {
+                if (!select || !value) return;
+                let option = Array.from(select.options).find(function (opt) {
+                    return opt.value === value;
+                });
+                if (!option) {
+                    option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = value;
+                    option.setAttribute('data-custom-course', 'true');
+                    select.appendChild(option);
+                }
+                select.value = value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            function injectCustomCourseInput() {
+                const select = findCourseSelect();
+                if (!select || select.dataset.customCoursePatched === 'true') return;
+                select.dataset.customCoursePatched = 'true';
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'space-y-1';
+                wrapper.setAttribute('data-custom-course-wrapper', 'true');
+                wrapper.innerHTML = `
+                    <label class="text-sm font-black text-gray-700">Nome da Turma ou Curso no Certificado</label>
+                    <input
+                        type="text"
+                        placeholder="Ex: IA Ads - Turma Julho / Google Meu Negócio Noturno"
+                        class="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-blue-500 font-bold"
+                    />
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Esse nome será usado no texto do certificado e também no certificado em massa.</p>
+                `;
+                select.closest('.space-y-1').insertAdjacentElement('afterend', wrapper);
+
+                const input = wrapper.querySelector('input');
+                input.value = localStorage.getItem(STORAGE_KEY) || '';
+                if (input.value.trim()) syncSelectWithCustomCourse(select, input.value.trim());
+
+                input.addEventListener('input', function () {
+                    const value = input.value.trim();
+                    localStorage.setItem(STORAGE_KEY, value);
+                    if (value) syncSelectWithCustomCourse(select, value);
+                });
+
+                select.addEventListener('change', function () {
+                    if (select.value && select.value !== 'Personalizado') {
+                        input.value = select.value;
+                        localStorage.setItem(STORAGE_KEY, select.value);
+                    }
+                });
+            }
+
+            const observer = new MutationObserver(injectCustomCourseInput);
+            document.addEventListener('DOMContentLoaded', function () {
+                injectCustomCourseInput();
+                observer.observe(document.body, { childList: true, subtree: true });
+            });
         })();
     </script>
 
