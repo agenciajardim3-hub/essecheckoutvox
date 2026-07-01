@@ -104,7 +104,9 @@ export interface AppConfig {
   // Emitente info
   emitted_by?: string;
   emission_date?: string;
-  // Folder/Category
+  // Organização dos checkouts
+  city?: string;
+  neighborhood?: string;
   folder?: string;
   // Social Proof
   viewerCount?: number; // Base number for "X people viewing now" (fluctuates ±3)
