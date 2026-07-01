@@ -24,8 +24,34 @@ const getCheckoutUrl = (checkout: AppConfig, mode?: 'reg') => {
 
 const parsePrice = (price?: string) => Number(String(price || '0').replace(/[^0-9,.-]/g, '').replace('.', '').replace(',', '.')) || 0;
 const normalizeText = (value?: string) => String(value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const cleanPart = (value?: string) => String(value || '').trim();
+
+const parseFolderOrganization = (folder?: string): { city?: string; area?: string } => {
+    const parts = String(folder || '')
+        .split(/\s*(?:\/|>|→|\|)\s*/)
+        .map(part => part.trim())
+        .filter(Boolean);
+
+    if (parts.length >= 3) return { city: parts[0], area: `${parts[1]} • ${parts.slice(2).join(' / ')}` };
+    if (parts.length === 2) return { city: parts[0], area: parts[1] };
+    return {};
+};
 
 const detectRegion = (checkout: AppConfig): { city: string; area: string } => {
+    const explicitCity = cleanPart(checkout.city);
+    const explicitNeighborhood = cleanPart(checkout.neighborhood);
+    const explicitFolder = cleanPart(checkout.folder);
+
+    if (explicitCity) {
+        return {
+            city: explicitCity,
+            area: explicitNeighborhood ? (explicitFolder ? `${explicitNeighborhood} • ${explicitFolder}` : explicitNeighborhood) : (explicitFolder || 'Geral')
+        };
+    }
+
+    const parsedFolder = parseFolderOrganization(checkout.folder);
+    if (parsedFolder.city) return { city: parsedFolder.city, area: parsedFolder.area || 'Geral' };
+
     const text = normalizeText(`${checkout.turma || ''} ${checkout.productName || ''} ${checkout.eventLocation || ''} ${checkout.slug || ''} ${checkout.folder || ''}`);
     const knownAreas = [
         { key: 'tucuruvi', city: 'São Paulo', area: 'Tucuruvi' },
@@ -82,7 +108,7 @@ export const CheckoutsDashboard: React.FC<CheckoutsDashboardProps> = ({
         const term = search.trim().toLowerCase();
         return checkouts.filter(checkout => {
             const region = detectRegion(checkout);
-            const matchesSearch = !term || [checkout.productName, checkout.turma, checkout.slug, checkout.folder, checkout.eventLocation, region.city, region.area]
+            const matchesSearch = !term || [checkout.productName, checkout.turma, checkout.slug, checkout.folder, checkout.city, checkout.neighborhood, checkout.eventLocation, region.city, region.area]
                 .filter(Boolean)
                 .some(value => String(value).toLowerCase().includes(term));
             const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' ? checkout.isActive !== false : checkout.isActive === false);
@@ -137,7 +163,7 @@ export const CheckoutsDashboard: React.FC<CheckoutsDashboardProps> = ({
                                         <div className="min-w-0">
                                             <p className="font-black text-gray-900 truncate max-w-[260px]">{checkout.productName || 'Checkout sem nome'}</p>
                                             <p className="text-xs text-gray-400 font-bold truncate max-w-[260px]">/{checkout.slug || checkout.id}</p>
-                                            {checkout.folder && <p className="text-[10px] text-indigo-600 font-black uppercase mt-1">Pasta: {checkout.folder}</p>}
+                                            {checkout.folder && <p className="text-[10px] text-indigo-600 font-black uppercase mt-1">Grupo/Pasta: {checkout.folder}</p>}
                                         </div>
                                     </div>
                                 </td>
@@ -183,7 +209,7 @@ export const CheckoutsDashboard: React.FC<CheckoutsDashboardProps> = ({
                     <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
                         <MapPin className="text-blue-600" /> Checkouts por Cidade
                     </h2>
-                    <p className="text-gray-400 text-sm font-bold mt-1 uppercase tracking-widest">Cidade → bairro → links de venda</p>
+                    <p className="text-gray-400 text-sm font-bold mt-1 uppercase tracking-widest">Cidade → bairro/região → grupo/pasta → links de venda</p>
                 </div>
                 <button onClick={onCreateCheckout} className="w-full sm:w-auto bg-blue-600 text-white px-7 py-4 rounded-2xl font-black text-xs uppercase shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center gap-3">
                     <Plus size={18} /> Novo Checkout
@@ -201,7 +227,7 @@ export const CheckoutsDashboard: React.FC<CheckoutsDashboardProps> = ({
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-3">
                     <div className="relative">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                        <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar cidade, bairro, turma, slug, pasta ou local..." className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-100 bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm" />
+                        <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar cidade, bairro, grupo, turma, slug, pasta ou local..." className="w-full pl-12 pr-4 py-4 rounded-2xl border border-gray-100 bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm" />
                     </div>
                     <select value={statusFilter} onChange={event => setStatusFilter(event.target.value as any)} className="px-4 py-4 rounded-2xl border border-gray-100 bg-gray-50 font-black text-xs uppercase">
                         <option value="all">Todos os status</option>
