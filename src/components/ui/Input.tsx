@@ -26,6 +26,12 @@ export const Input: React.FC<InputProps> = ({
   validate
 }) => {
   const [touched, setTouched] = useState(false);
+  const isCheckoutFolderField = label === 'Pasta / Categoria';
+  const displayLabel = isCheckoutFolderField ? 'Cidade / Bairro / Grupo / Pasta' : label;
+  const displayPlaceholder = isCheckoutFolderField ? 'Ex: São Paulo / Tucuruvi / Julho 2026' : placeholder;
+  const helpText = isCheckoutFolderField
+    ? 'Use este campo para organizar a tela Checkouts por Cidade. Ex: Cidade / Bairro / Grupo.'
+    : '';
 
   const formatValue = (val: string) => {
     if (mask === 'cpf') {
@@ -67,13 +73,13 @@ export const Input: React.FC<InputProps> = ({
   return (
     <div className="space-y-1.5">
       <label className="block text-[11px] sm:text-[10px] font-black uppercase text-gray-500 tracking-[0.12em] sm:tracking-widest ml-1">
-        {label}
+        {displayLabel}
       </label>
       <div className="relative">
         <input
           type={type}
           required={required}
-          placeholder={placeholder}
+          placeholder={displayPlaceholder}
           value={value}
           onChange={handleChange}
           onBlur={handleBlur}
@@ -97,12 +103,17 @@ export const Input: React.FC<InputProps> = ({
           </div>
         )}
       </div>
+      {helpText && (
+        <p className="text-[10px] font-bold text-blue-500 ml-1 leading-relaxed">
+          {helpText}
+        </p>
+      )}
       {valid === false && touched && (
         <p className="text-[10px] font-bold text-red-500 ml-1 animate-in fade-in slide-in-from-top-1 duration-200">
           {mask === 'cpf' ? 'CPF incompleto (11 dígitos)'
             : mask === 'phone' ? 'Telefone incompleto'
             : type === 'email' ? 'E-mail inválido'
-            : `${label} é obrigatório`}
+            : `${displayLabel} é obrigatório`}
         </p>
       )}
     </div>
