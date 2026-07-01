@@ -11,17 +11,21 @@ export interface EmailTemplate {
 }
 
 const LOCAL_STORAGE_KEY = 'vox_custom_email_templates';
-const TABLE_NAME = 'email_templates';
+const PRIMARY_TABLE = 'modelos_de_email';
+const LEGACY_TABLE = 'email_templates';
+const SUPABASE_ANON_FALLBACK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtZHNndnVxcmhwamRncmdhc2xvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NjcyMTIsImV4cCI6MjA4MzU0MzIxMn0.Emfi9OyHn9SrrY4AugAVGzLSm2YkBzAKwsZ1XGQ5DD0';
 
 const supabaseUrl =
+    localStorage.getItem('supabase_url') ||
     import.meta.env.VITE_SUPABASE_URL ||
     'https://emdsgvuqrhpjdgrgaslo.supabase.co';
 
 const supabaseKey =
+    localStorage.getItem('supabase_key') ||
     import.meta.env.VITE_SUPABASE_ANON_KEY ||
     import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
     import.meta.env.VITE_SUPABASE_KEY ||
-    '';
+    SUPABASE_ANON_FALLBACK;
 
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
@@ -151,12 +155,21 @@ export const defaultTemplates: EmailTemplate[] = [
 ];
 
 const mapDbTemplate = (row: any): EmailTemplate => ({
-    id: row.id,
-    name: row.name,
-    description: row.description || '',
-    html: row.html || '',
-    color: row.color || 'from-blue-500 to-indigo-600',
+    id: row.id || row.template_id || `custom_${Date.now()}`,
+    name: row.name || row.nome || row.titulo || 'Modelo sem nome',
+    description: row.description || row.descricao || '',
+    html: row.html || row.codigo_html || row.conteudo || '',
+    color: row.color || row.cor || 'from-blue-500 to-indigo-600',
     isCustom: true,
+});
+
+const toDbPayload = (template: EmailTemplate) => ({
+    id: template.id,
+    name: template.name,
+    description: template.description,
+    html: template.html,
+    color: template.color,
+    is_custom: true,
 });
 
 const getLocalTemplates = (): EmailTemplate[] => {
@@ -178,6 +191,43 @@ const mergeTemplates = (customTemplates: EmailTemplate[]) => [
     ...customTemplates.filter(template => !defaultTemplates.some(defaultTemplate => defaultTemplate.id === template.id)),
 ];
 
+const selectTemplates = async () => {
+    if (!supabase) return { table: null, data: [], error: new Error('Supabase indisponível') };
+
+    const primary = await supabase.from(PRIMARY_TABLE).select('*').order('created_at', { ascending: true });
+    if (!primary.error) return { table: PRIMARY_TABLE, data: primary.data || [], error: null };
+
+    const legacy = await supabase.from(LEGACY_TABLE).select('*').order('created_at', { ascending: true });
+    if (!legacy.error) return { table: LEGACY_TABLE, data: legacy.data || [], error: null };
+
+    return { table: null, data: [], error: primary.error || legacy.error };
+};
+
+const upsertTemplate = async (template: EmailTemplate) => {
+    if (!supabase) return { table: null, error: new Error('Supabase indisponível') };
+
+    const payload = toDbPayload(template);
+    const primary = await supabase.from(PRIMARY_TABLE).upsert(payload, { onConflict: 'id' });
+    if (!primary.error) return { table: PRIMARY_TABLE, error: null };
+
+    const legacy = await supabase.from(LEGACY_TABLE).upsert(payload, { onConflict: 'id' });
+    if (!legacy.error) return { table: LEGACY_TABLE, error: null };
+
+    return { table: null, error: primary.error || legacy.error };
+};
+
+const deleteTemplateFromDb = async (id: string) => {
+    if (!supabase) return { table: null, error: new Error('Supabase indisponível') };
+
+    const primary = await supabase.from(PRIMARY_TABLE).delete().eq('id', id);
+    const legacy = await supabase.from(LEGACY_TABLE).delete().eq('id', id);
+
+    return {
+        table: !primary.error ? PRIMARY_TABLE : (!legacy.error ? LEGACY_TABLE : null),
+        error: primary.error && legacy.error ? primary.error : null,
+    };
+};
+
 export function useEmailTemplates() {
     const [templates, setTemplates] = useState<EmailTemplate[]>(defaultTemplates);
     const [storageMode, setStorageMode] = useState<'supabase' | 'local'>('local');
@@ -191,47 +241,28 @@ export function useEmailTemplates() {
                 setTemplates(mergeTemplates(localTemplates));
             }
 
-            if (!supabase) return;
-
-            const { data, error } = await supabase
-                .from(TABLE_NAME)
-                .select('*')
-                .order('created_at', { ascending: true });
-
-            if (error) {
-                console.warn('Email templates table unavailable, using localStorage fallback:', error.message);
+            const dbResult = await selectTemplates();
+            if (dbResult.error) {
+                console.warn('Email templates table unavailable, using localStorage fallback:', dbResult.error.message);
                 return;
             }
 
-            const dbTemplates = (data || []).map(mapDbTemplate);
+            const dbTemplates = (dbResult.data || []).map(mapDbTemplate);
 
             if (localTemplates.length > 0) {
                 const missingLocalTemplates = localTemplates.filter(
                     localTemplate => !dbTemplates.some(dbTemplate => dbTemplate.id === localTemplate.id)
                 );
 
-                if (missingLocalTemplates.length > 0) {
-                    await supabase
-                        .from(TABLE_NAME)
-                        .upsert(missingLocalTemplates.map(template => ({
-                            id: template.id,
-                            name: template.name,
-                            description: template.description,
-                            html: template.html,
-                            color: template.color,
-                            is_custom: true,
-                        })), { onConflict: 'id' });
+                for (const template of missingLocalTemplates) {
+                    await upsertTemplate(template);
                 }
             }
 
-            const refreshed = await supabase
-                .from(TABLE_NAME)
-                .select('*')
-                .order('created_at', { ascending: true });
-
+            const refreshed = await selectTemplates();
             if (!mounted) return;
 
-            const finalTemplates = refreshed.error ? dbTemplates : (refreshed.data || []).map(mapDbTemplate);
+            const finalTemplates = (refreshed.data || []).map(mapDbTemplate);
             setTemplates(mergeTemplates(finalTemplates));
             setLocalTemplates(finalTemplates);
             setStorageMode('supabase');
@@ -244,7 +275,7 @@ export function useEmailTemplates() {
         };
     }, []);
 
-    const saveTemplate = (template: EmailTemplate) => {
+    const saveTemplate = async (template: EmailTemplate) => {
         const customTemplates = getLocalTemplates();
         const savedTemplate = { ...template, isCustom: true };
         const existingIndex = customTemplates.findIndex(t => t.id === savedTemplate.id);
@@ -258,47 +289,30 @@ export function useEmailTemplates() {
         setLocalTemplates(customTemplates);
         setTemplates(mergeTemplates(customTemplates));
 
-        if (supabase) {
-            supabase
-                .from(TABLE_NAME)
-                .upsert({
-                    id: savedTemplate.id,
-                    name: savedTemplate.name,
-                    description: savedTemplate.description,
-                    html: savedTemplate.html,
-                    color: savedTemplate.color,
-                    is_custom: true,
-                }, { onConflict: 'id' })
-                .then(({ error }) => {
-                    if (error) {
-                        console.warn('Could not save email template in Supabase. Local fallback active:', error.message);
-                        setStorageMode('local');
-                    } else {
-                        setStorageMode('supabase');
-                    }
-                });
+        const result = await upsertTemplate(savedTemplate);
+        if (result.error) {
+            console.warn('Could not save email template in Supabase. Local fallback active:', result.error.message);
+            setStorageMode('local');
+            alert('Modelo salvo neste navegador, mas não consegui salvar no Supabase. Verifique a tabela modelos_de_email.');
+            return;
         }
+
+        setStorageMode('supabase');
     };
 
-    const deleteTemplate = (id: string) => {
+    const deleteTemplate = async (id: string) => {
         const customTemplates = getLocalTemplates().filter(t => t.id !== id);
         setLocalTemplates(customTemplates);
         setTemplates(mergeTemplates(customTemplates));
 
-        if (supabase) {
-            supabase
-                .from(TABLE_NAME)
-                .delete()
-                .eq('id', id)
-                .then(({ error }) => {
-                    if (error) {
-                        console.warn('Could not delete email template in Supabase. Local fallback active:', error.message);
-                        setStorageMode('local');
-                    } else {
-                        setStorageMode('supabase');
-                    }
-                });
+        const result = await deleteTemplateFromDb(id);
+        if (result.error) {
+            console.warn('Could not delete email template in Supabase. Local fallback active:', result.error.message);
+            setStorageMode('local');
+            return;
         }
+
+        setStorageMode('supabase');
     };
 
     return { templates, saveTemplate, deleteTemplate, storageMode };
