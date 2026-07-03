@@ -60,9 +60,10 @@ Deno.serve(async (req) => {
     const payment = await paymentResponse.json();
 
     if (!paymentResponse.ok) {
-      console.error('Erro ao consultar pagamento:', payment);
-      return new Response(JSON.stringify({ error: 'Erro ao consultar pagamento no Mercado Pago', details: payment }), {
-        status: paymentResponse.status,
+      // Sempre retorna 200 pro MP para evitar reenvios. Loga o erro internamente.
+      console.error('Erro ao consultar pagamento no MP (id pode ser de teste):', payment);
+      return new Response(JSON.stringify({ received: true, warning: 'Pagamento não encontrado no MP', payment_id: paymentId }), {
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
