@@ -36,7 +36,8 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
             const days = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90;
             const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
             filtered = filtered.filter(l => {
-                const d = safeDate(l.date);
+                // Prefer created_at (ISO) over date (localized pt-BR string)
+                const d = safeDate(l.created_at || l.date);
                 return d ? d >= cutoff : false;
             });
         }
@@ -139,7 +140,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
         const daily: Record<string, number> = {};
 
         paid.forEach(l => {
-            const d = safeDate(l.date);
+            const d = safeDate(l.created_at || l.date);
             if (!d) return;
             const day = d.toISOString().split('T')[0];
             daily[day] = (daily[day] || 0) + (l.paid_amount || 0);
