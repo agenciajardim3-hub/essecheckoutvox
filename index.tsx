@@ -1,6 +1,7 @@
 import './src/utils/preserveCertificateEmailLayout';
 import './src/utils/operationsUxPatch';
 import './src/utils/emailStopPatch';
+import './src/utils/automationTurmaSelector';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
