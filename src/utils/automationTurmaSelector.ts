@@ -27,6 +27,51 @@ const extractTurmaName = (row: any) =>
     row?.slug
   );
 
+const installAutomationEmailFetchFix = () => {
+  const win = window as typeof window & { __voxAutomationEmailFetchFixed?: boolean };
+  if (win.__voxAutomationEmailFetchFixed) return;
+  win.__voxAutomationEmailFetchFixed = true;
+
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const rawUrl = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+
+    if (!rawUrl.includes('/functions/v1/send-email')) {
+      return originalFetch(input, init);
+    }
+
+    let payload: any = {};
+    try {
+      payload = typeof init?.body === 'string' ? JSON.parse(init.body) : {};
+    } catch {
+      payload = {};
+    }
+
+    const headers = new Headers(init?.headers || {});
+    headers.set('Content-Type', 'application/json');
+    if (SUPABASE_KEY) {
+      headers.set('Authorization', `Bearer ${SUPABASE_KEY}`);
+      headers.set('apikey', SUPABASE_KEY);
+    }
+
+    return originalFetch(`${SUPABASE_URL}/functions/v1/send-ticket-email`, {
+      ...init,
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        to: payload.email || payload.to,
+        name: payload.name || 'Aluno',
+        subject: payload.subject || 'Mensagem Vox Marketing Academy',
+        productName: payload.productName || payload.product || 'Vox Marketing Academy',
+        message: payload.body || payload.message || '',
+        ticketUrl: payload.ticketUrl || '',
+        certificateUrl: payload.certificateUrl || '',
+        preserveCertificateLayout: true,
+      }),
+    });
+  };
+};
+
 const loadTurmas = async (): Promise<string[]> => {
   if (cachedTurmas.length > 0) return cachedTurmas;
   if (loadingPromise) return loadingPromise;
@@ -206,6 +251,7 @@ const observer = new MutationObserver(() => {
 });
 
 const start = () => {
+  installAutomationEmailFetchFix();
   observer.observe(document.documentElement, { childList: true, subtree: true });
   enhanceAutomationScreen();
 };
