@@ -1,3 +1,5 @@
+import './automationEmailTemplatePatch';
+
 const SUPABASE_URL =
   localStorage.getItem('supabase_url') ||
   import.meta.env.VITE_SUPABASE_URL ||
@@ -8,7 +10,7 @@ const SUPABASE_KEY =
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.VITE_SUPABASE_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtZHNndnVxcmhwamRncmdhc2xvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NjcyMTIsImV4cCI6MjA4MzU0MzIxMn0.Emfi9OyHn9SrrY4AugAVGzLSm2YkBzAKwsZ1XGQ5DD0';
+  '';
 
 const DATALIST_ID = 'vox-automation-turmas';
 let cachedTurmas: string[] = [];
@@ -29,6 +31,7 @@ const extractTurmaName = (row: any) =>
 const loadTurmas = async (): Promise<string[]> => {
   if (cachedTurmas.length > 0) return cachedTurmas;
   if (loadingPromise) return loadingPromise;
+  if (!SUPABASE_KEY) return [];
 
   loadingPromise = fetch(`${SUPABASE_URL}/rest/v1/checkouts?select=*`, {
     headers: {
