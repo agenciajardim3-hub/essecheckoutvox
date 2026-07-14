@@ -1,5 +1,3 @@
-import './automationEmailTemplatePatch';
-
 const SUPABASE_URL =
   localStorage.getItem('supabase_url') ||
   import.meta.env.VITE_SUPABASE_URL ||
@@ -13,6 +11,7 @@ const SUPABASE_KEY =
   '';
 
 const DATALIST_ID = 'vox-automation-turmas';
+const EMAIL_SELECTOR_ID = 'vox-automation-email-template-selector';
 let cachedTurmas: string[] = [];
 let loadingPromise: Promise<string[]> | null = null;
 
@@ -102,13 +101,113 @@ const enhanceTurmaInput = async () => {
   }
 };
 
-const observer = new MutationObserver(() => {
+const setReactValue = (element: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+  const prototype = element instanceof HTMLTextAreaElement
+    ? window.HTMLTextAreaElement.prototype
+    : window.HTMLInputElement.prototype;
+  const setter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
+  setter?.call(element, value);
+  element.dispatchEvent(new Event('input', { bubbles: true }));
+  element.dispatchEvent(new Event('change', { bubbles: true }));
+};
+
+const findField = (labelText: string) => {
+  const labels = Array.from(document.querySelectorAll('label'));
+  const label = labels.find(item => item.textContent?.trim().toLowerCase() === labelText.toLowerCase());
+  return label?.parentElement?.querySelector('input, textarea') as HTMLInputElement | HTMLTextAreaElement | null;
+};
+
+const loadLocalEmailTemplates = () => {
+  const defaults = [
+    {
+      id: 'payment',
+      name: 'Pagamento confirmado',
+      subject: 'Pagamento confirmado',
+      html: 'Olá {nome}!\n\nSeu pagamento para {produto} foi confirmado.\n\nValor: R$ {valor}\n\nSua vaga está garantida.'
+    },
+    {
+      id: 'welcome',
+      name: 'Boas-vindas',
+      subject: 'Bem-vindo(a) à Vox Marketing Academy',
+      html: 'Olá {nome}!\n\nSeja bem-vindo(a) à Vox Marketing Academy. Sua inscrição para {produto} foi confirmada.'
+    },
+    {
+      id: 'whatsapp',
+      name: 'Link do grupo VIP',
+      subject: 'Entre no grupo do WhatsApp',
+      html: 'Olá {nome}!\n\nEntre no grupo oficial para receber avisos, materiais e informações do treinamento.\n\n[COLE AQUI O LINK DO GRUPO]'
+    }
+  ];
+
+  try {
+    const saved = JSON.parse(localStorage.getItem('vox_custom_email_templates') || '[]');
+    return [...defaults, ...(Array.isArray(saved) ? saved : [])];
+  } catch {
+    return defaults;
+  }
+};
+
+const enhanceEmailTemplateSelector = () => {
+  const subjectField = findField('Assunto do email');
+  const messageField = findField('Mensagem');
+  if (!subjectField || !messageField) return;
+  if (document.getElementById(EMAIL_SELECTOR_ID)) return;
+
+  const subjectContainer = subjectField.parentElement;
+  if (!subjectContainer?.parentElement) return;
+
+  const wrapper = document.createElement('div');
+  wrapper.id = EMAIL_SELECTOR_ID;
+  wrapper.className = 'bg-blue-50 border border-blue-100 rounded-2xl p-4';
+
+  const label = document.createElement('label');
+  label.className = 'block text-xs font-bold text-blue-700 uppercase mb-2 tracking-widest';
+  label.textContent = 'Modelo de e-mail (opcional)';
+
+  const select = document.createElement('select');
+  select.className = 'w-full px-4 py-3 border border-blue-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm bg-white';
+
+  const emptyOption = document.createElement('option');
+  emptyOption.value = '';
+  emptyOption.textContent = 'Escrever manualmente / não usar modelo';
+  select.appendChild(emptyOption);
+
+  loadLocalEmailTemplates().forEach((template: any) => {
+    const option = document.createElement('option');
+    option.value = clean(template.id || template.name || template.nome);
+    option.textContent = clean(template.name || template.nome || template.titulo || 'Modelo sem nome');
+    option.dataset.subject = clean(template.subject || template.assunto || template.name || template.nome);
+    option.dataset.html = clean(template.html || template.codigo_html || template.conteudo || template.body);
+    select.appendChild(option);
+  });
+
+  const help = document.createElement('p');
+  help.className = 'text-xs text-blue-600 font-bold mt-2';
+  help.textContent = 'Escolha um modelo para preencher assunto e mensagem. Depois você ainda pode editar.';
+
+  select.addEventListener('change', () => {
+    const option = select.selectedOptions[0];
+    if (!option?.value) return;
+    setReactValue(subjectField as HTMLInputElement, option.dataset.subject || option.textContent || '');
+    setReactValue(messageField as HTMLTextAreaElement, option.dataset.html || '');
+  });
+
+  wrapper.append(label, select, help);
+  subjectContainer.parentElement.insertBefore(wrapper, subjectContainer);
+};
+
+const enhanceAutomationScreen = () => {
   void enhanceTurmaInput();
+  enhanceEmailTemplateSelector();
+};
+
+const observer = new MutationObserver(() => {
+  window.requestAnimationFrame(enhanceAutomationScreen);
 });
 
 const start = () => {
   observer.observe(document.documentElement, { childList: true, subtree: true });
-  void enhanceTurmaInput();
+  enhanceAutomationScreen();
 };
 
 if (document.readyState === 'loading') {
