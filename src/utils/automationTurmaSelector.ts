@@ -10,8 +10,8 @@ const SUPABASE_KEY =
   import.meta.env.VITE_SUPABASE_KEY ||
   '';
 
-const DATALIST_ID = 'vox-automation-turmas';
 const EMAIL_SELECTOR_ID = 'vox-automation-email-template-selector';
+const TURMA_SELECT_ID = 'vox-automation-turma-select';
 let cachedTurmas: string[] = [];
 let loadingPromise: Promise<string[]> | null = null;
 
@@ -27,57 +27,12 @@ const extractTurmaName = (row: any) =>
     row?.slug
   );
 
-const installAutomationEmailFetchFix = () => {
-  const win = window as typeof window & { __voxAutomationEmailFetchFixed?: boolean };
-  if (win.__voxAutomationEmailFetchFixed) return;
-  win.__voxAutomationEmailFetchFixed = true;
-
-  const originalFetch = window.fetch.bind(window);
-  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-    const rawUrl = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-
-    if (!rawUrl.includes('/functions/v1/send-email')) {
-      return originalFetch(input, init);
-    }
-
-    let payload: any = {};
-    try {
-      payload = typeof init?.body === 'string' ? JSON.parse(init.body) : {};
-    } catch {
-      payload = {};
-    }
-
-    const headers = new Headers(init?.headers || {});
-    headers.set('Content-Type', 'application/json');
-    if (SUPABASE_KEY) {
-      headers.set('Authorization', `Bearer ${SUPABASE_KEY}`);
-      headers.set('apikey', SUPABASE_KEY);
-    }
-
-    return originalFetch(`${SUPABASE_URL}/functions/v1/send-ticket-email`, {
-      ...init,
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        to: payload.email || payload.to,
-        name: payload.name || 'Aluno',
-        subject: payload.subject || 'Mensagem Vox Marketing Academy',
-        productName: payload.productName || payload.product || 'Vox Marketing Academy',
-        message: payload.body || payload.message || '',
-        ticketUrl: payload.ticketUrl || '',
-        certificateUrl: payload.certificateUrl || '',
-        preserveCertificateLayout: true,
-      }),
-    });
-  };
-};
-
 const loadTurmas = async (): Promise<string[]> => {
   if (cachedTurmas.length > 0) return cachedTurmas;
   if (loadingPromise) return loadingPromise;
   if (!SUPABASE_KEY) return [];
 
-  loadingPromise = fetch(`${SUPABASE_URL}/rest/v1/checkouts?select=*`, {
+  loadingPromise = fetch(`${SUPABASE_URL}/rest/v1/checkouts?select=turma,product_name,slug&order=created_at.desc`, {
     headers: {
       apikey: SUPABASE_KEY,
       Authorization: `Bearer ${SUPABASE_KEY}`,
@@ -103,22 +58,14 @@ const loadTurmas = async (): Promise<string[]> => {
   return loadingPromise;
 };
 
-const ensureDatalist = async () => {
-  let datalist = document.getElementById(DATALIST_ID) as HTMLDataListElement | null;
-  if (!datalist) {
-    datalist = document.createElement('datalist');
-    datalist.id = DATALIST_ID;
-    document.body.appendChild(datalist);
-  }
-
-  const turmas = await loadTurmas();
-  datalist.replaceChildren(
-    ...turmas.map(turma => {
-      const option = document.createElement('option');
-      option.value = turma;
-      return option;
-    })
-  );
+const setReactValue = (element: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+  const prototype = element instanceof HTMLTextAreaElement
+    ? window.HTMLTextAreaElement.prototype
+    : window.HTMLInputElement.prototype;
+  const setter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
+  setter?.call(element, value);
+  element.dispatchEvent(new Event('input', { bubbles: true }));
+  element.dispatchEvent(new Event('change', { bubbles: true }));
 };
 
 const enhanceTurmaInput = async () => {
@@ -128,32 +75,58 @@ const enhanceTurmaInput = async () => {
 
   const container = label.parentElement;
   const input = container?.querySelector('input') as HTMLInputElement | null;
-  if (!input || input.dataset.voxTurmaSelector === 'true') return;
+  if (!input) return;
 
-  input.dataset.voxTurmaSelector = 'true';
-  input.setAttribute('list', DATALIST_ID);
-  input.placeholder = 'Selecione ou digite uma turma';
+  let select = container?.querySelector(`#${TURMA_SELECT_ID}`) as HTMLSelectElement | null;
+  if (!select) {
+    select = document.createElement('select');
+    select.id = TURMA_SELECT_ID;
+    select.className = 'w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm bg-white mb-3';
+
+    const loadingOption = document.createElement('option');
+    loadingOption.value = '';
+    loadingOption.textContent = 'Carregando turmas cadastradas...';
+    select.appendChild(loadingOption);
+
+    container?.insertBefore(select, input);
+
+    select.addEventListener('change', () => {
+      if (!select?.value) return;
+      setReactValue(input, select.value);
+    });
+  }
+
+  input.placeholder = 'Ou digite uma turma manualmente';
   input.autocomplete = 'off';
 
-  await ensureDatalist();
+  const turmas = await loadTurmas();
+  select.replaceChildren();
+
+  const emptyOption = document.createElement('option');
+  emptyOption.value = '';
+  emptyOption.textContent = turmas.length > 0
+    ? 'Selecione uma turma cadastrada'
+    : 'Nenhuma turma encontrada — digite abaixo';
+  select.appendChild(emptyOption);
+
+  turmas.forEach(turma => {
+    const option = document.createElement('option');
+    option.value = turma;
+    option.textContent = turma;
+    select?.appendChild(option);
+  });
+
+  if (input.value && turmas.includes(input.value)) {
+    select.value = input.value;
+  }
 
   if (!container?.querySelector('[data-vox-turma-help]')) {
     const help = document.createElement('p');
     help.dataset.voxTurmaHelp = 'true';
     help.className = 'text-xs text-blue-600 font-bold mt-2';
-    help.textContent = 'Escolha uma turma cadastrada. A automação será aplicada somente aos pagamentos dessa turma.';
+    help.textContent = 'Selecione uma das turmas cadastradas nos checkouts. O campo abaixo fica disponível apenas para digitação manual.';
     container?.appendChild(help);
   }
-};
-
-const setReactValue = (element: HTMLInputElement | HTMLTextAreaElement, value: string) => {
-  const prototype = element instanceof HTMLTextAreaElement
-    ? window.HTMLTextAreaElement.prototype
-    : window.HTMLInputElement.prototype;
-  const setter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
-  setter?.call(element, value);
-  element.dispatchEvent(new Event('input', { bubbles: true }));
-  element.dispatchEvent(new Event('change', { bubbles: true }));
 };
 
 const findField = (labelText: string) => {
@@ -251,7 +224,6 @@ const observer = new MutationObserver(() => {
 });
 
 const start = () => {
-  installAutomationEmailFetchFix();
   observer.observe(document.documentElement, { childList: true, subtree: true });
   enhanceAutomationScreen();
 };
