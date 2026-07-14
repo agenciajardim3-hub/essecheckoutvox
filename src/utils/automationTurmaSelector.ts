@@ -1,14 +1,15 @@
+import { DEFAULT_SUPABASE_KEY, DEFAULT_SUPABASE_URL } from '../hooks/useSupabase';
+
 const SUPABASE_URL =
   localStorage.getItem('supabase_url') ||
-  import.meta.env.VITE_SUPABASE_URL ||
-  'https://emdsgvuqrhpjdgrgaslo.supabase.co';
+  DEFAULT_SUPABASE_URL;
 
 const SUPABASE_KEY =
   localStorage.getItem('supabase_key') ||
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.VITE_SUPABASE_KEY ||
-  '';
+  DEFAULT_SUPABASE_KEY;
 
 const EMAIL_SELECTOR_ID = 'vox-automation-email-template-selector';
 const TURMA_SELECT_ID = 'vox-automation-turma-select';
