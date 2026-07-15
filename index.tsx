@@ -1,3 +1,4 @@
+import './src/utils/supabaseRequestFix';
 import './src/utils/preserveCertificateEmailLayout';
 import './src/utils/operationsUxPatch';
 import './src/utils/emailStopPatch';
