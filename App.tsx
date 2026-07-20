@@ -168,6 +168,9 @@ export default function App() {
         metaPixelId: c.meta_pixel_id,
         isActive: c.is_active,
         slug: c.slug,
+        city: c.city || '',
+        neighborhood: c.neighborhood || '',
+        folder: c.folder || '',
         webhookUrl: c.webhook_url,
         maxVagas: c.max_vagas,
         useMpApi: c.use_mp_api,
@@ -281,6 +284,70 @@ export default function App() {
 
     fixMissingDates();
   }, [leads, supabase, userRole, fetchData]);
+
+  // Auto-repair: deduplica slugs iguais entre checkouts.
+  // Checkouts do mesmo curso/turma em cidades diferentes (ex.: Franca e Indaiatuba)
+  // acabavam com o mesmo slug, e o link de inscrição (?p=slug) abria o checkout errado
+  // porque a busca por slug retornava o primeiro da lista (ordem nao garantida).
+  // Aqui damos um slug unico e legivel para os duplicados, usando cidade/bairro/pasta/local.
+  useEffect(() => {
+    if (allCheckouts.length === 0 || !supabase || userRole === 'none') return;
+
+    const slugify = (value: string) => String(value || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    const dedupeSlugs = async () => {
+      // Agrupa por slug atual (ignora vazios)
+      const bySlug = new Map<string, AppConfig[]>();
+      for (const c of allCheckouts) {
+        const s = (c.slug || '').trim();
+        if (!s) continue;
+        if (!bySlug.has(s)) bySlug.set(s, []);
+        bySlug.get(s)!.push(c);
+      }
+
+      const used = new Set(allCheckouts.map(c => (c.slug || '').trim()).filter(Boolean));
+      const updates: { id: string; slug: string }[] = [];
+
+      for (const [slug, group] of bySlug) {
+        if (group.length < 2) continue;
+        // Ordem estavel (por id) e mantem o primeiro; diferencia os demais
+        const ordered = [...group].sort((a, b) => String(a.id).localeCompare(String(b.id)));
+        for (let i = 1; i < ordered.length; i++) {
+          const c = ordered[i];
+          const hint = slugify(c.city || c.neighborhood || c.folder || c.eventLocation || c.turma || '')
+            .slice(0, 24)
+            .replace(/-$/, '');
+          let base = hint ? `${slug}-${hint}` : `${slug}-${String(c.id).slice(0, 6)}`;
+          let candidate = base;
+          let n = 2;
+          while (used.has(candidate)) candidate = `${base}-${n++}`;
+          used.add(candidate);
+          updates.push({ id: c.id, slug: candidate });
+        }
+      }
+
+      if (updates.length === 0) return;
+
+      console.log(`[Slug Repair] Corrigindo ${updates.length} slug(s) duplicado(s)...`);
+      for (const u of updates) {
+        try {
+          const { error } = await supabase.from('checkouts').update({ slug: u.slug }).eq('id', u.id);
+          if (error) console.error(`Erro ao corrigir slug do checkout ${u.id}:`, error);
+        } catch (err) {
+          console.error(`Erro ao corrigir slug do checkout ${u.id}:`, err);
+        }
+      }
+      await fetchData();
+    };
+
+    dedupeSlugs();
+  }, [allCheckouts, supabase, userRole, fetchData]);
 
   // Update config when checkoutParam changes
   useEffect(() => {
@@ -507,6 +574,9 @@ export default function App() {
       event_end_time: cfg.eventEndTime || '',
       event_location: cfg.eventLocation || '',
       slug: cfg.slug || '',
+      city: cfg.city || '',
+      neighborhood: cfg.neighborhood || '',
+      folder: cfg.folder || '',
       ga4_id: cfg.ga4Id || '',
       meta_pixel_id: cfg.metaPixelId || '',
       is_active: cfg.isActive !== undefined ? cfg.isActive : true,

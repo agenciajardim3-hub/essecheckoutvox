@@ -45,7 +45,11 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
     const generateAutoSlug = () => {
         const base = config.productName || 'checkout';
         const turma = config.turma ? `-${config.turma}` : '';
-        const clean = (base + turma)
+        // Inclui a cidade (ou bairro/pasta/local) para diferenciar checkouts do mesmo
+        // curso/turma em cidades distintas (ex.: Franca e Indaiatuba), evitando slugs iguais.
+        const local = config.city || config.neighborhood || config.folder || config.eventLocation || '';
+        const localPart = local ? `-${local}` : '';
+        const clean = (base + turma + localPart)
             .toLowerCase()
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')

@@ -61,10 +61,10 @@ const monthLabelFromKey = (key: string) => {
 
 const getCheckoutUrl = (checkout: AppConfig, mode?: 'reg') => {
     const url = new URL(window.location.origin + window.location.pathname);
-    // Resolve sempre pelo id unico: slugs podem colidir entre checkouts de cidades
-    // diferentes (ex.: Franca e Indaiatuba com o mesmo nome/turma), fazendo o link
-    // abrir o checkout errado. O id garante que o link aponte para o checkout correto.
-    url.searchParams.set('checkout', checkout.id);
+    // Usa o slug (unico por checkout apos o reparo automatico de duplicados no App).
+    // Sem slug, cai para o id, que tambem e unico.
+    if (checkout.slug) url.searchParams.set('p', checkout.slug);
+    else url.searchParams.set('checkout', checkout.id);
     if (mode === 'reg') url.searchParams.set('mode', 'reg');
     return url.toString();
 };
