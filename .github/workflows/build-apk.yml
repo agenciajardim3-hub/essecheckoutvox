@@ -1,0 +1,64 @@
+name: Build Android APK
+
+# Gera o checkoutvox.apk a partir do app web (Capacitor).
+# Roda em push nas branches principais e sob demanda (workflow_dispatch).
+on:
+  push:
+    branches:
+      - main
+      - claude/mobile-apk-update-50k7lh
+    paths:
+      - 'src/**'
+      - 'App.tsx'
+      - 'index.tsx'
+      - 'index.html'
+      - 'android/**'
+      - 'capacitor.config.ts'
+      - 'package.json'
+      - '.github/workflows/build-apk.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Capacitor sync (copia web assets para o Android)
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk checkoutvox.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkoutvox-apk
+          path: checkoutvox.apk
+          if-no-files-found: error
