@@ -51,7 +51,9 @@ jobs:
 
       - name: Build debug APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon
 
       - name: Rename APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk checkoutvox.apk
