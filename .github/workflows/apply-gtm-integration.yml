@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   apply-gtm:
-    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, 'feat: add GTM integration') }}
+    if: "${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, 'feat: add GTM integration') }}"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
