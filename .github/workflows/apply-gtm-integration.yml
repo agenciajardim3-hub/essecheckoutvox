@@ -1,6 +1,7 @@
 name: Apply GTM integration
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - claude/add-copy-emails-button-lVH3S
@@ -10,7 +11,7 @@ permissions:
 
 jobs:
   apply-gtm:
-    if: ${{ !contains(github.event.head_commit.message, 'feat: add GTM integration') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, 'feat: add GTM integration') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
