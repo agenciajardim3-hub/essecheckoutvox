@@ -52,6 +52,7 @@ export default function App() {
     eventEndTime: '',
     eventLocation: '',
     ga4Id: '',
+    gtmId: '',
     metaPixelId: '',
     isActive: true,
     slug: ''
@@ -165,6 +166,7 @@ export default function App() {
         eventEndTime: c.event_end_time,
         eventLocation: c.event_location,
         ga4Id: c.ga4_id,
+        gtmId: c.gtm_id || '',
         metaPixelId: c.meta_pixel_id,
         isActive: c.is_active,
         slug: c.slug,
@@ -457,8 +459,28 @@ export default function App() {
     };
   }, [userRole, supabase, fetchData]);
 
-  // Load Scripts (GA4 / Pixel)
+  // Load Scripts (GTM / GA4 / Pixel)
   useEffect(() => {
+    const normalizedGtmId = (config.gtmId || '').trim().toUpperCase();
+    if (normalizedGtmId.startsWith('GTM-')) {
+      window.dataLayer = window.dataLayer || [];
+      if (!document.getElementById(`gtm-script-${normalizedGtmId}`)) {
+        window.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+        const gtmScript = document.createElement('script');
+        gtmScript.id = `gtm-script-${normalizedGtmId}`;
+        gtmScript.async = true;
+        gtmScript.src = `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(normalizedGtmId)}`;
+        document.head.appendChild(gtmScript);
+      }
+      window.dataLayer.push({
+        event: 'page_view',
+        checkout_id: config.id,
+        checkout_slug: config.slug || '',
+        product_name: config.productName,
+        value: parseFloat(config.productPrice?.replace(',', '.') || '0'),
+        currency: 'BRL'
+      });
+    }
     if (config.ga4Id && !document.getElementById('ga4-script')) {
       const script = document.createElement('script');
       script.id = 'ga4-script';
@@ -491,7 +513,7 @@ export default function App() {
         window.fbq('track', 'PageView');
       }
     }
-  }, [config.ga4Id, config.metaPixelId]);
+  }, [config.gtmId, config.ga4Id, config.metaPixelId, config.id, config.slug, config.productName, config.productPrice]);
 
   // Meta Pixel Event Helper
   const trackMetaEvent = (eventName: string, data?: any) => {
@@ -578,6 +600,7 @@ export default function App() {
       neighborhood: cfg.neighborhood || '',
       folder: cfg.folder || '',
       ga4_id: cfg.ga4Id || '',
+      gtm_id: cfg.gtmId || '',
       meta_pixel_id: cfg.metaPixelId || '',
       is_active: cfg.isActive !== undefined ? cfg.isActive : true,
       max_vagas: cfg.maxVagas,
@@ -708,6 +731,20 @@ export default function App() {
     setCustomer(purchase.participants[purchase.responsibleIndex]); // Sync local state with responsible buyer
     if (isSubmitting || !supabase) return;
     setIsSubmitting(true);
+
+    // Tracking - GTM dataLayer
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      event: isRegistrationMode ? 'purchase' : 'begin_checkout',
+      checkout_id: config.id,
+      checkout_slug: config.slug || '',
+      product_name: config.productName,
+      value: purchase.totalAmount,
+      currency: 'BRL',
+      quantity: purchase.quantity,
+      customer_email: purchase.participants[0]?.email || '',
+      customer_phone: purchase.participants[0]?.phone || ''
+    });
 
     // Tracking - GA4
     if (window.gtag && config.ga4Id) {

@@ -139,6 +139,16 @@ export const ClientView: React.FC<ClientViewProps> = ({
 
         trackView();
 
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({
+            event: 'view_item',
+            checkout_id: effectiveConfig.id,
+            checkout_slug: effectiveConfig.slug || '',
+            product_name: effectiveConfig.productName,
+            value: parseFloat(effectiveConfig.productPrice?.replace(',', '.') || '0'),
+            currency: 'BRL'
+        });
+
         if (window.fbq && effectiveConfig.metaPixelId) {
             window.fbq('track', 'ViewContent', {
                 content_type: 'product',

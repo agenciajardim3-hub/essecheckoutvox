@@ -355,6 +355,7 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
                                     </div>
 
                                     <div className="space-y-4">
+                                        <Input label="Google Tag Manager (Container ID)" type="text" placeholder="GTM-XXXXXXX" value={config.gtmId || ''} onChange={v => setConfig({ ...config, gtmId: v.trim().toUpperCase() })} />
                                         <Input label="Google Analytics (GA4 ID)" type="text" placeholder="G-XXXXXXXXXX" value={config.ga4Id || ''} onChange={v => setConfig({ ...config, ga4Id: v })} />
                                         <Input label="Meta Pixel ID" type="text" placeholder="123456789012345" value={config.metaPixelId || ''} onChange={v => setConfig({ ...config, metaPixelId: v })} />
                                     </div>

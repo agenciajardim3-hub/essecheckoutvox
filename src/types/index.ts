@@ -85,6 +85,7 @@ export interface AppConfig {
   eventEndTime?: string;
   eventLocation?: string;
   ga4Id?: string;
+  gtmId?: string;
   metaPixelId?: string;
   isActive?: boolean;
   slug?: string;
