@@ -1,0 +1,102 @@
+name: Apply GTM integration
+
+on:
+  push:
+    branches:
+      - claude/add-copy-emails-button-lVH3S
+
+permissions:
+  contents: write
+
+jobs:
+  apply-gtm:
+    if: ${{ !contains(github.event.head_commit.message, 'feat: add GTM integration') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/add-copy-emails-button-lVH3S
+          fetch-depth: 0
+
+      - name: Patch GTM support
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              if new in text:
+                  return
+              if old not in text:
+                  raise SystemExit(f'Pattern not found in {path}: {old[:80]}')
+              p.write_text(text.replace(old, new, 1))
+
+          # Types
+          replace_once(
+              'src/types/index.ts',
+              '  ga4Id?: string;\n  metaPixelId?: string;',
+              '  ga4Id?: string;\n  gtmId?: string;\n  metaPixelId?: string;'
+          )
+
+          # Marketing UI
+          replace_once(
+              'src/components/dashboard/ProductConfig.tsx',
+              '                                    <div className="space-y-4">\n                                        <Input label="Google Analytics (GA4 ID)" type="text" placeholder="G-XXXXXXXXXX" value={config.ga4Id || \'\'} onChange={v => setConfig({ ...config, ga4Id: v })} />',
+              '                                    <div className="space-y-4">\n                                        <Input label="Google Tag Manager (Container ID)" type="text" placeholder="GTM-XXXXXXX" value={config.gtmId || \'\'} onChange={v => setConfig({ ...config, gtmId: v.trim().toUpperCase() })} />\n                                        <Input label="Google Analytics (GA4 ID)" type="text" placeholder="G-XXXXXXXXXX" value={config.ga4Id || \'\'} onChange={v => setConfig({ ...config, ga4Id: v })} />'
+          )
+
+          # App config defaults, database mapping and persistence
+          replace_once(
+              'App.tsx',
+              "    ga4Id: '',\n    metaPixelId: '',",
+              "    ga4Id: '',\n    gtmId: '',\n    metaPixelId: '',"
+          )
+          replace_once(
+              'App.tsx',
+              '        ga4Id: c.ga4_id,\n        metaPixelId: c.meta_pixel_id,',
+              "        ga4Id: c.ga4_id,\n        gtmId: c.gtm_id || '',\n        metaPixelId: c.meta_pixel_id,"
+          )
+          replace_once(
+              'App.tsx',
+              "      ga4_id: cfg.ga4Id || '',\n      meta_pixel_id: cfg.metaPixelId || '',",
+              "      ga4_id: cfg.ga4Id || '',\n      gtm_id: cfg.gtmId || '',\n      meta_pixel_id: cfg.metaPixelId || '',"
+          )
+
+          # GTM loader in the checkout
+          replace_once(
+              'App.tsx',
+              '  // Load Scripts (GA4 / Pixel)\n  useEffect(() => {',
+              '''  // Load Scripts (GTM / GA4 / Pixel)\n  useEffect(() => {\n    const normalizedGtmId = (config.gtmId || '').trim().toUpperCase();\n    if (normalizedGtmId.startsWith('GTM-')) {\n      window.dataLayer = window.dataLayer || [];\n      if (!document.getElementById(`gtm-script-${normalizedGtmId}`)) {\n        window.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });\n        const gtmScript = document.createElement('script');\n        gtmScript.id = `gtm-script-${normalizedGtmId}`;\n        gtmScript.async = true;\n        gtmScript.src = `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(normalizedGtmId)}`;\n        document.head.appendChild(gtmScript);\n      }\n      window.dataLayer.push({\n        event: 'page_view',\n        checkout_id: config.id,\n        checkout_slug: config.slug || '',\n        product_name: config.productName,\n        value: parseFloat(config.productPrice?.replace(',', '.') || '0'),\n        currency: 'BRL'\n      });\n    }'''
+          )
+          replace_once(
+              'App.tsx',
+              '  }, [config.ga4Id, config.metaPixelId]);',
+              '  }, [config.gtmId, config.ga4Id, config.metaPixelId, config.id, config.slug, config.productName, config.productPrice]);'
+          )
+
+          # dataLayer checkout events
+          replace_once(
+              'App.tsx',
+              '    // Tracking - GA4\n    if (window.gtag && config.ga4Id) {',
+              '''    // Tracking - GTM dataLayer\n    window.dataLayer = window.dataLayer || [];\n    window.dataLayer.push({\n      event: isRegistrationMode ? 'purchase' : 'begin_checkout',\n      checkout_id: config.id,\n      checkout_slug: config.slug || '',\n      product_name: config.productName,\n      value: purchase.totalAmount,\n      currency: 'BRL',\n      quantity: purchase.quantity,\n      customer_email: purchase.participants[0]?.email || '',\n      customer_phone: purchase.participants[0]?.phone || ''\n    });\n\n    // Tracking - GA4\n    if (window.gtag && config.ga4Id) {'''
+          )
+
+          # ViewContent event mirrored into dataLayer
+          replace_once(
+              'src/components/client/ClientView.tsx',
+              "        if (window.fbq && effectiveConfig.metaPixelId) {",
+              '''        window.dataLayer = window.dataLayer || [];\n        window.dataLayer.push({\n            event: 'view_item',\n            checkout_id: effectiveConfig.id,\n            checkout_slug: effectiveConfig.slug || '',\n            product_name: effectiveConfig.productName,\n            value: parseFloat(effectiveConfig.productPrice?.replace(',', '.') || '0'),\n            currency: 'BRL'\n        });\n\n        if (window.fbq && effectiveConfig.metaPixelId) {'''
+          )
+
+      - name: Commit changes
+        run: |
+          if git diff --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add App.tsx src/types/index.ts src/components/dashboard/ProductConfig.tsx src/components/client/ClientView.tsx
+          git commit -m "feat: add GTM integration to checkout marketing"
+          git push origin HEAD:claude/add-copy-emails-button-lVH3S
