@@ -377,6 +377,23 @@ export const NovoModulo: React.FC<NovoModuloProps> = ({
 
 ---
 
+## 🆕 Features Implementadas (2026-08-19)
+
+### 6. **Política de Privacidade em Todos os Checkouts (LGPD)**
+- **URL oficial**: `https://voxmarketingacademy.com.br/termos-uso-politica-privacidade-vox/` (página única com Termos de Uso + Política de Privacidade)
+- **Constantes**: `src/constants/legal.ts` → `PRIVACY_POLICY_URL`, `TERMS_OF_USE_URL`
+- **Componente**: `src/components/client/LegalFooter.tsx`
+  - Props: `variant?: 'card' | 'plain'`, `label?: string`, `className?: string`
+  - Ícone `ShieldCheck` + aviso LGPD + links `target="_blank" rel="noopener noreferrer"`
+- **Aplicado em**:
+  - `CheckoutForm.tsx` — checkbox de aceite agora aponta para a URL real (antes `href="#"`) + rodapé legal em todos os modos (compra, ingresso e inscrição)
+  - `ClientView.tsx` — rodapé legal da página do checkout (desktop e mobile)
+  - `SolicitacaoFormPage.tsx` — aviso no formulário e na tela de sucesso
+  - `ThankYouPage.tsx` e `RegistrationSuccess.tsx` — rodapé legal (oculto na impressão do ingresso)
+- **Manutenção**: para trocar a URL, editar apenas `src/constants/legal.ts`
+
+---
+
 ## 📌 Quick Links
 - [Arquitetura Completa](./ARCHITECTURE_CONTEXT.md)
 - [Schema do Banco](./DATABASE_SCHEMA.md)

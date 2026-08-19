@@ -3,6 +3,7 @@ import { Check, GraduationCap, Loader2 } from 'lucide-react';
 import { AppConfig, CustomerData, MultiTicketPurchase, Coupon } from '../../types';
 import { CheckoutForm } from './CheckoutForm';
 import { RegistrationSuccess } from './RegistrationSuccess';
+import { LegalFooter } from './LegalFooter';
 import { useSupabase } from '../../hooks/useSupabase';
 
 interface ClientViewProps {
@@ -250,6 +251,11 @@ export const ClientView: React.FC<ClientViewProps> = ({
                 </div>
 
             </div>
+
+            {/* Rodapé legal — visível em todos os checkouts */}
+            <footer className="w-full max-w-5xl mt-6 sm:mt-8 px-2">
+                <LegalFooter label="Vox Marketing Academy — seus dados são tratados conforme a LGPD." />
+            </footer>
         </div>
     );
 };

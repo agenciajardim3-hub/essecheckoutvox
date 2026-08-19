@@ -2,6 +2,7 @@
 import React from 'react';
 import { Ticket, MapPin, Clock, Printer, Check } from 'lucide-react';
 import { AppConfig, CustomerData } from '../../types';
+import { LegalFooter } from './LegalFooter';
 
 interface RegistrationSuccessProps {
     customer: CustomerData;
@@ -79,6 +80,7 @@ export const RegistrationSuccess: React.FC<RegistrationSuccessProps> = ({
                             Fechar
                         </button>
                     </div>
+                    <LegalFooter className="mt-5 print:hidden" />
                 </div>
             ) : (
                 <div className="max-w-md w-full">

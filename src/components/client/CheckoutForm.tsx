@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Loader2, BadgeCheck, ShoppingCart, Clock, Users, ChevronRight, ChevronLeft, Tag, X, Check, Calendar, MapPin, Shield, ArrowRight, Eye } from 'lucide-react';
 import { Input } from '../ui/Input';
 import { AppConfig, CustomerData, MultiTicketPurchase, Coupon } from '../../types';
+import { LegalFooter } from './LegalFooter';
+import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '../../constants/legal';
 
 interface CheckoutFormProps {
     config: AppConfig;
@@ -483,7 +485,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                         <Check size={11} className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" strokeWidth={4} />
                     </div>
                     <label htmlFor="terms" className="text-[11px] text-gray-500 font-medium cursor-pointer leading-relaxed select-none">
-                        Li e concordo com os <a href="#" className="font-bold text-blue-600 hover:underline">Termos de Uso</a> e <a href="#" className="font-bold text-blue-600 hover:underline">Política de Privacidade</a>. Estou ciente que a vaga só é garantida após o pagamento.
+                        Li e concordo com os <a href={TERMS_OF_USE_URL} target="_blank" rel="noopener noreferrer" className="font-bold text-blue-600 hover:underline">Termos de Uso</a> e a <a href={PRIVACY_POLICY_URL} target="_blank" rel="noopener noreferrer" className="font-bold text-blue-600 hover:underline">Política de Privacidade</a>. Estou ciente que a vaga só é garantida após o pagamento.
                     </label>
                 </div>
 
@@ -568,6 +570,9 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                         </div>
                     </div>
                 )}
+
+                {/* ── Legal (LGPD) ── */}
+                <LegalFooter variant="card" className="mt-1" />
             </form>
         </div>
     );

@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { FileText, Send, Loader2, Check } from 'lucide-react';
 import { useSupabase } from '../../hooks/useSupabase';
+import { LegalFooter } from './LegalFooter';
 
 export const SolicitacaoFormPage: React.FC = () => {
     const supabase = useSupabase();
@@ -59,6 +60,7 @@ export const SolicitacaoFormPage: React.FC = () => {
                             O certificado será enviado em até <span className="text-blue-600">48 horas úteis</span> para o e-mail informado.
                         </p>
                     </div>
+                    <LegalFooter className="mt-6" />
                 </div>
             </div>
         );
@@ -134,6 +136,11 @@ export const SolicitacaoFormPage: React.FC = () => {
                             </>
                         )}
                     </button>
+
+                    <LegalFooter
+                        variant="card"
+                        label="Ao enviar, você concorda com o tratamento dos seus dados conforme a LGPD."
+                    />
                 </form>
             </div>
         </div>

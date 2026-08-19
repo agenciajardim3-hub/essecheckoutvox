@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle, Calendar, Clock, MapPin, ArrowRight, PartyPopper, Sparkles } from 'lucide-react';
 import { AppConfig } from '../../types';
+import { LegalFooter } from './LegalFooter';
 
 interface ThankYouPageProps {
     config: AppConfig;
@@ -192,6 +193,7 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ config }) => {
                             <span className="text-[10px] font-bold uppercase tracking-widest">Obrigado pela confiança!</span>
                             <PartyPopper size={14} />
                         </div>
+                        <LegalFooter className="mt-4" />
                     </div>
                 </div>
             </div>
