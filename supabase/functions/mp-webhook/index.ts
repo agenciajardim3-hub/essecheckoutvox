@@ -1,6 +1,9 @@
 // supabase/functions/mp-webhook/index.ts
 // Recebe notificações do Mercado Pago e atualiza o lead para Pago quando o pagamento for aprovado.
-// Configure os secrets PROJECT_URL, SERVICE_ROLE_KEY e MP_ACCESS_TOKEN.
+// Secrets aceitos (o primeiro nome encontrado é usado):
+//   URL do projeto:  SUPABASE_URL      | PROJECT_URL
+//   Service role:    SUPABASE_SERVICE_ROLE_KEY | SERVICE_ROLE_KEY
+//   Token do MP:     MERCADO_PAGO_ACCESS_TOKEN | MP_ACCESS_TOKEN
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,13 +17,14 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const PROJECT_URL = Deno.env.get('PROJECT_URL');
-    const SERVICE_ROLE_KEY = Deno.env.get('SERVICE_ROLE_KEY');
-    const MP_ACCESS_TOKEN = Deno.env.get('MP_ACCESS_TOKEN');
+    // Aceita tanto os nomes injetados pela plataforma quanto os configurados à mão
+    const PROJECT_URL = Deno.env.get('SUPABASE_URL') || Deno.env.get('PROJECT_URL');
+    const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SERVICE_ROLE_KEY');
+    const MP_ACCESS_TOKEN = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN') || Deno.env.get('MP_ACCESS_TOKEN');
 
     if (!PROJECT_URL || !SERVICE_ROLE_KEY || !MP_ACCESS_TOKEN) {
       return new Response(JSON.stringify({
-        error: 'Secrets ausentes. Configure PROJECT_URL, SERVICE_ROLE_KEY e MP_ACCESS_TOKEN.',
+        error: 'Secrets ausentes. Configure SUPABASE_URL (ou PROJECT_URL), SUPABASE_SERVICE_ROLE_KEY (ou SERVICE_ROLE_KEY) e MERCADO_PAGO_ACCESS_TOKEN (ou MP_ACCESS_TOKEN).',
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

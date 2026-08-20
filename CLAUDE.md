@@ -394,6 +394,38 @@ export const NovoModulo: React.FC<NovoModuloProps> = ({
 
 ---
 
+## 🔀 Unificação das duas linhas de desenvolvimento (2026-08-19)
+
+O repositório mantinha `master` e a linha do Claude Code com **históricos git independentes**
+(raízes diferentes). A unificação foi feita com `--allow-unrelated-histories`, resolvendo 28
+arquivos conflitantes. Critério: em cada arquivo ficou o lado com mais funcionalidade, sem
+descartar o que só existia no outro.
+
+**Ficou com a versão da `master`:**
+- `OverviewDashboard.tsx` — curva de crescimento, padrões de matrícula, melhores dias do mês, indicadores globais
+- `mp-create-preference/index.ts` — `external_reference` obrigatório, `notification_url` automática e `metadata.lead_id`
+- `LeadsReport.tsx` (legado), nome do app (`capacitor.config.ts`, `strings.xml`)
+
+**Ficou com a versão desta branch** (superset comprovado): `Dashboard` (todas as abas da master + 6
+novas), `CheckoutForm`, `ClientView`, `TurmasDashboard`, `TicketLogs`, `CustomEmailSender`,
+`ProductConfig`, `CertificateGenerator`, `ExpenseManager`, `Input`, `index.html`, `App.tsx`.
+
+**Costuras manuais:**
+- `mp-webhook/index.ts` — mantidas as automações desta branch (WhatsApp + e-mail do ingresso) com os
+  nomes de secret da master aceitos por fallback: `SUPABASE_URL`/`PROJECT_URL`,
+  `SUPABASE_SERVICE_ROLE_KEY`/`SERVICE_ROLE_KEY`, `MERCADO_PAGO_ACCESS_TOKEN`/`MP_ACCESS_TOKEN`
+- `LeadsReportV2.tsx` — reinstalado o "mover lead de turma" da master, via `onUpdateLeadField`, visível só para `master`
+- `LegalFooter.tsx` — incorporado o CNPJ que aparecia no rodapé do checkout da master
+
+**Descartado de propósito:** o interceptador global de `fetch` do `index.html` da master, que
+redirecionava qualquer requisição com "email" na URL para `send-ticket-email` — quebraria a Edge
+Function `send-email` desta branch. E o patch de `html2pdf` do certificado, que não se aplica à
+estratégia atual (`window.print()` nativo).
+
+Pendências registradas em [`TECH_DEBT.md`](./TECH_DEBT.md) (itens 16–18).
+
+---
+
 ## 📌 Quick Links
 - [Arquitetura Completa](./ARCHITECTURE_CONTEXT.md)
 - [Schema do Banco](./DATABASE_SCHEMA.md)

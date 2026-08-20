@@ -112,18 +112,6 @@ export const LeadsReport: React.FC<LeadsReportProps> = ({
         return result;
     }, [leads, selectedLeadFilter, paymentFilter, searchTerm, showOnlyTickets]);
 
-    const turmaRevenue = useMemo(() => {
-        const selectedProduct = allCheckouts.find(c => c.id === selectedLeadFilter);
-        const turmaToFilter = selectedProduct?.turma;
-
-        if (!turmaToFilter) return 0;
-
-        return filteredLeadsList
-            .filter(l => (l.turma === turmaToFilter || l.turma === selectedProduct?.turma))
-            .filter(l => l.status === 'Pago' || l.status === 'Aprovado')
-            .reduce((total, l) => total + (l.paid_amount || 0), 0);
-    }, [filteredLeadsList, selectedLeadFilter, allCheckouts]);
-
     const copyAllNames = () => {
         const names = filteredLeadsList.map(l => l.name).join('\n');
         navigator.clipboard.writeText(names);
@@ -306,8 +294,8 @@ export const LeadsReport: React.FC<LeadsReportProps> = ({
                         <span className="text-xl font-black text-blue-900">{totalLeadsCount}</span>
                     </div>
                     <div className="flex-1 md:flex-initial bg-emerald-600 p-6 rounded-[2.5rem] shadow-xl text-white">
-                        <div className="flex items-center gap-2 mb-1 opacity-70"><Wallet size={16} /> <span className="text-[9px] font-black uppercase tracking-widest">Total Recebido {selectedLeadFilter !== 'all' ? '(Turma)' : ''}</span></div>
-                        <span className="text-xl font-black">R$ {(selectedLeadFilter !== 'all' ? turmaRevenue : totalRevenue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        <div className="flex items-center gap-2 mb-1 opacity-70"><Wallet size={16} /> <span className="text-[9px] font-black uppercase tracking-widest">Total Recebido</span></div>
+                        <span className="text-xl font-black">R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                     </div>
                 </div>
             </div>
@@ -329,28 +317,15 @@ export const LeadsReport: React.FC<LeadsReportProps> = ({
                         <Input label="Cidade" type="text" placeholder="Ex: Rio de Janeiro" value={manualLead.city || ''} onChange={v => setManualLead({ ...manualLead, city: v })} />
 
                         <div className="space-y-1">
-                            <label className="block text-[10px] font-black uppercase text-gray-500">Produto</label>
+                            <label className="block text-[10px] font-black uppercase text-gray-500">Produto / Turma</label>
                             <select
                                 className="w-full px-4 py-3 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-blue-500 font-bold"
                                 value={manualLead.product_id || ''}
-                                onChange={e => {
-                                    const checkout = allCheckouts.find(c => c.id === e.target.value);
-                                    setManualLead({ 
-                                        ...manualLead, 
-                                        product_id: e.target.value, 
-                                        product_name: checkout?.productName || '',
-                                        turma: checkout?.turma || manualLead.turma
-                                    });
-                                }}
+                                onChange={e => setManualLead({ ...manualLead, product_id: e.target.value, product_name: allCheckouts.find(c => c.id === e.target.value)?.productName || '' })}
                             >
                                 <option value="">Selecione...</option>
-                                {allCheckouts.map(c => <option key={c.id} value={c.id}>{c.productName}</option>)}
+                                {allCheckouts.map(c => <option key={c.id} value={c.id}>{c.productName} ({c.turma || 'Geral'})</option>)}
                             </select>
-                        </div>
-
-                        <div className="space-y-1">
-                            <label className="block text-[10px] font-black uppercase text-gray-500">Turma (Manual)</label>
-                            <Input label="" type="text" placeholder="Ex: Turma 1" value={manualLead.turma || ''} onChange={v => setManualLead({ ...manualLead, turma: v })} />
                         </div>
 
                         <div className="space-y-1">

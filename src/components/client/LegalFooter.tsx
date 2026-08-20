@@ -42,6 +42,9 @@ export const LegalFooter: React.FC<LegalFooterProps> = ({
                 Política de Privacidade
             </a>
             .
+            <span className="block mt-1 text-gray-400/90">
+                Vox Marketing Academy — CNPJ 50.208.258/0001-56.
+            </span>
         </p>
     </div>
 );

@@ -392,6 +392,23 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
         return () => clearTimeout(timer);
     };
 
+    // Turmas disponíveis para mover um lead (vem dos leads e dos checkouts)
+    const uniqueTurmas = useMemo(() => {
+        const turmas = new Set<string>();
+        leads.forEach(l => { if (l.turma) turmas.add(l.turma); });
+        allCheckouts.forEach(c => { if (c.turma) turmas.add(c.turma); });
+        return Array.from(turmas).sort();
+    }, [leads, allCheckouts]);
+
+    const handleMoveLeadTurma = async (leadId: string, newTurma: string) => {
+        if (!newTurma) return;
+        try {
+            await onUpdateLeadField?.(leadId, { turma: newTurma });
+        } catch (err) {
+            console.error('Erro ao mover lead para nova turma:', err);
+        }
+    };
+
     // Handle payment_location changes with debounce
     const handlePaymentLocationChange = (leadId: string, value: string) => {
         setTempPaymentLocations(prev => ({ ...prev, [leadId]: value }));
@@ -1285,9 +1302,22 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                             />
                                         </td>
                                         <td className="px-4 py-3">
-                                            <span className="inline-block bg-amber-100 text-amber-700 px-2.5 py-1 rounded-lg text-xs font-bold">
-                                                {lead.turma || 'Sem turma'}
-                                            </span>
+                                            {userRole === 'master' ? (
+                                                <select
+                                                    value={lead.turma || ''}
+                                                    onChange={(e) => handleMoveLeadTurma(lead.id, e.target.value)}
+                                                    className="px-2 py-1.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                                >
+                                                    <option value="">Sem turma</option>
+                                                    {uniqueTurmas.map(t => (
+                                                        <option key={t} value={t}>{t}</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <span className="inline-block bg-amber-100 text-amber-700 px-2.5 py-1 rounded-lg text-xs font-bold">
+                                                    {lead.turma || 'Sem turma'}
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-4 py-3">
                                             <select

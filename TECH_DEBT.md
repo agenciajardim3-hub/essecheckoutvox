@@ -236,5 +236,19 @@ Lista de melhorias e correções necessárias para otimizar a plataforma.
 
 ---
 
-**Última atualização**: 2026-04-22  
+## 🔀 Dívidas herdadas da unificação com a `master` (2026-08-19)
+
+O repositório tinha duas linhas de desenvolvimento com históricos independentes (raízes git
+diferentes). A unificação resolveu 28 arquivos conflitantes escolhendo, em cada um, o lado com
+mais funcionalidade. Ficou pendente:
+
+| # | Item | Impacto | Estimativa |
+|---|------|---------|-----------|
+| 16 | **Custos em duas fontes**: `OverviewDashboard` (versão da master) grava custos por turma em `localStorage`; `ExpenseManager` grava na tabela `expenses` do Supabase. Quem lançar custo em um não vê no outro. | 🟡 Médio — números de lucro podem divergir entre as abas Visão Geral e Financeiro | 6h (migrar o Overview para a tabela `expenses`) |
+| 17 | **Nomes de secrets duplicados no Mercado Pago**: as Edge Functions aceitam `MERCADO_PAGO_ACCESS_TOKEN`/`MP_ACCESS_TOKEN` e `SUPABASE_URL`/`PROJECT_URL` como fallback, para não quebrar o que já está no ar. | 🟢 Baixo — funciona, mas confunde na configuração | 1h (padronizar e remover o fallback) |
+| 18 | **`LeadsReport.tsx` legado**: o Dashboard usa `LeadsReportV2`; a v1 continua no repositório sem ser importada. | 🟢 Baixo — código morto | 1h |
+
+---
+
+**Última atualização**: 2026-08-19  
 **Prioridade atual**: 🔴 Criar Edge Function send-email + 🟡 Webhook automático pagamentos

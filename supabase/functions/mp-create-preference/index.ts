@@ -1,6 +1,5 @@
 // supabase/functions/mp-create-preference/index.ts
-// Cria preferência de pagamento no Mercado Pago via Supabase Edge Function.
-// Configure o secret MP_ACCESS_TOKEN no Supabase antes de usar.
+// Cria uma preferência de pagamento no Mercado Pago sem expor o Access Token no frontend.
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,12 +20,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const MP_ACCESS_TOKEN = Deno.env.get('MP_ACCESS_TOKEN');
+    // Aceita tanto os nomes injetados pela plataforma quanto os configurados à mão
+    const mpAccessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN') || Deno.env.get('MP_ACCESS_TOKEN');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || Deno.env.get('PROJECT_URL');
 
-    if (!MP_ACCESS_TOKEN) {
-      return new Response(JSON.stringify({
-        error: 'MP_ACCESS_TOKEN não configurado no Supabase Secrets',
-      }), {
+    if (!mpAccessToken) {
+      console.error('MERCADO_PAGO_ACCESS_TOKEN/MP_ACCESS_TOKEN não configurado');
+      return new Response(JSON.stringify({ error: 'Mercado Pago token not configured' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -35,30 +35,46 @@ Deno.serve(async (req) => {
     const preference = await req.json();
 
     if (!preference?.items?.length) {
-      return new Response(JSON.stringify({ error: 'Preferência sem items' }), {
+      return new Response(JSON.stringify({ error: 'Preference items are required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
+    if (!preference.external_reference) {
+      return new Response(JSON.stringify({ error: 'external_reference is required to identify the lead/order' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const safePreference = {
+      ...preference,
+      notification_url:
+        preference.notification_url ||
+        (supabaseUrl ? `${supabaseUrl}/functions/v1/mp-webhook` : undefined),
+      metadata: {
+        ...(preference.metadata || {}),
+        lead_id: preference.external_reference,
+        source: 'checkoutvox',
+      },
+    };
+
     const mpResponse = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
+        Authorization: `Bearer ${mpAccessToken}`,
       },
-      body: JSON.stringify(preference),
+      body: JSON.stringify(safePreference),
     });
 
     const mpData = await mpResponse.json().catch(async () => ({ raw: await mpResponse.text() }));
 
     if (!mpResponse.ok) {
       console.error('Mercado Pago error:', mpData);
-      return new Response(JSON.stringify({
-        error: 'Falha ao criar preferência no Mercado Pago',
-        details: mpData,
-      }), {
-        status: mpResponse.status,
+      return new Response(JSON.stringify({ error: 'Failed to create preference', details: mpData }), {
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -67,15 +83,14 @@ Deno.serve(async (req) => {
       id: mpData.id,
       init_point: mpData.init_point,
       sandbox_init_point: mpData.sandbox_init_point,
+      external_reference: safePreference.external_reference,
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('Function error:', error);
-    return new Response(JSON.stringify({
-      error: error instanceof Error ? error.message : 'Erro desconhecido',
-    }), {
+    return new Response(JSON.stringify({ error: error?.message || 'Unexpected error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
