@@ -1,21 +1,26 @@
-import React, { useState } from 'react';
-import { Mail, Send, Loader2, Check, AlertCircle } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Mail, Send, Loader2, Check, AlertCircle, Upload, Image as ImageIcon, X } from 'lucide-react';
+import { useEmailTemplates } from '../../hooks/useEmailTemplates';
 
 interface CustomEmailSenderProps {
     userRole: string;
 }
 
-const SEND_EMAIL_URL = 'https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtZHNndnVxcmhwamRncmdhc2xvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NjcyMTIsImV4cCI6MjA4MzU0MzIxMn0.Emfi9OyHn9SrrY4AugAVGzLSm2YkBzAKwsZ1XGQ5DD0';
+const SEND_EMAIL_ENDPOINT = 'https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email';
 
 export const CustomEmailSender: React.FC<CustomEmailSenderProps> = ({ userRole }) => {
+    const { templates } = useEmailTemplates();
     const [recipientEmail, setRecipientEmail] = useState('');
     const [subject, setSubject] = useState('');
     const [htmlBody, setHtmlBody] = useState('');
+    const [imageUrl, setImageUrl] = useState('');
     const [isSending, setIsSending] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
 
     const testEmail = import.meta.env.VITE_TEST_EMAIL || 'rodrigomesquita58@gmail.com';
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const sendEmail = async (email: string, isTest: boolean = false) => {
         if (!subject.trim() || !htmlBody.trim()) {
@@ -33,29 +38,36 @@ export const CustomEmailSender: React.FC<CustomEmailSenderProps> = ({ userRole }
         setSuccessMessage('');
 
         try {
-            const targetEmail = isTest ? testEmail : email;
+            const targetEmail = isTest ? testEmail : email.trim();
 
-            const response = await fetch(SEND_EMAIL_URL, {
+            const response = await fetch(SEND_EMAIL_ENDPOINT, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'apikey': SUPABASE_ANON_KEY
                 },
                 body: JSON.stringify({
                     to: targetEmail,
                     name: isTest ? 'Teste' : 'Destinatário',
                     subject,
                     productName: 'Vox Marketing Academy',
-                    message: htmlBody
+                    message: imageUrl.trim()
+                        ? `${htmlBody}\n<div style="text-align:center;margin:20px 0;"><img src="${imageUrl.trim()}" alt="Imagem" style="max-width:100%;height:auto;border-radius:12px;" /></div>`
+                        : htmlBody,
+                    ticketUrl: '',
+                    certificateUrl: '',
+                    preserveCertificateLayout: true
                 })
             });
 
-            const resultText = await response.text();
+            const responseText = await response.text();
             let result: any = {};
 
             try {
-                result = resultText ? JSON.parse(resultText) : {};
+                result = responseText ? JSON.parse(responseText) : {};
             } catch {
-                throw new Error('A função de email não retornou JSON. Verifique se a URL da Edge Function está correta e publicada.');
+                throw new Error(`Resposta inválida da função. Endpoint chamado: ${SEND_EMAIL_ENDPOINT}. Resposta: ${responseText.slice(0, 120)}`);
             }
 
             if (!response.ok || result.error) {
@@ -122,18 +134,98 @@ export const CustomEmailSender: React.FC<CustomEmailSenderProps> = ({ userRole }
 
                 <div>
                     <label className="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-widest">
+                        Modelos Prontos
+                    </label>
+                    <select
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 font-bold text-sm mb-4 bg-gray-50 text-gray-700"
+                        onChange={(e) => {
+                            if (e.target.value) {
+                                setHtmlBody(e.target.value);
+                            }
+                        }}
+                    >
+                        <option value="">Selecione um template lindo...</option>
+                        {templates.map(t => (
+                            <option key={t.id} value={t.html.replace(/{name}/g, '[Nome do Aluno]')}>
+                                {t.name} {t.isCustom ? '(Customizado)' : ''}
+                            </option>
+                        ))}
+                    </select>
+
+                    <label className="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-widest">
                         Corpo do Email (HTML)
                     </label>
                     <textarea
-                        placeholder="Digite o conteúdo do email em HTML. Exemplo: <p>Olá!</p><p>Este é um email de teste.</p>"
+                        placeholder="Digite o conteúdo do email em HTML ou escolha um modelo acima."
                         value={htmlBody}
                         onChange={(e) => setHtmlBody(e.target.value)}
                         rows={8}
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 font-mono text-xs text-gray-700 bg-white"
                     />
                     <p className="text-xs text-gray-500 mt-2">
-                        💡 Dica: Use HTML para formatação. Exemplo: <code className="bg-gray-100 px-2 py-1 rounded">&lt;b&gt;texto em negrito&lt;/b&gt;</code>
+                        💡 Dica: Você pode editar o HTML livremente após carregar um modelo.
                     </p>
+                </div>
+
+                <div>
+                    <label className="block text-xs font-bold text-gray-600 uppercase mb-2 tracking-widest">
+                        Imagem / Mídia
+                    </label>
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex-1 px-4 py-3 border-2 border-dashed border-gray-300 rounded-xl hover:border-violet-400 transition-all flex items-center justify-center gap-2 text-sm font-bold text-gray-500 hover:text-violet-600 bg-gray-50"
+                        >
+                            <Upload size={16} /> Fazer Upload
+                        </button>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/gif,image/webp"
+                            className="hidden"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                if (file.size > 5 * 1024 * 1024) {
+                                    setErrorMessage('Imagem muito grande. Máximo 5MB.');
+                                    return;
+                                }
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                    setImageUrl(reader.result as string);
+                                };
+                                reader.readAsDataURL(file);
+                                e.target.value = '';
+                            }}
+                        />
+                        <span className="text-xs text-gray-400 self-center">ou</span>
+                        <input
+                            type="url"
+                            placeholder="Cole a URL da imagem"
+                            value={imageUrl.startsWith('data:') ? '' : imageUrl}
+                            onChange={(e) => setImageUrl(e.target.value)}
+                            className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 font-bold text-xs"
+                        />
+                    </div>
+                    {imageUrl && (
+                        <div className="mt-3 relative inline-block">
+                            <img
+                                src={imageUrl}
+                                alt="Preview"
+                                className="max-h-32 rounded-lg border border-gray-200 shadow-sm"
+                                onError={() => setErrorMessage('Não foi possível carregar a imagem')}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setImageUrl('')}
+                                className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md hover:bg-red-600"
+                            >
+                                <X size={14} />
+                            </button>
+                            <p className="text-xs text-emerald-600 font-bold mt-1">✓ Imagem carregada</p>
+                        </div>
+                    )}
                 </div>
 
                 {successMessage && (

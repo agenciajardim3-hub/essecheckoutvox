@@ -52,6 +52,7 @@ export default function App() {
     eventEndTime: '',
     eventLocation: '',
     ga4Id: '',
+    gtmId: '',
     metaPixelId: '',
     isActive: true,
     slug: ''
@@ -91,7 +92,10 @@ export default function App() {
   const isRegistrationMode = query.get('mode') === 'reg';
   const isTicketMode = query.get('mode') === 'ticket';
   const isCertificateMode = query.get('mode') === 'certificate';
-  const checkoutParam = query.get('checkout') || query.get('p') || '';
+  // Support all checkout param styles: ?checkout=, ?p=, ?slug= (for variation links: /?slug=X&variant=Y)
+  const checkoutParam = query.get('checkout') || query.get('p') || query.get('slug') || '';
+  // Also treat 'variant' param as a checkout indicator (variation links only have ?slug=&variant=)
+  const hasVariantParam = !!query.get('variant');
   const utms = {
     source: query.get('utm_source') || 'direct',
     medium: query.get('utm_medium') || 'cpc',
@@ -99,7 +103,7 @@ export default function App() {
   };
 
   // Check if should show login (APK without checkout param shows login)
-  const isLogin = query.get('mode') === 'login' || window.location.pathname === '/login' || (window.location.pathname !== '/solicitacaoformulario' && !checkoutParam && !isCertificateMode && !isTicketMode && userRole === 'none');
+  const isLogin = query.get('mode') === 'login' || window.location.pathname === '/login' || (window.location.pathname !== '/solicitacaoformulario' && !checkoutParam && !hasVariantParam && !isCertificateMode && !isTicketMode && userRole === 'none');
   const isPaymentSuccess = query.get('success') === 'true';
   const isSolicitacaoForm = window.location.pathname === '/solicitacaoformulario' || query.get('mode') === 'solicitacao';
 
@@ -128,11 +132,12 @@ export default function App() {
       const checkoutsData = checkoutData || [];
 
       // OPTIMIZATION: Only fetch leads/coupons for dashboard (not client checkout pages)
+      // EXCEPT: Always fetch for ticket/certificate modes which need lead data
       let leadsData: any = null;
       let couponsData: any = null;
 
-      if (!checkoutParam || userRole !== 'none') {
-        // Dashboard mode - fetch all leads and coupons
+      if (!checkoutParam || userRole !== 'none' || isTicketMode || isCertificateMode) {
+        // Dashboard mode or ticket/certificate mode - fetch all leads and coupons
         const leadsResult = await supabase.from('leads').select('*').order('created_at', { ascending: false });
         leadsData = leadsResult.data;
         if (leadsResult.error && leadsResult.error.code !== 'PGRST116') throw leadsResult.error;
@@ -161,9 +166,13 @@ export default function App() {
         eventEndTime: c.event_end_time,
         eventLocation: c.event_location,
         ga4Id: c.ga4_id,
+        gtmId: c.gtm_id || '',
         metaPixelId: c.meta_pixel_id,
         isActive: c.is_active,
         slug: c.slug,
+        city: c.city || '',
+        neighborhood: c.neighborhood || '',
+        folder: c.folder || '',
         webhookUrl: c.webhook_url,
         maxVagas: c.max_vagas,
         useMpApi: c.use_mp_api,
@@ -174,7 +183,8 @@ export default function App() {
         thankYouButtonText: c.thank_you_button_text,
         thankYouButtonUrl: c.thank_you_button_url,
         thankYouImageUrl: c.thank_you_image_url,
-        variations: typeof c.variations === 'string' ? JSON.parse(c.variations) : (c.variations || [])
+        variations: typeof c.variations === 'string' ? JSON.parse(c.variations) : (c.variations || []),
+        viewerCount: c.viewer_count || 0
       }));
 
       setAllCheckouts(mappedCheckouts);
@@ -237,6 +247,109 @@ export default function App() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Fix missing dates in leads
+  useEffect(() => {
+    if (leads.length === 0 || !supabase || userRole === 'none') return;
+
+    const fixMissingDates = async () => {
+      const leadsWithoutDates = leads.filter(l => !l.created_at && !l.date);
+
+      if (leadsWithoutDates.length === 0) return;
+
+      console.log(`[Data Repair] Encontrado ${leadsWithoutDates.length} leads sem data. Corrigindo...`);
+
+      const now = new Date().toISOString();
+      const updates = leadsWithoutDates.map(l => ({
+        id: l.id,
+        created_at: now,
+        date: now
+      }));
+
+      for (const update of updates) {
+        try {
+          const { error } = await supabase
+            .from('leads')
+            .update({ created_at: update.created_at, date: update.date })
+            .eq('id', update.id);
+          if (error) console.error(`Erro ao corrigir lead ${update.id}:`, error);
+        } catch (err) {
+          console.error(`Erro ao corrigir lead ${update.id}:`, err);
+        }
+      }
+
+      // Refresh leads after fixing
+      if (updates.length > 0) {
+        await fetchData();
+      }
+    };
+
+    fixMissingDates();
+  }, [leads, supabase, userRole, fetchData]);
+
+  // Auto-repair: deduplica slugs iguais entre checkouts.
+  // Checkouts do mesmo curso/turma em cidades diferentes (ex.: Franca e Indaiatuba)
+  // acabavam com o mesmo slug, e o link de inscrição (?p=slug) abria o checkout errado
+  // porque a busca por slug retornava o primeiro da lista (ordem nao garantida).
+  // Aqui damos um slug unico e legivel para os duplicados, usando cidade/bairro/pasta/local.
+  useEffect(() => {
+    if (allCheckouts.length === 0 || !supabase || userRole === 'none') return;
+
+    const slugify = (value: string) => String(value || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    const dedupeSlugs = async () => {
+      // Agrupa por slug atual (ignora vazios)
+      const bySlug = new Map<string, AppConfig[]>();
+      for (const c of allCheckouts) {
+        const s = (c.slug || '').trim();
+        if (!s) continue;
+        if (!bySlug.has(s)) bySlug.set(s, []);
+        bySlug.get(s)!.push(c);
+      }
+
+      const used = new Set(allCheckouts.map(c => (c.slug || '').trim()).filter(Boolean));
+      const updates: { id: string; slug: string }[] = [];
+
+      for (const [slug, group] of bySlug) {
+        if (group.length < 2) continue;
+        // Ordem estavel (por id) e mantem o primeiro; diferencia os demais
+        const ordered = [...group].sort((a, b) => String(a.id).localeCompare(String(b.id)));
+        for (let i = 1; i < ordered.length; i++) {
+          const c = ordered[i];
+          const hint = slugify(c.city || c.neighborhood || c.folder || c.eventLocation || c.turma || '')
+            .slice(0, 24)
+            .replace(/-$/, '');
+          let base = hint ? `${slug}-${hint}` : `${slug}-${String(c.id).slice(0, 6)}`;
+          let candidate = base;
+          let n = 2;
+          while (used.has(candidate)) candidate = `${base}-${n++}`;
+          used.add(candidate);
+          updates.push({ id: c.id, slug: candidate });
+        }
+      }
+
+      if (updates.length === 0) return;
+
+      console.log(`[Slug Repair] Corrigindo ${updates.length} slug(s) duplicado(s)...`);
+      for (const u of updates) {
+        try {
+          const { error } = await supabase.from('checkouts').update({ slug: u.slug }).eq('id', u.id);
+          if (error) console.error(`Erro ao corrigir slug do checkout ${u.id}:`, error);
+        } catch (err) {
+          console.error(`Erro ao corrigir slug do checkout ${u.id}:`, err);
+        }
+      }
+      await fetchData();
+    };
+
+    dedupeSlugs();
+  }, [allCheckouts, supabase, userRole, fetchData]);
 
   // Update config when checkoutParam changes
   useEffect(() => {
@@ -346,8 +459,28 @@ export default function App() {
     };
   }, [userRole, supabase, fetchData]);
 
-  // Load Scripts (GA4 / Pixel)
+  // Load Scripts (GTM / GA4 / Pixel)
   useEffect(() => {
+    const normalizedGtmId = (config.gtmId || '').trim().toUpperCase();
+    if (normalizedGtmId.startsWith('GTM-')) {
+      window.dataLayer = window.dataLayer || [];
+      if (!document.getElementById(`gtm-script-${normalizedGtmId}`)) {
+        window.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+        const gtmScript = document.createElement('script');
+        gtmScript.id = `gtm-script-${normalizedGtmId}`;
+        gtmScript.async = true;
+        gtmScript.src = `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(normalizedGtmId)}`;
+        document.head.appendChild(gtmScript);
+      }
+      window.dataLayer.push({
+        event: 'page_view',
+        checkout_id: config.id,
+        checkout_slug: config.slug || '',
+        product_name: config.productName,
+        value: parseFloat(config.productPrice?.replace(',', '.') || '0'),
+        currency: 'BRL'
+      });
+    }
     if (config.ga4Id && !document.getElementById('ga4-script')) {
       const script = document.createElement('script');
       script.id = 'ga4-script';
@@ -380,7 +513,7 @@ export default function App() {
         window.fbq('track', 'PageView');
       }
     }
-  }, [config.ga4Id, config.metaPixelId]);
+  }, [config.gtmId, config.ga4Id, config.metaPixelId, config.id, config.slug, config.productName, config.productPrice]);
 
   // Meta Pixel Event Helper
   const trackMetaEvent = (eventName: string, data?: any) => {
@@ -463,7 +596,11 @@ export default function App() {
       event_end_time: cfg.eventEndTime || '',
       event_location: cfg.eventLocation || '',
       slug: cfg.slug || '',
+      city: cfg.city || '',
+      neighborhood: cfg.neighborhood || '',
+      folder: cfg.folder || '',
       ga4_id: cfg.ga4Id || '',
+      gtm_id: cfg.gtmId || '',
       meta_pixel_id: cfg.metaPixelId || '',
       is_active: cfg.isActive !== undefined ? cfg.isActive : true,
       max_vagas: cfg.maxVagas,
@@ -475,7 +612,8 @@ export default function App() {
       thank_you_button_text: cfg.thankYouButtonText || '',
       thank_you_button_url: cfg.thankYouButtonUrl || '',
       thank_you_image_url: cfg.thankYouImageUrl || '',
-      variations: cfg.variations || []
+      variations: cfg.variations || [],
+      viewer_count: cfg.viewerCount || 0
     };
 
     try {
@@ -593,6 +731,20 @@ export default function App() {
     setCustomer(purchase.participants[purchase.responsibleIndex]); // Sync local state with responsible buyer
     if (isSubmitting || !supabase) return;
     setIsSubmitting(true);
+
+    // Tracking - GTM dataLayer
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      event: isRegistrationMode ? 'purchase' : 'begin_checkout',
+      checkout_id: config.id,
+      checkout_slug: config.slug || '',
+      product_name: config.productName,
+      value: purchase.totalAmount,
+      currency: 'BRL',
+      quantity: purchase.quantity,
+      customer_email: purchase.participants[0]?.email || '',
+      customer_phone: purchase.participants[0]?.phone || ''
+    });
 
     // Tracking - GA4
     if (window.gtag && config.ga4Id) {
@@ -962,14 +1114,28 @@ export default function App() {
   const handleSaveManualLead = async (leadData: any) => {
     if (!supabase) return;
     try {
+      // Build an explicit payload to avoid sending undefined values or react-internal fields
+      const payload: Record<string, any> = {};
+      const allowedFields = [
+        'name', 'email', 'phone', 'cpf', 'city', 'status',
+        'product_id', 'product_name', 'turma', 'paid_amount',
+        'payment_method', 'coupon_code', 'date', 'time',
+        'notes', 'utm_source', 'utm_medium', 'utm_campaign'
+      ];
+      for (const field of allowedFields) {
+        if (leadData[field] !== undefined) {
+          payload[field] = leadData[field];
+        }
+      }
+
       if (leadData.id) {
-        const { error } = await supabase.from('leads').update(leadData).eq('id', leadData.id);
+        const { error } = await supabase.from('leads').update(payload).eq('id', leadData.id);
         if (error) throw error;
-        setLeads(prev => prev.map(l => l.id === leadData.id ? { ...l, ...leadData } : l));
+        setLeads(prev => prev.map(l => l.id === leadData.id ? { ...l, ...payload } : l));
         alert('Registro atualizado!');
       } else {
-        const payload = { ...leadData, utm_source: 'Manual_Entry' };
-        const { error } = await supabase.from('leads').insert(payload);
+        const insertPayload = { ...payload, utm_source: 'Manual_Entry' };
+        const { error } = await supabase.from('leads').insert(insertPayload);
         if (error) throw error;
         fetchData(); // Refresh to get the new ID and data 
         alert('Aluno cadastrado com sucesso!');
@@ -1305,72 +1471,296 @@ export default function App() {
       );
     }
     
-    // Simple certificate display - opens print dialog
-    const certificateHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Certificado - ${finalName}</title>
-        <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Inter', sans-serif; background: #f8fafc; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-          .certificate { background: white; width: 100%; max-width: 900px; min-height: 600px; border-radius: 20px; box-shadow: 0 25px 50px rgba(0,0,0,0.15); padding: 60px; text-align: center; border: 3px solid #1e3a8a; position: relative; }
-          .logo { font-size: 48px; font-weight: 900; color: #1e3a8a; letter-spacing: 8px; margin-bottom: 5px; }
-          .subtitle { font-size: 10px; font-weight: 700; color: #0ea5e9; letter-spacing: 6px; margin-bottom: 40px; }
-          .title { font-size: 32px; font-weight: 900; color: #64748b; letter-spacing: 4px; margin-bottom: 40px; }
-          .name { font-family: 'Great Vibes', cursive; font-size: 56px; color: #1e3a8a; margin-bottom: 30px; }
-          .text { font-size: 16px; color: #64748b; margin-bottom: 15px; }
-          .course { font-size: 20px; font-weight: 700; color: #1e3a8a; margin-bottom: 30px; }
-          .date { font-size: 14px; color: #94a3b8; margin-bottom: 50px; }
-          .signature { font-family: 'Great Vibes', cursive; font-size: 36px; color: #1e3a8a; margin-bottom: 10px; }
-          .line { width: 200px; height: 2px; background: #1e3a8a; margin: 0 auto 5px; }
-          .signature-label { font-size: 10px; color: #94a3b8; letter-spacing: 2px; }
-          @media print { body { background: white; } .certificate { box-shadow: none; } }
-        </style>
-      </head>
-      <body>
-        <div class="certificate">
-          <div class="logo">VOX</div>
-          <div class="subtitle">MARKETING ACADEMY</div>
-          <div class="title">CERTIFICADO DE CONCLUSÃO</div>
-          <p class="text">Certificamos que</p>
-          <div class="name">${finalName}</div>
-          <p class="text">participou do evento</p>
-          <div class="course">${finalCourse}</div>
-          <div class="date">${finalDate}</div>
-          <div class="signature">Rodrigo Jardim</div>
-          <div class="line"></div>
-          <div class="signature-label">INSTRUTOR</div>
-        </div>
-        <script>window.onload = function() { window.print(); }</script>
-      </body>
-      </html>
-    `;
+    const certHours = query.get('hours') || '8';
+    const certInstructor = query.get('instructor') || 'Rodrigo Jardim';
+    const certSig = query.get('sig') || '';
     
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(certificateHtml);
-      printWindow.document.close();
+    // Beautiful certificate layout — A4 landscape, rendered in current tab
+    const certificateHtml = `<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1122, initial-scale=1.0">
+  <title>Certificado - ${finalName}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Great+Vibes&display=swap');
+
+    @page {
+      size: A4 landscape;
+      margin: 0;
     }
-    
-    return (
-      <div ref={containerRef}>
-        <RefreshButton />
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-8 shadow-xl text-center max-w-md">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-black text-gray-900 mb-2">Abrindo Certificado...</h2>
-            <p className="text-gray-600">O certificado será aberto em uma nova aba para impressão.</p>
-          </div>
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* Screen: show centered card */
+    @media screen {
+      html, body {
+        width: 100%;
+        min-height: 100vh;
+        background: #e5e7eb;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 20px;
+        font-family: 'Montserrat', Arial, sans-serif;
+      }
+    }
+
+    /* Print: fill all available space */
+    @media print {
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        background: white;
+        font-family: 'Montserrat', Arial, sans-serif;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        overflow: hidden;
+      }
+      .controls { display: none !important; }
+      .page {
+        width: 100vw !important;
+        height: 100vh !important;
+        box-shadow: none !important;
+        padding: 6mm 12mm 6mm !important;
+      }
+    }
+
+    .page {
+      width: 297mm;
+      height: 210mm;
+      background: white;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8mm 20mm;
+      box-shadow: 0 4px 32px rgba(0,0,0,0.18);
+    }
+
+    .top-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      margin-bottom: 8mm;
+    }
+
+    .mid-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      margin-bottom: 8mm;
+    }
+
+    .controls {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 9999;
+    }
+    .controls button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 18px;
+      color: white;
+      font-weight: 800;
+      cursor: pointer;
+      background: #2563eb;
+      font-size: 13px;
+      font-family: Arial, sans-serif;
+    }
+
+    .vox-title {
+      font-size: 46px;
+      font-weight: 900;
+      color: #4b5563;
+      line-height: 1;
+      letter-spacing: 8px;
+      text-align: center;
+    }
+    .vox-subtitle {
+      font-size: 9px;
+      font-weight: 700;
+      color: #0ea5e9;
+      letter-spacing: 6px;
+      margin-top: 1.5mm;
+      margin-bottom: 0;
+      text-align: center;
+    }
+    .cert-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #6b7280;
+      letter-spacing: 4px;
+      margin-bottom: 0;
+      text-align: center;
+    }
+    .student-name {
+      font-size: 32px;
+      font-weight: 400;
+      color: #6b7280;
+      margin-bottom: 4mm;
+      text-transform: uppercase;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+    .course-desc-bold {
+      font-size: 13px;
+      font-weight: 700;
+      color: #000;
+      margin-bottom: 2.5mm;
+      text-align: center;
+    }
+    .course-desc-text {
+      font-size: 10.5px;
+      line-height: 1.55;
+      color: #374151;
+      max-width: 230mm;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .footer {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    /* Medal */
+    .medal-wrap {
+      position: relative;
+      width: 38mm;
+      height: 44mm;
+      flex-shrink: 0;
+    }
+    .ribbon-l, .ribbon-r {
+      position: absolute;
+      bottom: 4mm;
+      width: 10mm;
+      height: 18mm;
+      background: linear-gradient(to right, #9ca3af, #d1d5db, #9ca3af);
+      z-index: 1;
+    }
+    .ribbon-l { left: 4mm; transform: rotate(25deg); }
+    .ribbon-r { right: 4mm; transform: rotate(-25deg); }
+    .medal-circle {
+      position: absolute;
+      top: 0; left: 0;
+      width: 36mm; height: 36mm;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #e5e7eb 0%, #fff 50%, #9ca3af 100%);
+      border: 2px solid #f3f4f6;
+      box-shadow: 0 4mm 8mm rgba(0,0,0,0.2);
+      z-index: 2;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .medal-inner {
+      width: 32mm; height: 32mm;
+      border-radius: 50%;
+      border: 0.5mm solid #d1d5db;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 40px;
+      color: #4b5563;
+    }
+
+    /* Signature */
+    .sig-box {
+      text-align: center;
+      width: 64mm;
+      flex-shrink: 0;
+    }
+    .sig-text {
+      font-family: 'Great Vibes', cursive;
+      font-size: 38px;
+      color: #000;
+      line-height: 1;
+      margin-bottom: 1mm;
+    }
+    .sig-line {
+      width: 100%;
+      height: 0.5mm;
+      background: #1e3a8a;
+    }
+    .sig-label {
+      font-size: 8px;
+      color: #6b7280;
+      letter-spacing: 2px;
+      margin-top: 1mm;
+      text-transform: uppercase;
+    }
+
+
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <button onclick="window.print()">📥 Salvar como PDF</button>
+  </div>
+
+  <div class="page">
+    <div class="top-section">
+      <div class="vox-title">VOX</div>
+      <div class="vox-subtitle">MARKETING ACADEMY</div>
+      <div class="cert-title">CERTIFICADO DE CONCLUSÃO</div>
+    </div>
+
+    <div class="mid-section">
+      <div class="student-name">${finalName}</div>
+      <div class="course-desc-bold">Completou com êxito o ${finalCourse}, com carga horária de ${certHours} horas.</div>
+      <div class="course-desc-text">
+        Na Vox Marketing Academy, ministrado por ${certInstructor}, no dia ${finalDate}.
+        Durante o curso, demonstrou dedicação e empenho exemplares, adquirindo habilidades
+        valiosas em estratégias de tráfego pago. Parabéns pela conclusão bem-sucedida deste curso!
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="medal-wrap">
+        <div class="ribbon-l"></div>
+        <div class="ribbon-r"></div>
+        <div class="medal-circle">
+          <div class="medal-inner">★</div>
         </div>
       </div>
-    );
+
+      <div class="sig-box">
+        ${certSig
+          ? `<img src="${certSig}" alt="Assinatura" style="height:18mm;max-width:60mm;object-fit:contain;display:block;margin:0 auto 1mm;" />`
+          : `<div class="sig-text">${certInstructor}</div>`
+        }
+        <div class="sig-line"></div>
+        <div class="sig-label">Instrutor</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      setTimeout(function() { window.print(); }, 600);
+    };
+  </script>
+</body>
+</html>`;
+
+    // Render directly in the current document instead of opening a new window.
+    // This ensures @page landscape is respected when clicking the link from email.
+    document.open();
+    document.write(certificateHtml);
+    document.close();
+
+    // Return null — the document has been fully replaced above.
+    return null;
+    
   }
 
   return (

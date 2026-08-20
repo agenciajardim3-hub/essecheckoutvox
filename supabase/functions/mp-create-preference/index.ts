@@ -20,11 +20,12 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const mpAccessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    // Aceita tanto os nomes injetados pela plataforma quanto os configurados à mão
+    const mpAccessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN') || Deno.env.get('MP_ACCESS_TOKEN');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || Deno.env.get('PROJECT_URL');
 
     if (!mpAccessToken) {
-      console.error('MERCADO_PAGO_ACCESS_TOKEN não configurado');
+      console.error('MERCADO_PAGO_ACCESS_TOKEN/MP_ACCESS_TOKEN não configurado');
       return new Response(JSON.stringify({ error: 'Mercado Pago token not configured' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

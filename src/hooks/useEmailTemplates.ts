@@ -1,0 +1,319 @@
+import { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
+
+export interface EmailTemplate {
+    id: string;
+    name: string;
+    description: string;
+    html: string;
+    color: string;
+    isCustom?: boolean;
+}
+
+const LOCAL_STORAGE_KEY = 'vox_custom_email_templates';
+const PRIMARY_TABLE = 'modelos_de_email';
+const LEGACY_TABLE = 'email_templates';
+const SUPABASE_ANON_FALLBACK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtZHNndnVxcmhwamRncmdhc2xvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NjcyMTIsImV4cCI6MjA4MzU0MzIxMn0.Emfi9OyHn9SrrY4AugAVGzLSm2YkBzAKwsZ1XGQ5DD0';
+
+const supabaseUrl =
+    localStorage.getItem('supabase_url') ||
+    import.meta.env.VITE_SUPABASE_URL ||
+    'https://emdsgvuqrhpjdgrgaslo.supabase.co';
+
+const supabaseKey =
+    localStorage.getItem('supabase_key') ||
+    import.meta.env.VITE_SUPABASE_ANON_KEY ||
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    import.meta.env.VITE_SUPABASE_KEY ||
+    SUPABASE_ANON_FALLBACK;
+
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+
+export const defaultTemplates: EmailTemplate[] = [
+    {
+        id: 'welcome',
+        name: 'Boas Vindas (Azul/Roxo)',
+        description: 'Ideal para dar as boas-vindas para novos alunos logo após a compra.',
+        color: 'from-indigo-500 to-purple-600',
+        html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+  <div style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 30px 20px; text-align: center; color: white;">
+    <h1 style="margin: 0; font-size: 24px;">Bem-vindo(a) à Vox! 🚀</h1>
+  </div>
+  <div style="padding: 30px 20px; color: #374151; line-height: 1.6;">
+    <p>Olá <b>{name}</b>,</p>
+    <p>É um prazer ter você conosco! Sua jornada de aprendizado acaba de começar.</p>
+    <p>Prepare-se para ter acesso aos melhores conteúdos e um suporte de primeira linha.</p>
+    <br/>
+    <p>Qualquer dúvida, estamos à disposição!</p>
+  </div>
+  <div style="background: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 12px;">
+    &copy; ${new Date().getFullYear()} Vox Marketing Academy. Todos os direitos reservados.
+  </div>
+</div>`
+    },
+    {
+        id: 'promo',
+        name: 'Oferta Exclusiva (Escuro/Dourado)',
+        description: 'Perfeito para vender upsells, mentorias ou novos treinamentos.',
+        color: 'from-gray-900 to-gray-800',
+        html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+  <div style="background: #111827; padding: 30px 20px; text-align: center; color: white;">
+    <h1 style="margin: 0; font-size: 24px; color: #f59e0b;">Oferta Exclusiva Liberada! ⚡</h1>
+  </div>
+  <div style="padding: 30px 20px; color: #374151; line-height: 1.6; text-align: center;">
+    <p>Olá <b>{name}</b>,</p>
+    <p>Liberamos uma oportunidade única para você dar o próximo passo.</p>
+    <p>Garanta sua vaga no nosso novo treinamento com <b>condições especiais</b> apenas para quem já é aluno!</p>
+    <div style="margin: 30px 0;">
+      <a href="SEU_LINK_AQUI" style="background: #f59e0b; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: bold; display: inline-block;">GARANTIR MINHA VAGA</a>
+    </div>
+    <p style="font-size: 12px; color: #9ca3af;">Atenção: Oferta válida por tempo limitadíssimo.</p>
+  </div>
+</div>`
+    },
+    {
+        id: 'notice',
+        name: 'Aviso Urgente (Vermelho)',
+        description: 'Usado para comunicados sérios, atualizações de sistema ou mudanças.',
+        color: 'from-red-500 to-red-600',
+        html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border-left: 4px solid #ef4444; background: #fef2f2; border-radius: 8px; overflow: hidden;">
+  <div style="padding: 30px 20px; color: #7f1d1d; line-height: 1.6;">
+    <h2 style="margin-top: 0; color: #991b1b;">⚠️ Aviso Importante</h2>
+    <p>Olá <b>{name}</b>,</p>
+    <p>Gostaríamos de informar sobre uma atualização importante no seu acesso ao sistema.</p>
+    <p>[Descreva sua atualização aqui]</p>
+    <br/>
+    <p>Atenciosamente,<br/><b>Equipe Vox</b></p>
+  </div>
+</div>`
+    },
+    {
+        id: 'reminder',
+        name: 'Tá Chegando a Hora (Verde)',
+        description: 'Lembrete de véspera para eventos, imersões ou mentorias.',
+        color: 'from-emerald-500 to-emerald-600',
+        html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+  <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px 20px; text-align: center; color: white;">
+    <h1 style="margin: 0; font-size: 24px;">Falta Pouco! ⏳</h1>
+  </div>
+  <div style="padding: 30px 20px; color: #374151; line-height: 1.6;">
+    <p>Olá <b>{name}</b>,</p>
+    <p>O grande dia está chegando! Faltam poucos dias para o nosso encontro.</p>
+    <p>Recomendamos que você se prepare, separe seu material e chegue com antecedência para aproveitar tudo ao máximo.</p>
+    <div style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+      <b>📅 Data:</b> [Data do Evento]<br/>
+      <b>📍 Local:</b> [Local / Link do Zoom]
+    </div>
+    <p>Estamos muito animados para te ver lá!</p>
+  </div>
+</div>`
+    },
+    {
+        id: 'payment',
+        name: 'Pagamento Confirmado (Clean)',
+        description: 'Recibo moderno de confirmação de pagamento para passar confiança.',
+        color: 'from-slate-100 to-slate-200',
+        html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+  <div style="background: #ffffff; padding: 30px 20px; text-align: center; border-bottom: 1px solid #f3f4f6;">
+    <div style="font-size: 48px; margin-bottom: 10px;">✅</div>
+    <h1 style="margin: 0; font-size: 24px; color: #111827;">Pagamento Confirmado!</h1>
+  </div>
+  <div style="padding: 30px 20px; color: #374151; line-height: 1.6;">
+    <p>Olá <b>{name}</b>,</p>
+    <p>Recebemos o seu pagamento com sucesso. Sua vaga já está 100% garantida.</p>
+    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px dashed #cbd5e1;">
+      <p style="margin: 0; font-size: 14px; color: #64748b;">Resumo da Compra</p>
+      <p style="margin: 5px 0 0 0; font-weight: bold; font-size: 18px; color: #0f172a;">[Nome do Curso / Treinamento]</p>
+    </div>
+    <p>Em breve você receberá mais instruções sobre os próximos passos. Se precisar de ajuda, basta responder este email.</p>
+    <p>Bem-vindo(a) ao time!</p>
+  </div>
+</div>`
+    },
+    {
+        id: 'whatsapp',
+        name: 'Link do Grupo VIP (Verde Zap)',
+        description: 'O melhor template para garantir que as pessoas entrem no grupo do WhatsApp.',
+        color: 'from-green-400 to-green-500',
+        html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+  <div style="background: #25D366; padding: 30px 20px; text-align: center; color: white;">
+    <h1 style="margin: 0; font-size: 24px;">Entre no Grupo VIP 💬</h1>
+  </div>
+  <div style="padding: 30px 20px; color: #374151; line-height: 1.6; text-align: center;">
+    <p>Olá <b>{name}</b>,</p>
+    <p>Toda a nossa comunicação oficial, links de aulas, materiais e avisos importantes serão enviados <b>exclusivamente</b> através do nosso Grupo VIP no WhatsApp.</p>
+    <p>Não fique de fora! Clique no botão abaixo para entrar agora mesmo:</p>
+    <div style="margin: 30px 0;">
+      <a href="SEU_LINK_DO_GRUPO_AQUI" style="background: #128C7E; color: white; text-decoration: none; padding: 16px 32px; border-radius: 50px; font-weight: bold; font-size: 16px; display: inline-block;">ENTRAR NO GRUPO VIP</a>
+    </div>
+    <p style="font-size: 13px; color: #6b7280; background: #f3f4f6; padding: 15px; border-radius: 8px;">
+      <b>Regra importante:</b> O grupo é silenciado e apenas os administradores enviam mensagens. Fique tranquilo, você não será incomodado!
+    </p>
+  </div>
+</div>`
+    }
+];
+
+const mapDbTemplate = (row: any): EmailTemplate => ({
+    id: row.id || row.template_id || `custom_${Date.now()}`,
+    name: row.name || row.nome || row.titulo || 'Modelo sem nome',
+    description: row.description || row.descricao || '',
+    html: row.html || row.codigo_html || row.conteudo || '',
+    color: row.color || row.cor || 'from-blue-500 to-indigo-600',
+    isCustom: true,
+});
+
+const toDbPayload = (template: EmailTemplate) => ({
+    id: template.id,
+    name: template.name,
+    description: template.description,
+    html: template.html,
+    color: template.color,
+    is_custom: true,
+});
+
+const getLocalTemplates = (): EmailTemplate[] => {
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (!stored) return [];
+    try {
+        return JSON.parse(stored);
+    } catch {
+        return [];
+    }
+};
+
+const setLocalTemplates = (templates: EmailTemplate[]) => {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(templates));
+};
+
+const mergeTemplates = (customTemplates: EmailTemplate[]) => [
+    ...defaultTemplates,
+    ...customTemplates.filter(template => !defaultTemplates.some(defaultTemplate => defaultTemplate.id === template.id)),
+];
+
+const selectTemplates = async () => {
+    if (!supabase) return { table: null, data: [], error: new Error('Supabase indisponível') };
+
+    const primary = await supabase.from(PRIMARY_TABLE).select('*').order('created_at', { ascending: true });
+    if (!primary.error) return { table: PRIMARY_TABLE, data: primary.data || [], error: null };
+
+    const legacy = await supabase.from(LEGACY_TABLE).select('*').order('created_at', { ascending: true });
+    if (!legacy.error) return { table: LEGACY_TABLE, data: legacy.data || [], error: null };
+
+    return { table: null, data: [], error: primary.error || legacy.error };
+};
+
+const upsertTemplate = async (template: EmailTemplate) => {
+    if (!supabase) return { table: null, error: new Error('Supabase indisponível') };
+
+    const payload = toDbPayload(template);
+    const primary = await supabase.from(PRIMARY_TABLE).upsert(payload, { onConflict: 'id' });
+    if (!primary.error) return { table: PRIMARY_TABLE, error: null };
+
+    const legacy = await supabase.from(LEGACY_TABLE).upsert(payload, { onConflict: 'id' });
+    if (!legacy.error) return { table: LEGACY_TABLE, error: null };
+
+    return { table: null, error: primary.error || legacy.error };
+};
+
+const deleteTemplateFromDb = async (id: string) => {
+    if (!supabase) return { table: null, error: new Error('Supabase indisponível') };
+
+    const primary = await supabase.from(PRIMARY_TABLE).delete().eq('id', id);
+    const legacy = await supabase.from(LEGACY_TABLE).delete().eq('id', id);
+
+    return {
+        table: !primary.error ? PRIMARY_TABLE : (!legacy.error ? LEGACY_TABLE : null),
+        error: primary.error && legacy.error ? primary.error : null,
+    };
+};
+
+export function useEmailTemplates() {
+    const [templates, setTemplates] = useState<EmailTemplate[]>(defaultTemplates);
+    const [storageMode, setStorageMode] = useState<'supabase' | 'local'>('local');
+
+    useEffect(() => {
+        let mounted = true;
+
+        const loadTemplates = async () => {
+            const localTemplates = getLocalTemplates();
+            if (localTemplates.length > 0 && mounted) {
+                setTemplates(mergeTemplates(localTemplates));
+            }
+
+            const dbResult = await selectTemplates();
+            if (dbResult.error) {
+                console.warn('Email templates table unavailable, using localStorage fallback:', dbResult.error.message);
+                return;
+            }
+
+            const dbTemplates = (dbResult.data || []).map(mapDbTemplate);
+
+            if (localTemplates.length > 0) {
+                const missingLocalTemplates = localTemplates.filter(
+                    localTemplate => !dbTemplates.some(dbTemplate => dbTemplate.id === localTemplate.id)
+                );
+
+                for (const template of missingLocalTemplates) {
+                    await upsertTemplate(template);
+                }
+            }
+
+            const refreshed = await selectTemplates();
+            if (!mounted) return;
+
+            const finalTemplates = (refreshed.data || []).map(mapDbTemplate);
+            setTemplates(mergeTemplates(finalTemplates));
+            setLocalTemplates(finalTemplates);
+            setStorageMode('supabase');
+        };
+
+        loadTemplates();
+
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    const saveTemplate = async (template: EmailTemplate) => {
+        const customTemplates = getLocalTemplates();
+        const savedTemplate = { ...template, isCustom: true };
+        const existingIndex = customTemplates.findIndex(t => t.id === savedTemplate.id);
+
+        if (existingIndex >= 0) {
+            customTemplates[existingIndex] = savedTemplate;
+        } else {
+            customTemplates.push(savedTemplate);
+        }
+
+        setLocalTemplates(customTemplates);
+        setTemplates(mergeTemplates(customTemplates));
+
+        const result = await upsertTemplate(savedTemplate);
+        if (result.error) {
+            console.warn('Could not save email template in Supabase. Local fallback active:', result.error.message);
+            setStorageMode('local');
+            alert('Modelo salvo neste navegador, mas não consegui salvar no Supabase. Verifique a tabela modelos_de_email.');
+            return;
+        }
+
+        setStorageMode('supabase');
+    };
+
+    const deleteTemplate = async (id: string) => {
+        const customTemplates = getLocalTemplates().filter(t => t.id !== id);
+        setLocalTemplates(customTemplates);
+        setTemplates(mergeTemplates(customTemplates));
+
+        const result = await deleteTemplateFromDb(id);
+        if (result.error) {
+            console.warn('Could not delete email template in Supabase. Local fallback active:', result.error.message);
+            setStorageMode('local');
+            return;
+        }
+
+        setStorageMode('supabase');
+    };
+
+    return { templates, saveTemplate, deleteTemplate, storageMode };
+}

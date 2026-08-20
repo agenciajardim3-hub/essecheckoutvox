@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { Input } from '../ui/Input';
-import { Printer, Ticket, Image as ImageIcon, MapPin, Clock } from 'lucide-react';
+import { Printer, Ticket, Image as ImageIcon, MapPin, Clock, Mail, Send, Loader2 } from 'lucide-react';
 import { AppConfig } from '../../types';
 
 interface TicketGeneratorProps {
@@ -18,6 +17,10 @@ export const TicketGenerator: React.FC<TicketGeneratorProps> = ({ allCheckouts }
         endTime: '',
         address: ''
     });
+    const [ticketEmail, setTicketEmail] = useState('');
+    const [isSendingTicketEmail, setIsSendingTicketEmail] = useState(false);
+    const [ticketEmailStatus, setTicketEmailStatus] = useState('');
+
 
     const formatDateForDisplay = (dateStr?: string) => {
         if (!dateStr) return '';
@@ -163,6 +166,49 @@ export const TicketGenerator: React.FC<TicketGeneratorProps> = ({ allCheckouts }
         printWindow.document.close();
     };
 
+    const handleSendTicketEmail = async () => {
+        const selectedProd = allCheckouts.find(c => c.id === ticketGenData.productId);
+        if (!selectedProd || !ticketGenData.name || !ticketEmail.trim()) {
+            setTicketEmailStatus('Preencha todos os dados e o email antes de enviar!');
+            return;
+        }
+
+        setIsSendingTicketEmail(true);
+        setTicketEmailStatus('');
+
+        try {
+            const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+            const ticketUrl = `${window.location.origin}/?mode=ticket&checkout=${selectedProd.id}&cpf=${encodeURIComponent(ticketGenData.cpf)}`;
+
+            const response = await fetch('https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'apikey': SUPABASE_ANON_KEY
+                },
+                body: JSON.stringify({
+                    to: ticketEmail.trim(),
+                    name: ticketGenData.name,
+                    subject: `Seu Ingresso VIP - ${selectedProd.productName}`,
+                    productName: selectedProd.productName,
+                    ticketUrl,
+                    message: ''
+                })
+            });
+
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || result.error) {
+                throw new Error(result.error || 'Erro ao enviar');
+            }
+            setTicketEmailStatus(`✅ Ingresso enviado para ${ticketEmail.trim()}`);
+        } catch (err) {
+            setTicketEmailStatus(`❌ Erro: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+        } finally {
+            setIsSendingTicketEmail(false);
+        }
+    };
+
     return (
         <div className="animate-in fade-in duration-500 flex flex-col lg:flex-row gap-10 pb-20">
             <div className="flex-1 max-w-md space-y-6">
@@ -209,6 +255,32 @@ export const TicketGenerator: React.FC<TicketGeneratorProps> = ({ allCheckouts }
                     >
                         <Printer size={18} /> GERAR E IMPRIMIR INGRESSO
                     </button>
+
+                    <div className="border-t border-gray-200 pt-4 mt-4 space-y-3">
+                        <label className="text-sm font-black text-gray-700 flex items-center gap-2">
+                            <Mail size={16} className="text-violet-600" /> Enviar Ingresso por Email
+                        </label>
+                        <input
+                            type="email"
+                            placeholder="email@aluno.com"
+                            value={ticketEmail}
+                            onChange={(e) => setTicketEmail(e.target.value)}
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 font-bold text-sm"
+                        />
+                        <button
+                            onClick={handleSendTicketEmail}
+                            disabled={isSendingTicketEmail || !ticketEmail.trim() || !ticketGenData.name || !ticketGenData.productId}
+                            className="w-full bg-violet-600 text-white py-4 rounded-2xl font-black text-xs uppercase hover:bg-violet-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {isSendingTicketEmail ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                            ENVIAR POR E-MAIL
+                        </button>
+                        {ticketEmailStatus && (
+                            <p className={`text-xs font-bold ${ticketEmailStatus.startsWith('✅') ? 'text-emerald-600' : 'text-red-600'}`}>
+                                {ticketEmailStatus}
+                            </p>
+                        )}
+                    </div>
                 </div>
             </div>
 

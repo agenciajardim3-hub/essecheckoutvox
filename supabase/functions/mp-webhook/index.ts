@@ -1,38 +1,14 @@
 // supabase/functions/mp-webhook/index.ts
-// Recebe notificações do Mercado Pago, consulta o pagamento e libera o lead quando aprovado.
-
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.1';
+// Recebe notificações do Mercado Pago e atualiza o lead para Pago quando o pagamento for aprovado.
+// Secrets aceitos (o primeiro nome encontrado é usado):
+//   URL do projeto:  SUPABASE_URL      | PROJECT_URL
+//   Service role:    SUPABASE_SERVICE_ROLE_KEY | SERVICE_ROLE_KEY
+//   Token do MP:     MERCADO_PAGO_ACCESS_TOKEN | MP_ACCESS_TOKEN
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-signature, x-request-id',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
-type MercadoPagoNotification = {
-  type?: string;
-  topic?: string;
-  action?: string;
-  data?: { id?: string };
-  id?: string;
-  resource?: string;
-};
-
-const getPaymentId = (payload: MercadoPagoNotification, url: URL) => {
-  return (
-    payload?.data?.id ||
-    payload?.id ||
-    url.searchParams.get('data.id') ||
-    url.searchParams.get('id') ||
-    url.searchParams.get('payment_id') ||
-    null
-  );
-};
-
-const getMoneyValue = (value: unknown) => {
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') return Number(value.replace(',', '.')) || 0;
-  return 0;
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
 };
 
 Deno.serve(async (req) => {
@@ -40,114 +16,200 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
-  const supabaseUrl = Deno.env.get('SUPABASE_URL');
-  const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  const mpAccessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
-
-  if (!supabaseUrl || !supabaseServiceRoleKey || !mpAccessToken) {
-    console.error('Variáveis obrigatórias ausentes');
-    return new Response(JSON.stringify({ error: 'Server not configured' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-
   try {
+    // Aceita tanto os nomes injetados pela plataforma quanto os configurados à mão
+    const PROJECT_URL = Deno.env.get('SUPABASE_URL') || Deno.env.get('PROJECT_URL');
+    const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SERVICE_ROLE_KEY');
+    const MP_ACCESS_TOKEN = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN') || Deno.env.get('MP_ACCESS_TOKEN');
+
+    if (!PROJECT_URL || !SERVICE_ROLE_KEY || !MP_ACCESS_TOKEN) {
+      return new Response(JSON.stringify({
+        error: 'Secrets ausentes. Configure SUPABASE_URL (ou PROJECT_URL), SUPABASE_SERVICE_ROLE_KEY (ou SERVICE_ROLE_KEY) e MERCADO_PAGO_ACCESS_TOKEN (ou MP_ACCESS_TOKEN).',
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const url = new URL(req.url);
-    const payload = await req.json().catch(() => ({}));
-    const paymentId = getPaymentId(payload, url);
+    let paymentId = url.searchParams.get('id') || url.searchParams.get('data.id');
+    let topic = url.searchParams.get('topic') || url.searchParams.get('type');
+
+    if (req.method === 'POST') {
+      const body = await req.json().catch(() => null);
+      paymentId = paymentId || body?.data?.id || body?.id;
+      topic = topic || body?.type || body?.topic;
+    }
 
     if (!paymentId) {
-      console.warn('Notificação sem paymentId:', payload);
-      return new Response(JSON.stringify({ received: true, ignored: 'missing_payment_id' }), {
+      return new Response(JSON.stringify({ received: true, message: 'Notificação sem paymentId' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (topic && !String(topic).includes('payment')) {
+      return new Response(JSON.stringify({ received: true, ignored: topic }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const paymentResponse = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-      method: 'GET',
       headers: {
-        Authorization: `Bearer ${mpAccessToken}`,
+        Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
       },
     });
 
     const payment = await paymentResponse.json();
 
     if (!paymentResponse.ok) {
-      console.error('Erro ao consultar pagamento no Mercado Pago:', payment);
-      return new Response(JSON.stringify({ error: 'Failed to fetch payment' }), {
-        status: 400,
+      console.error('Erro ao consultar pagamento:', payment);
+      return new Response(JSON.stringify({ error: 'Erro ao consultar pagamento no Mercado Pago', details: payment }), {
+        status: paymentResponse.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const leadId = payment.external_reference || payment.metadata?.lead_id || null;
+    const leadId = payment.external_reference;
     const status = payment.status;
-    const paidAmount = getMoneyValue(payment.transaction_amount);
+    const statusDetail = payment.status_detail;
+    const paidAmount = payment.transaction_amount;
+    const paymentMethod = payment.payment_method_id;
 
     if (!leadId) {
-      console.warn('Pagamento sem external_reference/lead_id:', paymentId);
-      // Futuro: salvar em uma tabela de pagamentos não identificados.
-      return new Response(JSON.stringify({ received: true, ignored: 'missing_external_reference', payment_id: paymentId }), {
+      return new Response(JSON.stringify({ received: true, message: 'Pagamento sem external_reference' }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
-      auth: { persistSession: false },
-    });
+    const normalizedLeadStatus = status === 'approved'
+      ? 'Pago'
+      : status === 'rejected'
+        ? 'Cancelado'
+        : status === 'cancelled'
+          ? 'Cancelado'
+          : 'Pendente';
 
     const updatePayload: Record<string, unknown> = {
-      mp_payment_id: String(paymentId),
-      payment_status: status,
-      updated_at: new Date().toISOString(),
+      status: normalizedLeadStatus,
+      paid_amount: status === 'approved' ? paidAmount : 0,
+      payment_location: 'Mercado Pago API'
     };
 
-    if (status === 'approved') {
-      updatePayload.status = 'Pago';
-      updatePayload.paid_amount = paidAmount;
-      updatePayload.paid_at = payment.date_approved || new Date().toISOString();
-    } else if (status === 'rejected' || status === 'cancelled') {
-      updatePayload.status = 'Pagamento recusado';
-    } else {
-      updatePayload.status = 'Pagamento pendente';
-    }
+    const updateResponse = await fetch(`${PROJECT_URL}/rest/v1/leads?id=eq.${leadId}`, {
+      method: 'PATCH',
+      headers: {
+        apikey: SERVICE_ROLE_KEY,
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify(updatePayload),
+    });
 
-    const { error } = await supabase
-      .from('leads')
-      .update(updatePayload)
-      .eq('id', leadId);
+    const updatedLead = await updateResponse.json().catch(() => null);
 
-    if (error) {
-      console.error('Erro ao atualizar lead:', error);
-      return new Response(JSON.stringify({ error: 'Failed to update lead', details: error.message }), {
-        status: 500,
+    if (!updateResponse.ok) {
+      console.error('Erro ao atualizar lead:', updatedLead);
+      return new Response(JSON.stringify({ error: 'Erro ao atualizar lead', details: updatedLead }), {
+        status: updateResponse.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Se o pagamento for aprovado ('Pago'), dispara automações (WhatsApp via UazAPI e e-mail)
+    const lead = Array.isArray(updatedLead) && updatedLead.length > 0 ? updatedLead[0] : null;
+    if (lead && normalizedLeadStatus === 'Pago') {
+      const UAZAPI_URL = Deno.env.get('UAZAPI_URL');
+      const UAZAPI_KEY = Deno.env.get('UAZAPI_KEY');
+      const FRONTEND_URL = Deno.env.get('FRONTEND_URL') || 'https://payvoxmarketingacademy.online';
+
+      const ticketUrl = `${FRONTEND_URL}/?mode=ticket&checkout=${encodeURIComponent(lead.product_id || '')}&cpf=${encodeURIComponent(lead.cpf || '')}`;
+
+      // 1. Envia mensagem via WhatsApp usando UazAPI se os secrets estiverem configurados
+      if (UAZAPI_URL && UAZAPI_KEY && lead.phone) {
+        try {
+          let cleanPhone = lead.phone.replace(/\D/g, '');
+          if (cleanPhone.length > 0) {
+            if (!cleanPhone.startsWith('55') && cleanPhone.length >= 10 && cleanPhone.length <= 11) {
+              cleanPhone = '55' + cleanPhone;
+            }
+
+            const messageText = `Olá ${lead.name || 'aluno'}!\n\nSeu pagamento para *${lead.product_name || 'Curso'}* foi confirmado com sucesso. 🎉\n\n🎫 *Seu Ingresso:* ${ticketUrl}\n\nObrigado por confiar na Vox Marketing Academy! 🙏`;
+
+            const uazBaseUrl = UAZAPI_URL.replace(/\/$/, '');
+            const waResponse = await fetch(`${uazBaseUrl}/send/text`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'token': UAZAPI_KEY,
+              },
+              body: JSON.stringify({
+                number: cleanPhone,
+                text: messageText,
+                delay: 0,
+                linkPreview: false,
+              }),
+            });
+
+            if (!waResponse.ok) {
+              console.error('Erro ao enviar WhatsApp via UazAPI:', await waResponse.text());
+            } else {
+              console.log('WhatsApp enviado com sucesso para:', cleanPhone);
+            }
+          }
+        } catch (waError) {
+          console.error('Erro ao processar envio de WhatsApp:', waError);
+        }
+      }
+
+      // 2. Envia email com ingresso usando a edge function send-ticket-email
+      if (lead.email) {
+        try {
+          const emailResponse = await fetch(`${PROJECT_URL}/functions/v1/send-ticket-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+              'apikey': SERVICE_ROLE_KEY,
+            },
+            body: JSON.stringify({
+              to: lead.email,
+              name: lead.name || 'Aluno',
+              subject: `Seu ingresso - ${lead.product_name || 'Curso Vox Marketing Academy'}`,
+              productName: lead.product_name || 'Curso Vox Marketing Academy',
+              ticketUrl: ticketUrl,
+            }),
+          });
+
+          if (!emailResponse.ok) {
+            console.error('Erro ao enviar email de ingresso:', await emailResponse.text());
+          } else {
+            console.log('Email de ingresso enviado com sucesso para:', lead.email);
+          }
+        } catch (emailError) {
+          console.error('Erro ao processar envio de email:', emailError);
+        }
+      }
     }
 
     return new Response(JSON.stringify({
       received: true,
       payment_id: paymentId,
-      lead_id: leadId,
-      status,
-      lead_updated: true,
+      payment_status: status,
+      lead_status: normalizedLeadStatus,
+      lead: updatedLead,
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('Webhook error:', error);
-    return new Response(JSON.stringify({ error: error?.message || 'Unexpected error' }), {
+    return new Response(JSON.stringify({
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

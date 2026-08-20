@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Input } from '../ui/Input';
-import { Printer, Loader2, CheckCircle, Upload, MessageCircle, Download } from 'lucide-react';
+import { Printer, Loader2, CheckCircle, Upload, MessageCircle, Download, Mail } from 'lucide-react';
 import { AppConfig, Lead } from '../../types';
 
 interface CertificateGeneratorProps {
@@ -15,6 +14,7 @@ interface CertificateGeneratorProps {
 export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allCheckouts, uploadService, isUploading, leads = [], defaultSignature = '' }) => {
   const [certGenData, setCertGenData] = useState({
     name: '',
+    email: '',
     phone: '',
     courseName: 'Curso de Tráfego Pago - Meta Ads',
     date: new Date().toLocaleDateString('pt-BR'),
@@ -29,8 +29,14 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
   const [searchLead, setSearchLead] = useState('');
   const [showLeadsDrop, setShowLeadsDrop] = useState(false);
   const [selectedTurma, setSelectedTurma] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
-  const turmas = Array.from(new Set(leads.map(l => l.turma).filter(Boolean))) as string[];
+  const turmas = Array.from(new Set([
+    ...leads.map(l => l.turma),
+    ...leads.map(l => l.product_name),
+    ...allCheckouts.map(c => c.turma),
+    ...allCheckouts.map(c => c.productName)
+  ].filter(Boolean))) as string[];
 
   // Update signature when defaultSignature changes from SignatureManager
   useEffect(() => {
@@ -43,7 +49,7 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
   }, [defaultSignature]);
 
   const filteredLeads = leads.filter(l => {
-    const matchTurma = selectedTurma ? l.turma === selectedTurma : true;
+    const matchTurma = selectedTurma ? (l.turma === selectedTurma || l.product_name === selectedTurma) : true;
     const matchSearch = searchLead
       ? l.name.toLowerCase().includes(searchLead.toLowerCase()) || (l.phone && l.phone.includes(searchLead))
       : true;
@@ -344,6 +350,97 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
     let prefix = '';
     if (num.length > 0 && num.length <= 11) prefix = '55'; // assume BR
     window.open(`https://wa.me/${prefix}${num}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
+  const handleEmail = async () => {
+    if (!certGenData.email) {
+      alert("Preencha o e-mail do aluno para enviar o certificado.");
+      return;
+    }
+    if (!certGenData.name || !certGenData.courseName) {
+      alert('Preencha o nome do aluno e do curso para gerar o certificado!');
+      return;
+    }
+
+    setIsSendingEmail(true);
+
+    try {
+      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+      const SEND_EMAIL_ENDPOINT = 'https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email';
+
+      let certificateUrl = `${window.location.origin}/?mode=certificate&name=${encodeURIComponent(certGenData.name)}&course=${encodeURIComponent(certGenData.courseName)}&date=${encodeURIComponent(certGenData.date)}&hours=${encodeURIComponent(certGenData.hours)}&instructor=${encodeURIComponent(certGenData.instructorName)}`;
+      if (certGenData.signatureUrl) {
+        certificateUrl += `&sig=${encodeURIComponent(certGenData.signatureUrl)}`;
+      }
+
+      const emailHtml = `
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0;padding:0;background:#eef1f5;font-family:Arial,Helvetica,sans-serif;">
+  <tr>
+    <td align="center" style="padding:40px 20px;">
+      <table role="presentation" width="100%" max-width="600" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;background:#ffffff;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,0.05);overflow:hidden;margin:0 auto;">
+        <tr>
+          <td align="center" style="padding:40px 30px 20px;">
+            ${certGenData.logoUrl ? `<img src="${certGenData.logoUrl}" width="120" style="display:block;margin:0 auto;" />` : `<h1 style="margin:0;color:#1e3a8a;font-size:36px;letter-spacing:4px;font-weight:900;">VOX</h1><p style="margin:5px 0 0;color:#0ea5e9;font-size:12px;letter-spacing:2px;font-weight:bold;">MARKETING ACADEMY</p>`}
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:0 30px;">
+            <h2 style="margin:0 0 15px;color:#1f2937;font-size:24px;">Seu Certificado está pronto!</h2>
+            <p style="margin:0 0 25px;color:#4b5563;font-size:16px;line-height:1.6;">
+              Olá <strong>${certGenData.name}</strong>, parabéns por concluir com êxito o <strong>${certGenData.courseName}</strong>. 
+              É com grande alegria que entregamos o seu certificado oficial.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding:10px 30px 40px;">
+            <a href="${certificateUrl}" target="_blank" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:16px 32px;border-radius:8px;font-size:16px;font-weight:bold;">
+              Abrir e Baixar PDF
+            </a>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:20px auto 0;max-width:600px;font-size:12px;line-height:1.5;color:#6b7280;text-align:center;">
+        Se o botão não funcionar, copie e cole este link no navegador:<br/>
+        <a href="${certificateUrl}" style="color:#2563eb;word-break:break-all;">${certificateUrl}</a>
+      </p>
+    </td>
+  </tr>
+</table>
+      `;
+
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (SUPABASE_ANON_KEY) {
+        headers.Authorization = `Bearer ${SUPABASE_ANON_KEY}`;
+        headers.apikey = SUPABASE_ANON_KEY;
+      }
+
+      const response = await fetch(SEND_EMAIL_ENDPOINT, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          to: certGenData.email,
+          name: certGenData.name,
+          subject: `Seu Certificado de Conclusão - ${certGenData.courseName}`,
+          productName: certGenData.courseName,
+          certificateUrl: certificateUrl,
+          message: emailHtml,
+          preserveCertificateLayout: true,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Erro HTTP ${response.status}`);
+      }
+
+      alert("Certificado enviado com sucesso para o e-mail!");
+    } catch (error) {
+      console.error("Erro ao enviar certificado por e-mail:", error);
+      alert(`Falha ao enviar e-mail: ${error instanceof Error ? error.message : "Erro desconhecido"}`);
+    } finally {
+      setIsSendingEmail(false);
+    }
   };
 
   const handleOpenInNewTab = () => {
@@ -658,7 +755,7 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
                     key={lead.id}
                     className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0"
                     onClick={() => {
-                      setCertGenData(prev => ({ ...prev, name: lead.name, phone: lead.phone }));
+                      setCertGenData(prev => ({ ...prev, name: lead.name, phone: lead.phone || '', email: lead.email || '' }));
                       setSearchLead(lead.name);
                       setShowLeadsDrop(false);
                     }}
@@ -673,7 +770,10 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
 
           <Input label="Nome do Aluno no Certificado" type="text" placeholder="Nome Completo" value={certGenData.name} onChange={v => setCertGenData({ ...certGenData, name: v })} />
 
-          <Input label="WhatsApp para Envio" type="text" placeholder="(DD) 90000-0000" value={certGenData.phone} onChange={v => setCertGenData({ ...certGenData, phone: v })} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="E-mail para Envio" type="text" placeholder="aluno@email.com" value={certGenData.email} onChange={v => setCertGenData({ ...certGenData, email: v })} />
+            <Input label="WhatsApp para Envio" type="text" placeholder="(DD) 90000-0000" value={certGenData.phone} onChange={v => setCertGenData({ ...certGenData, phone: v })} />
+          </div>
 
           <div className="space-y-1">
             <label className="text-sm font-black text-gray-700">Selecione o Treinamento / Curso</label>
@@ -765,6 +865,13 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
               className="w-full bg-green-500 text-white py-4 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-green-600 transition-all flex items-center justify-center gap-2"
             >
               <MessageCircle size={18} /> ENVIAR POR WHATSAPP
+            </button>
+            <button
+              onClick={handleEmail}
+              disabled={isSendingEmail}
+              className={`w-full text-white py-4 rounded-2xl font-black text-xs uppercase shadow-xl transition-all flex items-center justify-center gap-2 ${isSendingEmail ? 'bg-gray-400 cursor-not-allowed opacity-70' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 hover:-translate-y-1'}`}
+            >
+              {isSendingEmail ? <Loader2 size={18} className="animate-spin" /> : <Mail size={18} />} {isSendingEmail ? 'ENVIANDO...' : 'ENVIAR POR E-MAIL'}
             </button>
           </div>
         </div>

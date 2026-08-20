@@ -1,7 +1,14 @@
 
 import React, { useMemo, useState } from 'react';
-import { Ticket, GraduationCap, Printer, Trash2, Loader2 } from 'lucide-react';
+import { Ticket, GraduationCap, Printer, Trash2, Loader2, Mail, Check, XCircle } from 'lucide-react';
 import { AppConfig, Lead } from '../../types';
+
+const SEND_EMAIL_ENDPOINT = 'https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email';
+const SUPABASE_ANON_KEY =
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  import.meta.env.VITE_SUPABASE_KEY ||
+  '';
 
 interface TicketLogsProps {
     leads: Lead[];
@@ -20,6 +27,66 @@ export const TicketLogs: React.FC<TicketLogsProps> = ({
 }) => {
     const [selectedTicketFilter, setSelectedTicketFilter] = useState<string>('all');
     const [selectedTicketTurmaFilter, setSelectedTicketTurmaFilter] = useState<string>('all');
+    const [sendingStates, setSendingStates] = useState<Record<string, 'idle' | 'sending' | 'sent' | 'error'>>({});
+
+    const handleSendEmail = async (lead: Lead) => {
+        if (!lead.email) {
+            alert('Este aluno não tem e-mail cadastrado.');
+            return;
+        }
+
+        const confirmSend = confirm(`Enviar ingresso para ${lead.name} (${lead.email}) por e-mail?`);
+        if (!confirmSend) return;
+
+        setSendingStates(prev => ({ ...prev, [lead.id]: 'sending' }));
+
+        try {
+            const ticketUrl = `${window.location.origin}/?mode=ticket&checkout=${encodeURIComponent(lead.product_id || '')}&cpf=${encodeURIComponent(lead.cpf || '')}`;
+            
+            const htmlMessage = `
+              <p>Olá! 🎉 Aqui está seu ingresso.</p>
+              <p style="margin-top: 18px;"><strong>🎫 Seu ingresso:</strong></p>
+              <p><a href="${ticketUrl}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 18px;border-radius:12px;font-weight:bold;">Abrir ingresso</a></p>
+              <p style="font-size:13px;color:#6b7280;">Caso o botão não funcione, copie e cole este link no navegador:<br />${ticketUrl}</p>
+            `;
+
+            const response = await fetch(SEND_EMAIL_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(SUPABASE_ANON_KEY ? {
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'apikey': SUPABASE_ANON_KEY
+                    } : {})
+                },
+                body: JSON.stringify({
+                    to: lead.email,
+                    name: lead.name || 'Aluno',
+                    subject: `Seu Ingresso - ${lead.product_name || 'Vox Marketing Academy'}`,
+                    productName: lead.product_name || 'Vox Marketing Academy',
+                    message: htmlMessage,
+                    ticketUrl,
+                    certificateUrl: ''
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Erro ao enviar e-mail');
+            }
+
+            setSendingStates(prev => ({ ...prev, [lead.id]: 'sent' }));
+            
+            // Clear success state after a few seconds
+            setTimeout(() => {
+                setSendingStates(prev => ({ ...prev, [lead.id]: 'idle' }));
+            }, 3000);
+
+        } catch (error) {
+            console.error('Erro ao enviar e-mail:', error);
+            setSendingStates(prev => ({ ...prev, [lead.id]: 'error' }));
+            alert('Falha ao enviar e-mail. Tente novamente.');
+        }
+    };
 
     const uniqueTurmas = useMemo(() => {
         const turmasFromLeads = leads.map(l => l.turma).filter(Boolean);
@@ -37,13 +104,24 @@ export const TicketLogs: React.FC<TicketLogsProps> = ({
                 utmSource === 'Manual_Entry' ||
                 source === 'manual' ||
                 utmSource === 'checkout' ||
-                lead.ticket_generated === true;
+                lead.ticket_generated === true ||
+                lead.status === 'Pago' ||
+                lead.status === 'Aprovado';
             const matchProduct = selectedTicketFilter === 'all' || lead.product_id === selectedTicketFilter;
-            const matchTurma = selectedTicketTurmaFilter === 'all' || lead.turma === selectedTicketTurmaFilter;
+            
+            let matchTurma = false;
+            if (selectedTicketTurmaFilter === 'all') {
+                matchTurma = true;
+            } else {
+                const checkoutForLead = allCheckouts.find(c => c.id === lead.product_id);
+                matchTurma = lead.turma === selectedTicketTurmaFilter || 
+                             checkoutForLead?.turma === selectedTicketTurmaFilter ||
+                             checkoutForLead?.productName === selectedTicketTurmaFilter;
+            }
 
             return isTicketLead && matchProduct && matchTurma;
         });
-    }, [leads, selectedTicketFilter, selectedTicketTurmaFilter]);
+    }, [leads, selectedTicketFilter, selectedTicketTurmaFilter, allCheckouts]);
 
     return (
         <div className="animate-in fade-in duration-500 space-y-8 pb-20">
@@ -117,6 +195,28 @@ export const TicketLogs: React.FC<TicketLogsProps> = ({
                                         <td className="p-6 font-bold text-gray-500 text-xs">{lead.date}</td>
                                         <td className="p-6 text-center">
                                             <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    onClick={() => handleSendEmail(lead)}
+                                                    disabled={sendingStates[lead.id] === 'sending'}
+                                                    className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-all ${
+                                                        sendingStates[lead.id] === 'sent' 
+                                                            ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
+                                                            : sendingStates[lead.id] === 'error'
+                                                            ? 'bg-red-500 text-white hover:bg-red-600'
+                                                            : 'bg-blue-500 text-white hover:bg-blue-600'
+                                                    }`}
+                                                    title="Enviar Ingresso por E-mail"
+                                                >
+                                                    {sendingStates[lead.id] === 'sending' ? (
+                                                        <Loader2 size={18} className="animate-spin" />
+                                                    ) : sendingStates[lead.id] === 'sent' ? (
+                                                        <Check size={18} />
+                                                    ) : sendingStates[lead.id] === 'error' ? (
+                                                        <XCircle size={18} />
+                                                    ) : (
+                                                        <Mail size={18} />
+                                                    )}
+                                                </button>
                                                 <button
                                                     onClick={() => onReprintTicket(lead)}
                                                     className="w-10 h-10 bg-amber-500 text-white rounded-xl flex items-center justify-center shadow-lg hover:bg-amber-600 transition-all"

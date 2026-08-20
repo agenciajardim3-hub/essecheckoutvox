@@ -19,6 +19,7 @@ export interface Lead extends CustomerData {
   status?: 'Novo' | 'Pago' | 'Pendente' | 'Sinal' | 'Pagar no dia' | 'Aprovado' | 'Cancelado' | 'Devolvido' | 'Abandonado';
   paid_amount?: number;
   payment_method?: 'Pix' | 'Cartão' | 'Boleto' | 'Dinheiro' | 'Outro';
+  payment_location?: string;
   created_at?: string;
   checked_in?: boolean;
   checked_in_at?: string;
@@ -42,6 +43,7 @@ export interface Expense {
   category: 'material' | 'equipamento' | 'marketing' | 'infraestrutura' | 'servico' | 'outro';
   date: string;
   created_at?: string;
+  checkout_id?: string;
 }
 
 export interface FormRequest {
@@ -83,6 +85,7 @@ export interface AppConfig {
   eventEndTime?: string;
   eventLocation?: string;
   ga4Id?: string;
+  gtmId?: string;
   metaPixelId?: string;
   isActive?: boolean;
   slug?: string;
@@ -102,8 +105,12 @@ export interface AppConfig {
   // Emitente info
   emitted_by?: string;
   emission_date?: string;
-  // Folder/Category
+  // Organização dos checkouts
+  city?: string;
+  neighborhood?: string;
   folder?: string;
+  // Social Proof
+  viewerCount?: number; // Base number for "X people viewing now" (fluctuates ±3)
 }
 
 export interface MultiTicketPurchase {

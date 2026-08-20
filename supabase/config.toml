@@ -1,0 +1,30 @@
+# Supabase Configuration
+# This file configures the local Supabase development environment
+
+[api]
+# Port to run the API server on
+port = 54321
+
+[db]
+# Port to run PostgreSQL on
+port = 54322
+
+[studio]
+# Port to run Supabase Studio on
+port = 54323
+
+[inbucket]
+# Port to run Inbucket (email testing) on
+port = 54324
+
+[functions]
+# Edge functions are stored in ./functions directory
+# To deploy: supabase functions deploy <function-name>
+# Production secrets must be configured in Supabase Dashboard → Edge Functions → Secrets.
+
+[functions.mp-webhook]
+# Mercado Pago não envia JWT do Supabase, então o webhook precisa ser público.
+verify_jwt = false
+
+[auth]
+# Authentication settings (optional)
