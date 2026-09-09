@@ -124,7 +124,83 @@ Deno.serve(async (req) => {
 
       const ticketUrl = `${FRONTEND_URL}/?mode=ticket&checkout=${encodeURIComponent(lead.product_id || '')}&cpf=${encodeURIComponent(lead.cpf || '')}`;
 
-      // 1. Envia mensagem via WhatsApp usando UazAPI se os secrets estiverem configurados
+      // 1. Envia o Purchase para o Meta pela Conversions API.
+      // É o que garante a conversão em PIX/boleto (o cliente já saiu do site quando o
+      // pagamento é aprovado) e em quem usa adblock/iOS, onde o Pixel não dispara.
+      // O event_id é o mesmo gravado no lead durante o checkout, então quando o Pixel
+      // também chega o Meta deduplica e conta uma venda só.
+      try {
+        // Pixel do checkout tem prioridade; META_PIXEL_ID entra como padrão global.
+        let pixelId = Deno.env.get('META_PIXEL_ID') || '';
+        if (lead.product_id) {
+          const checkoutResponse = await fetch(
+            `${PROJECT_URL}/rest/v1/checkouts?id=eq.${encodeURIComponent(lead.product_id)}&select=meta_pixel_id`,
+            {
+              headers: {
+                apikey: SERVICE_ROLE_KEY,
+                Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+              },
+            }
+          );
+          const checkoutRows = await checkoutResponse.json().catch(() => null);
+          const checkoutPixel = Array.isArray(checkoutRows) ? checkoutRows[0]?.meta_pixel_id : '';
+          if (checkoutPixel) pixelId = checkoutPixel;
+        }
+
+        if (pixelId) {
+          const [firstName, ...lastNameParts] = String(lead.name || '').trim().split(/\s+/);
+          const capiResponse = await fetch(`${PROJECT_URL}/functions/v1/meta-capi`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+              apikey: SERVICE_ROLE_KEY,
+            },
+            body: JSON.stringify({
+              pixelId,
+              eventName: 'Purchase',
+              // Sem fb_event_id (leads antigos) o id do lead serve de chave estável:
+              // reprocessar o mesmo webhook não gera uma segunda conversão.
+              eventId: lead.fb_event_id || `lead_${lead.id}`,
+              eventTime: Math.floor(Date.now() / 1000),
+              eventSourceUrl: `${FRONTEND_URL}/?checkout=${encodeURIComponent(lead.product_id || '')}`,
+              actionSource: 'website',
+              // useRequestClient fica desligado de propósito: o IP desta requisição é o do
+              // Mercado Pago, não o do comprador. A atribuição vem do fbp/fbc salvos no lead.
+              userData: {
+                email: lead.email || '',
+                phone: lead.phone || '',
+                firstName: firstName || '',
+                lastName: lastNameParts.join(' '),
+                city: lead.city || '',
+                externalId: lead.cpf || '',
+                fbp: lead.fbp || '',
+                fbc: lead.fbc || '',
+              },
+              customData: {
+                value: paidAmount,
+                currency: payment.currency_id || 'BRL',
+                content_type: 'product',
+                content_ids: [lead.product_id].filter(Boolean),
+                content_name: lead.product_name || '',
+                order_id: String(paymentId),
+              },
+            }),
+          });
+
+          if (!capiResponse.ok) {
+            console.error('Erro ao enviar Purchase para o Meta (CAPI):', await capiResponse.text());
+          } else {
+            console.log('Purchase enviado para o Meta (CAPI). Lead:', lead.id);
+          }
+        } else {
+          console.log('Nenhum Meta Pixel configurado para este checkout — Purchase CAPI ignorado.');
+        }
+      } catch (capiError) {
+        console.error('Erro ao processar envio para o Meta (CAPI):', capiError);
+      }
+
+      // 2. Envia mensagem via WhatsApp usando UazAPI se os secrets estiverem configurados
       if (UAZAPI_URL && UAZAPI_KEY && lead.phone) {
         try {
           let cleanPhone = lead.phone.replace(/\D/g, '');
@@ -161,7 +237,7 @@ Deno.serve(async (req) => {
         }
       }
 
-      // 2. Envia email com ingresso usando a edge function send-ticket-email
+      // 3. Envia email com ingresso usando a edge function send-ticket-email
       if (lead.email) {
         try {
           const emailResponse = await fetch(`${PROJECT_URL}/functions/v1/send-ticket-email`, {

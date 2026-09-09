@@ -1,46 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, Eye, Globe, Key, Check, Loader2, Info } from 'lucide-react';
+import { Settings, Save, Eye, Globe, Key, Check, Loader2, Info, AlertTriangle } from 'lucide-react';
+import { useSupabase } from '../../hooks/useSupabase';
+import {
+    DEFAULT_GLOBAL_TRACKING,
+    GlobalTrackingSettings,
+    loadGlobalTrackingSettings,
+    saveGlobalTrackingSettings,
+} from '../../utils/globalTracking';
 
 interface GlobalSettingsProps {
-    onSave?: (settings: GlobalSettings) => void;
+    onSave?: (settings: GlobalTrackingSettings) => void;
 }
-
-interface GlobalSettings {
-    globalPixelId: string;
-    globalGa4Id: string;
-    pixelEnabled: boolean;
-    ga4Enabled: boolean;
-}
-
-const STORAGE_KEY = 'vox_global_tracking_settings';
 
 export const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onSave }) => {
+    const supabase = useSupabase();
     const [loading, setLoading] = useState(false);
-    const [settings, setSettings] = useState<GlobalSettings>({
-        globalPixelId: '',
-        globalGa4Id: '',
-        pixelEnabled: true,
-        ga4Enabled: true
-    });
+    const [settings, setSettings] = useState<GlobalTrackingSettings>(DEFAULT_GLOBAL_TRACKING);
     const [saved, setSaved] = useState(false);
+    const [error, setError] = useState('');
 
+    // Fonte da verdade é o Supabase: antes isto ficava só no localStorage do admin,
+    // então o pixel global nunca chegava ao navegador do cliente.
     useEffect(() => {
-        // Load from localStorage
-        const savedSettings = localStorage.getItem(STORAGE_KEY);
-        if (savedSettings) {
-            try {
-                setSettings(JSON.parse(savedSettings));
-            } catch {}
-        }
-    }, []);
+        let cancelled = false;
+        loadGlobalTrackingSettings(supabase).then(loaded => {
+            if (!cancelled) setSettings(loaded);
+        });
+        return () => { cancelled = true; };
+    }, [supabase]);
 
-    const handleSave = () => {
+    const handleSave = async () => {
         setLoading(true);
+        setError('');
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+            await saveGlobalTrackingSettings(supabase, settings);
             setSaved(true);
             if (onSave) onSave(settings);
             setTimeout(() => setSaved(false), 2000);
+        } catch (err: any) {
+            setError(err?.message || 'Não foi possível salvar as configurações globais.');
         } finally {
             setLoading(false);
         }
@@ -187,6 +185,20 @@ export const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onSave }) => {
                     </>
                 )}
             </button>
+
+            {error && (
+                <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+                    <AlertTriangle className="text-red-600 shrink-0 mt-0.5" size={18} />
+                    <div className="text-sm text-red-800">
+                        <p className="font-bold">Erro ao salvar</p>
+                        <p className="text-xs mt-1">{error}</p>
+                        <p className="text-xs mt-1">
+                            Se a tabela ainda não existe, rode a migração{' '}
+                            <span className="font-mono">sql/migrations/add_meta_tracking_fields.sql</span>.
+                        </p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

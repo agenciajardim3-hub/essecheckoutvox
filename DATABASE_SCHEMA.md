@@ -57,6 +57,11 @@ CREATE TABLE leads (
   -- Emitente (para NFe/Doc)
   emitted_by TEXT,
   emission_date DATE,
+
+  -- Rastreamento Meta (Pixel + Conversions API)
+  fb_event_id TEXT,   -- gerado no checkout; o mp-webhook reusa para o Meta deduplicar Pixel x CAPI
+  fbp TEXT,           -- cookie _fbp do comprador
+  fbc TEXT,           -- cookie _fbc (ou derivado do fbclid da URL do anúncio)
   
   -- Timestamps
   created_at TIMESTAMP DEFAULT NOW(),
@@ -76,7 +81,10 @@ CREATE INDEX idx_leads_status ON leads(status);
 CREATE INDEX idx_leads_product_id ON leads(product_id);
 CREATE INDEX idx_leads_turma ON leads(turma);
 CREATE INDEX idx_leads_created_at ON leads(created_at DESC);
+CREATE INDEX idx_leads_fb_event_id ON leads(fb_event_id);
 ```
+
+> Migração: `sql/migrations/add_meta_tracking_fields.sql`
 
 ---
 
@@ -321,6 +329,27 @@ CREATE TABLE solicitacoes (
 
 CREATE INDEX idx_solicitacoes_email ON solicitacoes(email);
 ```
+
+---
+
+### **global_tracking_settings** (Pixel/GA4 global)
+Linha única (`id = 'default'`) com o rastreamento aplicado a todos os checkouts.
+Precisa ficar no banco — e não em localStorage — porque quem lê é o **navegador do
+visitante**, não o do admin. O `meta_pixel_id` do checkout tem prioridade sobre este.
+
+```sql
+CREATE TABLE global_tracking_settings (
+  id TEXT PRIMARY KEY DEFAULT 'default',
+  global_pixel_id TEXT DEFAULT '',
+  global_ga4_id TEXT DEFAULT '',
+  pixel_enabled BOOLEAN DEFAULT TRUE,
+  ga4_enabled BOOLEAN DEFAULT TRUE,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+> Migração: `sql/migrations/add_meta_tracking_fields.sql`
+> Leitura anônima é obrigatória: o checkout público consulta esta tabela.
 
 ---
 

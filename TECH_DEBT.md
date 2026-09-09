@@ -4,6 +4,26 @@ Lista de melhorias e correções necessárias para otimizar a plataforma.
 
 ---
 
+## ✅ Resolvido
+
+### **Rastreamento Meta enviava eventos errados** (corrigido em 2026-09-09)
+- **Status**: ✅ **RESOLVIDO**
+- **Problemas encontrados na auditoria**:
+  - `ViewContent` disparava antes do `fbq('init')` (effect do filho roda antes do pai) e era descartado
+  - Pixel global ficava em `localStorage` do admin — nunca chegava ao navegador do cliente
+  - `Purchase` duplicado: ThankYouPage + dashboard (este último com IP/cookie do admin)
+  - `Purchase` com valor do preço unitário, ignorando quantidade e cupom
+  - PIX/boleto nunca geravam `Purchase` (`auto_return: 'approved'` só volta com `success=true`)
+  - Sem Conversions API e sem `event_id`: 20-40% dos eventos perdidos por adblock/iOS
+  - `hashEmail()`/`hashPhone()` não hasheavam nada e a PII ia em texto puro no `custom_data`
+  - `PageView` refeito a cada mudança de config; `trackMetaEvent` era código morto
+- **Solução**: `src/utils/metaPixel.ts` (fila + dedupe + SHA-256), `supabase/functions/meta-capi/`,
+  `Purchase` server-side no `mp-webhook`, config global movida para o Supabase
+- **Pendência de operação**: rodar `sql/migrations/add_meta_tracking_fields.sql` e configurar
+  os secrets `META_PIXEL_ID` / `META_CAPI_TOKEN`
+
+---
+
 ## 🔥 Critical (Bloqueia features)
 
 ### 1. **Campo "Valor" não aceita , (vírgula) e . (ponto)**

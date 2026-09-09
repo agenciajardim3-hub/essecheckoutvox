@@ -7,6 +7,22 @@ import { useSupabase } from './src/hooks/useSupabase';
 import { useNotifications } from './src/hooks/useNotifications';
 import { usePullToRefresh } from './src/hooks/usePullToRefresh';
 import { AppConfig, Lead, CustomerData, UserRole, MultiTicketPurchase, Coupon } from './src/types';
+import {
+  getFbc,
+  getFbp,
+  initMetaPixel,
+  newEventId,
+  setMetaUserData,
+  trackMeta,
+  trackMetaPageView,
+} from './src/utils/metaPixel';
+import { sendMetaCapiEvent } from './src/utils/metaCapi';
+import { savePendingPurchase } from './src/utils/pendingPurchase';
+import {
+  loadGlobalTrackingSettings,
+  readCachedGlobalTracking,
+  GlobalTrackingSettings,
+} from './src/utils/globalTracking';
 // Lazy load Dashboard for code splitting
 const Dashboard = lazy(() => import('./src/components/dashboard/Dashboard').then(module => ({ default: module.Dashboard })));
 import { ClientView } from './src/components/client/ClientView';
@@ -14,6 +30,23 @@ import { RegistrationSuccess } from './src/components/client/RegistrationSuccess
 import { ThankYouPage } from './src/components/client/ThankYouPage';
 import { LoginPage } from './src/components/auth/LoginPage';
 import { SolicitacaoFormPage } from './src/components/client/SolicitacaoFormPage';
+
+// Colunas de rastreamento Meta gravadas no lead. Enquanto a migração
+// sql/migrations/add_meta_tracking_fields.sql não for aplicada, o insert falharia e
+// derrubaria o checkout inteiro — daí o retry sem esses campos abaixo.
+const META_LEAD_FIELDS = ['fb_event_id', 'fbp', 'fbc'];
+
+const isMissingMetaColumn = (err: any): boolean => {
+  const message = `${err?.message || ''} ${err?.details || ''}`.toLowerCase();
+  const mentionsMetaField = META_LEAD_FIELDS.some(field => message.includes(field));
+  return mentionsMetaField && (message.includes('column') || message.includes('schema cache'));
+};
+
+const withoutMetaFields = (payload: any) => {
+  const clone = { ...payload };
+  META_LEAD_FIELDS.forEach(field => delete clone[field]);
+  return clone;
+};
 
 export default function App() {
   const supabase = useSupabase();
@@ -34,6 +67,8 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [dbStatus, setDbStatus] = useState<'online' | 'offline' | 'error'>('online');
   const [headerClicks, setHeaderClicks] = useState(0);
+  // Cache local primeiro para o pixel subir sem esperar o banco; o valor real chega logo depois.
+  const [globalTracking, setGlobalTracking] = useState<GlobalTrackingSettings>(readCachedGlobalTracking);
 
   // Client State
   const [customer, setCustomer] = useState<CustomerData>({ name: '', email: '', phone: '', city: '', cpf: '' });
@@ -499,28 +534,28 @@ export default function App() {
       document.head.appendChild(script2);
     }
     
-    // Load Global Settings
-    const globalSettings = JSON.parse(localStorage.getItem('vox_global_tracking_settings') || '{}');
-    
-    // Use checkout-specific settings if available, otherwise use global settings
-    const effectivePixelId = config.metaPixelId || (globalSettings.pixelEnabled ? globalSettings.globalPixelId : '');
-    const effectiveGa4Id = config.ga4Id || (globalSettings.ga4Enabled ? globalSettings.globalGa4Id : '');
+  }, [config.gtmId, config.ga4Id, config.id, config.slug, config.productName, config.productPrice]);
 
-    // Load Meta Pixel if configured (checkout-specific or global)
-    if (effectivePixelId) {
-      if (window.fbq) {
-        window.fbq('init', effectivePixelId);
-        window.fbq('track', 'PageView');
-      }
-    }
-  }, [config.gtmId, config.ga4Id, config.metaPixelId, config.id, config.slug, config.productName, config.productPrice]);
+  // Carrega as configurações globais de rastreamento do banco (não mais do localStorage do admin)
+  useEffect(() => {
+    let cancelled = false;
+    loadGlobalTrackingSettings(supabase).then(settings => {
+      if (!cancelled) setGlobalTracking(settings);
+    });
+    return () => { cancelled = true; };
+  }, [supabase]);
 
-  // Meta Pixel Event Helper
-  const trackMetaEvent = (eventName: string, data?: any) => {
-    if (window.fbq && config.metaPixelId) {
-      window.fbq('track', eventName, data);
+  // Pixel do checkout tem prioridade; senão cai no pixel global
+  const effectivePixelId = config.metaPixelId || (globalTracking.pixelEnabled ? globalTracking.globalPixelId : '');
+
+  // Inicializa o Meta Pixel. O init precisa acontecer antes de qualquer track — por isso
+  // os eventos passam por initMetaPixel/trackMeta, que enfileiram até o pixel estar pronto.
+  useEffect(() => {
+    if (!effectivePixelId) return;
+    if (initMetaPixel(effectivePixelId)) {
+      trackMetaPageView();
     }
-  };
+  }, [effectivePixelId]);
 
   // --- Handlers ---
   const handleHeaderClick = () => {
@@ -751,38 +786,58 @@ export default function App() {
       window.gtag('event', 'conversion', { 'send_to': `${config.ga4Id}/conversion_event` });
     }
     
-    // Tracking - Meta Pixel Events
+    // Tracking - Meta (Pixel + CAPI)
+    // O custom_data leva só dados do pedido. E-mail/telefone vão exclusivamente pelo
+    // Advanced Matching hasheado em SHA-256 — nunca em texto puro no payload do evento.
+    const responsible = purchase.participants[purchase.responsibleIndex] || purchase.participants[0];
+    const [firstName, ...lastNameParts] = (responsible?.name || '').trim().split(/\s+/);
+    const metaUserData = {
+      email: responsible?.email,
+      phone: responsible?.phone,
+      firstName,
+      lastName: lastNameParts.join(' '),
+      city: responsible?.city,
+      externalId: responsible?.cpf,
+    };
+    // await é necessário: o hash é assíncrono e o Advanced Matching precisa estar
+    // anexado ao pixel ANTES do evento sair, senão o evento vai sem dados de match.
+    await setMetaUserData(metaUserData);
+
     const metaData = {
       value: purchase.totalAmount,
       currency: 'BRL',
       content_type: 'product',
       content_ids: [config.id],
-      contents: purchase.participants.map(p => ({ id: config.id, quantity: 1 })),
-      userData: {
-        em: purchase.participants[0].email ? hashEmail(purchase.participants[0].email) : undefined,
-        ph: purchase.participants[0].phone ? hashPhone(purchase.participants[0].phone) : undefined,
-      }
+      content_name: config.productName,
+      num_items: purchase.quantity,
+      contents: [{ id: config.id, quantity: purchase.quantity, item_price: purchase.totalAmount / purchase.quantity }],
     };
-    
-    if (window.fbq && config.metaPixelId) {
-      if (isRegistrationMode) {
-        // Auto-registro - já é pagamento confirmado
-        window.fbq('track', 'Purchase', metaData);
-        window.fbq('track', 'Lead', { content_name: config.productName, turma: config.turma });
-      } else {
-        // Checkout normal - inicia pagamento
-        window.fbq('track', 'InitiateCheckout', metaData);
-        window.fbq('track', 'AddToCart', metaData);
-      }
+
+    // Mesmo event_id no Pixel e na CAPI: se os dois chegarem, o Meta conta uma conversão só.
+    // O id do Purchase nasce aqui e é gravado no lead, para que o mp-webhook use exatamente
+    // o mesmo id quando o pagamento for aprovado — inclusive em PIX/boleto pagos horas depois.
+    const purchaseEventId = newEventId();
+    const conversionEventId = isRegistrationMode ? purchaseEventId : newEventId();
+    const conversionEventName = isRegistrationMode ? 'Purchase' : 'InitiateCheckout';
+
+    trackMeta(conversionEventName, metaData, { eventId: conversionEventId });
+    sendMetaCapiEvent({
+      eventName: conversionEventName,
+      eventId: conversionEventId,
+      pixelId: effectivePixelId || undefined,
+      userData: metaUserData,
+      customData: metaData,
+    });
+
+    if (isRegistrationMode) {
+      // Auto-registro já é venda confirmada e não passa pelo Mercado Pago,
+      // então o webhook nunca dispara — o Lead precisa sair aqui.
+      trackMeta('Lead', { content_name: config.productName, content_category: config.turma });
     }
 
-    // Helper functions for Meta CAPI (hashing)
-    function hashEmail(email: string): string {
-      return email.toLowerCase().trim();
-    }
-    function hashPhone(phone: string): string {
-      return phone.replace(/\D/g, '');
-    }
+    // Cookies de atribuição do Meta, salvos no lead para a CAPI casar a venda com o anúncio
+    const fbp = getFbp();
+    const fbc = getFbc();
 
     try {
       // Create payload for each participant
@@ -806,6 +861,10 @@ export default function App() {
             ? (parseFloat(config.productPrice.replace(',', '.')) * purchase.quantity * appliedCoupon.discountValue / 100)
             : appliedCoupon.discountValue
         ) : 0,
+        // Rastreamento Meta: o webhook usa estes campos para enviar o Purchase pela CAPI
+        fb_event_id: purchaseEventId,
+        fbp: fbp || null,
+        fbc: fbc || null,
         ...(purchase.participants.length > 1 ? {
           notes: `Compra múltipla: ${index + 1}/${purchase.participants.length}. Responsável: ${purchase.participants[purchase.responsibleIndex].name}`
         } : {})
@@ -815,25 +874,40 @@ export default function App() {
       let insertedLeads: any[] | null = null;
       let error = null;
 
+      // Se as colunas de rastreamento ainda não existem no banco, salva sem elas:
+      // perder atribuição é ruim, perder a venda é inaceitável.
+      const insertLeads = async (rows: any[]) => {
+        const first = await supabase.from('leads').insert(rows).select();
+        if (first.error && isMissingMetaColumn(first.error)) {
+          console.warn('Colunas de rastreamento Meta ausentes. Rode sql/migrations/add_meta_tracking_fields.sql');
+          return await supabase.from('leads').insert(rows.map(withoutMetaFields)).select();
+        }
+        return first;
+      };
+
+      const updateLead = async (id: string, row: any) => {
+        const first = await supabase.from('leads').update(row).eq('id', id).select().single();
+        if (first.error && isMissingMetaColumn(first.error)) {
+          console.warn('Colunas de rastreamento Meta ausentes. Rode sql/migrations/add_meta_tracking_fields.sql');
+          return await supabase.from('leads').update(withoutMetaFields(row)).eq('id', id).select().single();
+        }
+        return first;
+      };
+
       if (purchase.abandonedLeadId) {
         // If we have an abandoned lead (usually the 1st participant/responsible), UPDATE it.
         // And INSERT the others.
         // Assuming participant[0] matches the abandoned lead.
 
         // 1. Update the abandoned lead
-        const { data: updated, error: updateError } = await supabase
-          .from('leads')
-          .update(payloads[0]) // Update with full data to be sure
-          .eq('id', purchase.abandonedLeadId)
-          .select()
-          .single();
+        const { data: updated, error: updateError } = await updateLead(purchase.abandonedLeadId, payloads[0]); // Update with full data to be sure
 
         if (updateError) throw updateError;
 
         // 2. Insert the rest if any
         if (payloads.length > 1) {
           const restPayloads = payloads.slice(1);
-          const { data: others, error: insertError } = await supabase.from('leads').insert(restPayloads).select();
+          const { data: others, error: insertError } = await insertLeads(restPayloads);
           if (insertError) throw insertError;
           insertedLeads = [updated, ...(others || [])];
         } else {
@@ -841,7 +915,7 @@ export default function App() {
         }
       } else {
         // Normal flow
-        const { data, error: insertError } = await supabase.from('leads').insert(payloads).select();
+        const { data, error: insertError } = await insertLeads(payloads);
         error = insertError;
         insertedLeads = data;
       }
@@ -874,6 +948,19 @@ export default function App() {
       setBarWidth('100%');
 
       if (!isRegistrationMode && !isTicketMode) {
+        // Guarda a compra real (valor já com cupom, quantidade e event_id) para a página de
+        // obrigado disparar o Purchase certo. Só depois do lead gravado, para que uma falha
+        // no insert não deixe uma compra fantasma pendente no navegador.
+        savePendingPurchase({
+          eventId: purchaseEventId,
+          checkoutId: config.id,
+          productName: config.productName,
+          value: purchase.totalAmount,
+          quantity: purchase.quantity,
+          currency: 'BRL',
+          couponCode: appliedCoupon?.code,
+        });
+
         // Show redirect message first, then redirect after delay
         setShowPaymentRedirect(true);
         
@@ -977,17 +1064,41 @@ export default function App() {
       if (targetLead) {
         const product = allCheckouts.find(c => c.id === targetLead.product_id);
         
-        // Meta Pixel - Purchase event when marked as "Pago"
-        if (newStatus === 'Pago' && product?.metaPixelId && window.fbq) {
-          window.fbq('track', 'Purchase', {
-            value: targetLead.paid_amount || parseFloat(product.productPrice?.replace(',', '.') || '0'),
-            currency: 'BRL',
-            content_type: 'product',
-            content_ids: [product.id],
-            content_name: product.productName,
-          });
+        // NÃO dispare Purchase aqui. Este código roda no navegador do ADMIN: o evento sairia
+        // com o IP, cookie e user-agent de quem está no painel, contaminando o pixel e
+        // duplicando a venda que o mp-webhook já envia pela CAPI com o event_id correto.
+        // Para venda registrada manualmente, o Purchase server-side sai abaixo.
+        if (newStatus === 'Pago') {
+          const pixelId = product?.metaPixelId || (globalTracking.pixelEnabled ? globalTracking.globalPixelId : '');
+          const isFromMercadoPago = !!targetLead.mp_preference_id;
+
+          // Vendas do Mercado Pago já são reportadas pelo mp-webhook — evita contar duas vezes.
+          if (pixelId && !isFromMercadoPago) {
+            const [firstName, ...lastNameParts] = (targetLead.name || '').trim().split(/\s+/);
+            sendMetaCapiEvent({
+              eventName: 'Purchase',
+              eventId: targetLead.fb_event_id || `lead_${targetLead.id}`,
+              pixelId,
+              fromBuyerBrowser: false, // não anexa IP/cookies do admin ao evento
+              userData: {
+                email: targetLead.email,
+                phone: targetLead.phone,
+                firstName,
+                lastName: lastNameParts.join(' '),
+                city: targetLead.city,
+                externalId: targetLead.cpf,
+              },
+              customData: {
+                value: targetLead.paid_amount || parseFloat(product?.productPrice?.replace(',', '.') || '0'),
+                currency: 'BRL',
+                content_type: 'product',
+                content_ids: [product?.id].filter(Boolean),
+                content_name: product?.productName,
+              },
+            });
+          }
         }
-        
+
         // Webhook Trigger
         if (newStatus === 'Pago' && product?.webhookUrl) {
           triggerWebhook(product.webhookUrl, { 

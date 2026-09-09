@@ -377,6 +377,49 @@ export const NovoModulo: React.FC<NovoModuloProps> = ({
 
 ---
 
+## 🆕 Rastreamento Meta corrigido (2026-09-09)
+
+### Arquitetura
+| Arquivo | Papel |
+|---------|-------|
+| `src/utils/metaPixel.ts` | Init idempotente + **fila de eventos** (nada dispara antes do `init`), `event_id` para dedupe, Advanced Matching SHA-256, leitura de `_fbp`/`_fbc` |
+| `src/utils/metaCapi.ts` | Relay do navegador para a Conversions API (recupera quem usa adblock/iOS) |
+| `src/utils/pendingPurchase.ts` | Passa valor/quantidade/`event_id` reais do checkout para a ThankYouPage; consumo único evita duplicar em F5 |
+| `src/utils/globalTracking.ts` | Pixel/GA4 global no **Supabase** (antes só no localStorage do admin, invisível ao cliente) |
+| `supabase/functions/meta-capi/` | Envia o evento ao Graph API com a PII hasheada server-side |
+| `supabase/functions/mp-webhook/` | Dispara `Purchase` via CAPI ao aprovar o pagamento (cobre PIX/boleto) |
+
+### Regras que não podem ser quebradas
+❌ **Nunca chame `window.fbq('track', ...)` direto.** Use `trackMeta()` — o `init` acontece
+no `App.tsx`, cujo effect roda DEPOIS dos filhos; sem a fila o evento é descartado pelo Meta.
+
+❌ **Nunca dispare evento de conversão a partir do dashboard.** Aquele código roda no
+navegador do admin: o IP, o cookie e o user-agent seriam os dele. Venda registrada
+manualmente vai por CAPI com `fromBuyerBrowser: false`.
+
+❌ **Nunca coloque e-mail, telefone ou CPF em `custom_data`.** PII só sai hasheada em
+SHA-256, pelo Advanced Matching (`setMetaUserData`) ou pela CAPI.
+
+✅ **Todo Purchase precisa de `event_id`**, gerado no checkout e gravado em `leads.fb_event_id`.
+É o que impede a venda de ser contada duas vezes (Pixel + CAPI).
+
+### Setup necessário
+```bash
+# 1. Migração (obrigatória — sem ela o app grava o lead sem atribuição)
+#    sql/migrations/add_meta_tracking_fields.sql no SQL Editor do Supabase
+
+# 2. Secrets
+META_PIXEL_ID=123456789012345        # padrão global (o pixel do checkout tem prioridade)
+META_CAPI_TOKEN=EAAG...              # Eventos > Conversions API > Gerar token de acesso
+META_TEST_EVENT_CODE=TEST12345       # opcional, só para validar em Eventos de Teste
+
+# 3. Deploy
+supabase functions deploy meta-capi
+supabase functions deploy mp-webhook
+```
+
+---
+
 ## 📌 Quick Links
 - [Arquitetura Completa](./ARCHITECTURE_CONTEXT.md)
 - [Schema do Banco](./DATABASE_SCHEMA.md)

@@ -100,7 +100,27 @@ Envio Automático: Ingressos (Email) + WhatsApp
 | **Mercado Pago** | Pagamentos | ✅ Ativo |
 | **Hostinger Email** | SMTP para envio | ✅ Ativo |
 | **Google Analytics** | Tracking | ✅ Ativo |
-| **Meta Pixel** | Remarketing | ✅ Ativo |
+| **Meta Pixel** | Remarketing / conversões no navegador | ✅ Ativo |
+| **Meta Conversions API** | Conversões server-side (PIX/boleto e perda por adblock/iOS) | ✅ Ativo |
+
+### Fluxo de conversão Meta
+
+```
+ClientView ──► trackMeta('ViewContent')      ─┐
+                                              ├─► fila em metaPixel.ts
+App.tsx    ──► initMetaPixel(pixelId)        ─┘   (o init do pai roda depois dos filhos)
+
+CheckoutForm ──► handleCheckoutSubmit
+                 ├─ setMetaUserData()  Advanced Matching SHA-256
+                 ├─ trackMeta('InitiateCheckout', eventId: A)
+                 ├─ sendMetaCapiEvent(eventId: A)          ← recupera adblock/iOS
+                 └─ grava no lead: fb_event_id = B, fbp, fbc
+
+Mercado Pago ──► ThankYouPage: trackMeta('Purchase', eventId: B)   [cartão aprovado]
+             └─► mp-webhook:   CAPI Purchase (eventId: B)          [inclusive PIX/boleto]
+                                    ▲
+                          mesmo event_id ⇒ o Meta deduplica e conta 1 venda
+```
 
 ## Stack Técnico
 

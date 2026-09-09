@@ -34,6 +34,11 @@ export interface Lead extends CustomerData {
   time?: string;
   emitted_by?: string;
   emission_date?: string;
+  mp_preference_id?: string;
+  // Rastreamento Meta: event_id para deduplicar Pixel x CAPI e cookies de atribuição
+  fb_event_id?: string;
+  fbp?: string;
+  fbc?: string;
 }
 
 export interface Expense {

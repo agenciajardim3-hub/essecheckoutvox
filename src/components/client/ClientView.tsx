@@ -4,6 +4,7 @@ import { AppConfig, CustomerData, MultiTicketPurchase, Coupon } from '../../type
 import { CheckoutForm } from './CheckoutForm';
 import { RegistrationSuccess } from './RegistrationSuccess';
 import { useSupabase } from '../../hooks/useSupabase';
+import { trackMeta } from '../../utils/metaPixel';
 
 interface ClientViewProps {
     config: AppConfig;
@@ -44,6 +45,8 @@ export const ClientView: React.FC<ClientViewProps> = ({
 }) => {
     const supabase = useSupabase();
     const hasTrackedView = useRef(false);
+    // Evita ViewContent duplicado no mesmo checkout (StrictMode em dev, re-render em prod)
+    const trackedViewContentId = useRef<string | null>(null);
 
     const effectiveConfig = React.useMemo(() => {
         const params = new URLSearchParams(window.location.search);
@@ -149,16 +152,24 @@ export const ClientView: React.FC<ClientViewProps> = ({
             currency: 'BRL'
         });
 
-        if (window.fbq && effectiveConfig.metaPixelId) {
-            window.fbq('track', 'ViewContent', {
-                content_type: 'product',
-                content_ids: [effectiveConfig.id],
-                content_name: effectiveConfig.productName,
-                value: parseFloat(effectiveConfig.productPrice?.replace(',', '.') || '0'),
-                currency: 'BRL',
-            });
-        }
     }, [effectiveConfig, supabase]);
+
+    // ViewContent fica em um effect separado do registro de view no banco: aquele é
+    // limitado a 1x por sessão, este precisa sair em todo carregamento da página.
+    // trackMeta enfileira o evento se o pixel ainda não inicializou (o init acontece no App,
+    // cujo effect roda DEPOIS deste por ser o componente pai) — antes o evento era descartado.
+    useEffect(() => {
+        if (!effectiveConfig.id) return;
+        if (trackedViewContentId.current === effectiveConfig.id) return;
+        trackedViewContentId.current = effectiveConfig.id;
+        trackMeta('ViewContent', {
+            content_type: 'product',
+            content_ids: [effectiveConfig.id],
+            content_name: effectiveConfig.productName,
+            value: parseFloat(effectiveConfig.productPrice?.replace(',', '.') || '0'),
+            currency: 'BRL',
+        });
+    }, [effectiveConfig.id, effectiveConfig.productName, effectiveConfig.productPrice]);
 
     return (
         <div className="min-h-screen bg-[#f1f5f9] flex flex-col items-center justify-start lg:justify-center py-4 sm:py-8 lg:py-12 px-3 sm:px-6 overflow-x-hidden">

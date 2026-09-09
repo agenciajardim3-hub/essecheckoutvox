@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle, Calendar, Clock, MapPin, ArrowRight, PartyPopper, Sparkles } from 'lucide-react';
 import { AppConfig } from '../../types';
+import { trackMeta } from '../../utils/metaPixel';
+import { consumePendingPurchase } from '../../utils/pendingPurchase';
 
 interface ThankYouPageProps {
     config: AppConfig;
@@ -14,24 +16,36 @@ export const ThankYouPage: React.FC<ThankYouPageProps> = ({ config }) => {
         setTimeout(() => setShowContent(true), 300);
         setTimeout(() => setShowConfetti(false), 5000);
         
-        // Meta Pixel - Purchase event (conversão concluída)
-        if (window.fbq && config.metaPixelId) {
-            window.fbq('track', 'Purchase', {
-                value: parseFloat(config.productPrice?.replace(',', '.') || '0'),
-                currency: 'BRL',
-                content_type: 'product',
-                content_ids: [config.id],
-                content_name: config.productName,
-            });
-        }
-        
+        // Purchase só dispara se houver uma compra pendente registrada no checkout.
+        // consumePendingPurchase apaga o registro na leitura: assim um F5 nesta página
+        // não conta a venda de novo. Se o registro sumiu (outro navegador, storage limpo),
+        // a venda ainda é reportada pelo mp-webhook via Conversions API.
+        const purchase = consumePendingPurchase();
+        if (!purchase) return;
+
+        // Mesmo event_id gerado no checkout e gravado no lead -> o Meta deduplica
+        // este Purchase do Pixel com o Purchase que o mp-webhook envia pela CAPI.
+        trackMeta('Purchase', {
+            value: purchase.value,
+            currency: purchase.currency || 'BRL',
+            content_type: 'product',
+            content_ids: [purchase.checkoutId || config.id],
+            content_name: purchase.productName || config.productName,
+            num_items: purchase.quantity,
+            contents: [{
+                id: purchase.checkoutId || config.id,
+                quantity: purchase.quantity,
+                item_price: purchase.quantity > 0 ? purchase.value / purchase.quantity : purchase.value,
+            }],
+        }, { eventId: purchase.eventId });
+
         // GA4 - purchase conversion
         if (window.gtag && config.ga4Id) {
             window.gtag('event', 'purchase', {
-                transaction_id: Date.now().toString(),
-                value: parseFloat(config.productPrice?.replace(',', '.') || '0'),
-                currency: 'BRL',
-                items: [{ item_name: config.productName, item_id: config.id }]
+                transaction_id: purchase.eventId,
+                value: purchase.value,
+                currency: purchase.currency || 'BRL',
+                items: [{ item_name: purchase.productName || config.productName, item_id: purchase.checkoutId || config.id, quantity: purchase.quantity }]
             });
         }
     }, []);
