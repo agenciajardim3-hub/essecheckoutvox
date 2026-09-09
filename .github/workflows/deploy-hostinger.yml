@@ -1,0 +1,75 @@
+# Publica o site na Hostinger via FTP.
+#
+# Antes do primeiro uso, cadastre os secrets em:
+#   Settings > Secrets and variables > Actions > New repository secret
+#     FTP_SERVER    host FTP da Hostinger (ex: ftp.seudominio.com)
+#     FTP_USERNAME  usuário FTP
+#     FTP_PASSWORD  senha FTP
+#     FTP_DIR       (opcional) pasta de destino, padrão /public_html/
+#
+# Depois: aba Actions > "Deploy site (Hostinger)" > Run workflow.
+#
+# Só envia arquivos novos ou alterados — nada é apagado no servidor, então
+# .htaccess, uploads e qualquer arquivo fora do build continuam intactos.
+
+name: Deploy site (Hostinger)
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch a publicar'
+        required: true
+        default: '3.0'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Conferir se os secrets de FTP existem
+        run: |
+          missing=""
+          [ -z "${{ secrets.FTP_SERVER }}" ] && missing="$missing FTP_SERVER"
+          [ -z "${{ secrets.FTP_USERNAME }}" ] && missing="$missing FTP_USERNAME"
+          [ -z "${{ secrets.FTP_PASSWORD }}" ] && missing="$missing FTP_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Secrets ausentes:$missing — cadastre em Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Instalar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Compilar o site
+        run: npm run build
+
+      - name: Copiar arquivos que não vêm do build
+        run: |
+          # _redirects não é gerado pelo Vite; mantém o que já existe no repositório.
+          [ -f dist_upload/_redirects ] && cp dist_upload/_redirects dist/_redirects || true
+          ls -la dist
+
+      - name: Enviar para a Hostinger
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./dist/
+          server-dir: ${{ secrets.FTP_DIR || '/public_html/' }}
+          # Nunca limpar o servidor: preserva .htaccess, uploads e arquivos antigos.
+          dangerous-clean-slate: false
+
+      - name: Resumo
+        run: echo "Site publicado a partir da branch ${{ inputs.branch }}."
