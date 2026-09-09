@@ -119,6 +119,31 @@ export const buildAdvancedMatching = async (userData: MetaUserData): Promise<Rec
   return matching;
 };
 
+/**
+ * Extrai o ID numérico do pixel a partir do que estiver salvo no checkout.
+ * Aceita o ID puro e também o bloco `<script>` inteiro do Meta colado por engano
+ * (erro comum: o campo antes aceitava qualquer texto, e o fbq('init') falhava
+ * silenciosamente com o script inteiro no lugar do número).
+ * Retorna '' para qualquer coisa que não seja um ID plausível.
+ */
+export const normalizePixelId = (raw: string): string => {
+  if (!raw) return '';
+  const value = String(raw).trim();
+
+  // ID puro
+  if (/^\d{10,20}$/.test(value)) return value;
+
+  // Script do Meta colado inteiro: pega o argumento do fbq('init', '...')
+  const fromInit = value.match(/init['"\s,]+['"](\d{10,20})['"]/);
+  if (fromInit) return fromInit[1];
+
+  // Variante com a tag <noscript><img src="...?id=123...">
+  const fromImg = value.match(/[?&]id=(\d{10,20})/);
+  if (fromImg) return fromImg[1];
+
+  return '';
+};
+
 // --- Init / fila ---
 
 const flushQueue = (): void => {
@@ -133,8 +158,15 @@ const flushQueue = (): void => {
  * Inicializa o pixel. Idempotente: chamar de novo com o mesmo id não reinicializa
  * nem duplica o PageView. Ao inicializar, esvazia a fila de eventos pendentes.
  */
-export const initMetaPixel = (pixelId: string): boolean => {
-  if (!isBrowser || !pixelId || !window.fbq) return false;
+export const initMetaPixel = (rawPixelId: string): boolean => {
+  if (!isBrowser || !window.fbq) return false;
+
+  const pixelId = normalizePixelId(rawPixelId);
+  if (!pixelId) {
+    if (rawPixelId) console.warn('Meta Pixel ID inválido, evento não será rastreado:', rawPixelId);
+    return false;
+  }
+
   if (activePixelId === pixelId) {
     flushQueue();
     return true;

@@ -3,6 +3,7 @@ import React, { useMemo } from 'react';
 import { Tag, Wand2, ImageIcon as ImageIconLucide, Loader2, Upload, ImageIcon, PieChart, BarChart3, ListChecks, Plus, Trash2, CheckCircle, PartyPopper, Webhook, Layers, Link as LinkIcon, Megaphone, Users, DollarSign, TrendingUp } from 'lucide-react';
 import { Input } from '../ui/Input';
 import { AppConfig, ProductVariation, Lead } from '../../types';
+import { normalizePixelId } from '../../utils/metaPixel';
 
 interface ProductConfigProps {
     config: AppConfig;
@@ -357,7 +358,12 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
                                     <div className="space-y-4">
                                         <Input label="Google Tag Manager (Container ID)" type="text" placeholder="GTM-XXXXXXX" value={config.gtmId || ''} onChange={v => setConfig({ ...config, gtmId: v.trim().toUpperCase() })} />
                                         <Input label="Google Analytics (GA4 ID)" type="text" placeholder="G-XXXXXXXXXX" value={config.ga4Id || ''} onChange={v => setConfig({ ...config, ga4Id: v })} />
-                                        <Input label="Meta Pixel ID" type="text" placeholder="123456789012345" value={config.metaPixelId || ''} onChange={v => setConfig({ ...config, metaPixelId: v })} />
+                                        <Input label="Meta Pixel ID" type="text" placeholder="123456789012345" value={config.metaPixelId || ''} onChange={v => setConfig({ ...config, metaPixelId: normalizePixelId(v) || v.trim() })} />
+                                        {config.metaPixelId && !normalizePixelId(config.metaPixelId) && (
+                                            <p className="text-xs font-bold text-red-600">
+                                                Isso não parece um Pixel ID. Cole apenas o número (15-16 dígitos) que aparece no Gerenciador de Eventos.
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
 
