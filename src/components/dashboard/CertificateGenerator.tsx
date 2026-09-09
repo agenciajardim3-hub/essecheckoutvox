@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Input } from '../ui/Input';
 import { Printer, Loader2, CheckCircle, Upload, MessageCircle, Download, Mail } from 'lucide-react';
 import { AppConfig, Lead } from '../../types';
+import { DEFAULT_SUPABASE_KEY } from '../../hooks/useSupabase';
 
 interface CertificateGeneratorProps {
   allCheckouts: AppConfig[];
@@ -365,7 +366,7 @@ export const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ allC
     setIsSendingEmail(true);
 
     try {
-      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+      const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || DEFAULT_SUPABASE_KEY;
       const SEND_EMAIL_ENDPOINT = 'https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email';
 
       let certificateUrl = `${window.location.origin}/?mode=certificate&name=${encodeURIComponent(certGenData.name)}&course=${encodeURIComponent(certGenData.courseName)}&date=${encodeURIComponent(certGenData.date)}&hours=${encodeURIComponent(certGenData.hours)}&instructor=${encodeURIComponent(certGenData.instructorName)}`;

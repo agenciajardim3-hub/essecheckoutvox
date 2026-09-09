@@ -26,6 +26,40 @@ Lista de melhorias e correções necessárias para otimizar a plataforma.
 
 ## 🔥 Critical (Bloqueia features)
 
+### **Edge function `send-email` não está publicada**
+- **Status**: 🔴 **ATIVO**
+- **Onde quebra**: `src/components/dashboard/AutomationDashboard.tsx:319` chama
+  `/functions/v1/send-email`, mas essa função não existe no projeto Supabase
+  (as publicadas são `mp-create-preference`, `mp-webhook`, `send-ticket-email` e `meta-capi`).
+  O botão de testar automação por e-mail falha com erro.
+- **O código já existe** em `supabase/functions/send-email/index.ts` (396 linhas) e os
+  secrets de SMTP já estão configurados (`SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`).
+- **Solução**: publicar a function. Nenhuma mudança de código necessária.
+- **Nota histórica**: a linhagem `master` contornava isso com um script no `index.html`
+  que desviava qualquer chamada de e-mail para o `send-ticket-email`. A linhagem em
+  produção não tem esse desvio — por isso a falha aparece.
+
+### **Repositório com duas linhagens sem ancestral comum**
+- **Status**: 🟡 **CONVIVÍVEL**
+- **Problema**: `master` e `3.0` não compartilham histórico (`git merge-base` não
+  retorna nada), então nenhum merge entre elas é possível. PRs #6 e #7 foram fechados
+  por isso.
+- **Qual está em produção**: a linhagem `3.0` (deploy manual pela Hostinger).
+  A `master` parou em 29/06 e nunca foi ao ar.
+- **Comparação de conteúdo**: a `3.0` é superconjunto — tem ~40 arquivos que a `master`
+  não tem. O único arquivo exclusivo da `master` era
+  `supabase/migrations/20260509000000_fix_paid_amount_on_leads.sql`, já portado para
+  `sql/migrations/fix_paid_amount_on_leads.sql`. Nada mais se perde ao ignorar a `master`.
+- **Solução**: tornar `3.0` a branch padrão em Settings > Branches.
+
+### **Chave do Supabase caía para string vazia em builds sem `.env`** — ✅ resolvido
+- Sete componentes do painel (tickets, certificados, automações) terminavam a cadeia
+  de `import.meta.env` em `''`, então um build feito sem arquivo `.env` gerava
+  chamadas com `Authorization: Bearer ` e essas telas quebravam.
+- Passaram a usar `DEFAULT_SUPABASE_KEY` de `hooks/useSupabase`, mesmo padrão que
+  `supabaseRequestFix`, `useEmailTemplates` e `EmailMarketingDashboard` já seguiam.
+
+
 ### 1. **Campo "Valor" não aceita , (vírgula) e . (ponto)**
 - **Status**: 🔴 **ATIVO** - Impede entrada de centavos
 - **Localização**: LeadsReportV2.tsx (Grid, Table, Manual Form)

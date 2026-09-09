@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Send, GraduationCap, Loader2, Check, Mail, MessageCircle, Image as ImageIcon, Type, AlertCircle, Eye } from 'lucide-react';
 import { Lead, AppConfig } from '../../types';
+import { DEFAULT_SUPABASE_KEY } from '../../hooks/useSupabase';
 
 interface TicketSenderProps {
   leads: Lead[];
@@ -14,7 +15,7 @@ const SUPABASE_ANON_KEY =
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.VITE_SUPABASE_KEY ||
-  '';
+  DEFAULT_SUPABASE_KEY;
 
 const isPaid = (lead: Lead) => lead.status === 'Pago' || lead.status === 'Aprovado';
 

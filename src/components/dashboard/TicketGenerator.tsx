@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Input } from '../ui/Input';
 import { Printer, Ticket, Image as ImageIcon, MapPin, Clock, Mail, Send, Loader2 } from 'lucide-react';
 import { AppConfig } from '../../types';
+import { DEFAULT_SUPABASE_KEY } from '../../hooks/useSupabase';
 
 interface TicketGeneratorProps {
     allCheckouts: AppConfig[];
@@ -177,7 +178,7 @@ export const TicketGenerator: React.FC<TicketGeneratorProps> = ({ allCheckouts }
         setTicketEmailStatus('');
 
         try {
-            const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+            const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || DEFAULT_SUPABASE_KEY;
             const ticketUrl = `${window.location.origin}/?mode=ticket&checkout=${selectedProd.id}&cpf=${encodeURIComponent(ticketGenData.cpf)}`;
 
             const response = await fetch('https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email', {

@@ -2,13 +2,14 @@
 import React, { useMemo, useState } from 'react';
 import { Ticket, GraduationCap, Printer, Trash2, Loader2, Mail, Check, XCircle } from 'lucide-react';
 import { AppConfig, Lead } from '../../types';
+import { DEFAULT_SUPABASE_KEY } from '../../hooks/useSupabase';
 
 const SEND_EMAIL_ENDPOINT = 'https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email';
 const SUPABASE_ANON_KEY =
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.VITE_SUPABASE_KEY ||
-  '';
+  DEFAULT_SUPABASE_KEY;
 
 interface TicketLogsProps {
     leads: Lead[];

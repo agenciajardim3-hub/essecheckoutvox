@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Settings, Smartphone, MessageCircle, Check, AlertCircle, Loader2, Eye, EyeOff, Send, Mail, Plus, Trash2, Pencil, Zap, Users, User } from 'lucide-react';
+import { DEFAULT_SUPABASE_KEY } from '../../hooks/useSupabase';
 
 type AutomationChannel = 'whatsapp' | 'email' | 'ambos';
 type AutomationTrigger = 'payment_approved' | 'registration_created' | 'before_event' | 'after_event' | 'manual';
@@ -314,7 +315,7 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ userRo
           : localStorage.getItem('vox_test_email') || 'teste@exemplo.com';
 
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://emdsgvuqrhpjdgrgaslo.supabase.co';
-        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_KEY;
 
         const response = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
           method: 'POST',

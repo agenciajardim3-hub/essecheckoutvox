@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Loader2, Mail, Send } from 'lucide-react';
 import { useGenerateCertificates } from '../../hooks/useGenerateCertificates';
 import { useEmailTemplates } from '../../hooks/useEmailTemplates';
+import { DEFAULT_SUPABASE_KEY } from '../../hooks/useSupabase';
 
 interface BulkCertificatePanelProps {
   selectedLeads: string[];
@@ -13,7 +14,7 @@ const getSupabaseKey = () =>
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.VITE_SUPABASE_KEY ||
-  '';
+  DEFAULT_SUPABASE_KEY;
 
 const getTemplateSubject = (templateName?: string) => {
   if (!templateName) return 'Contato - Vox Marketing Academy';

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { AlertCircle, Check, ExternalLink, FileCheck, GraduationCap, Loader2, Mail, Send } from 'lucide-react';
 import { Lead, AppConfig } from '../../types';
+import { DEFAULT_SUPABASE_KEY } from '../../hooks/useSupabase';
 
 interface CertificateSenderProps {
   leads: Lead[];
@@ -30,7 +31,7 @@ const SUPABASE_ANON_KEY =
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.VITE_SUPABASE_KEY ||
-  '';
+  DEFAULT_SUPABASE_KEY;
 
 const normalize = (value?: string | null) => String(value || '').trim().toLowerCase();
 const isPaid = (lead: Lead) => lead.status === 'Pago' || lead.status === 'Aprovado';
