@@ -15,12 +15,25 @@
 name: Deploy site (Hostinger)
 
 on:
+  # Publica sozinho a cada push nesta branch — commitou, subiu.
+  push:
+    branches:
+      - '3.1'
+    paths-ignore:
+      - '**.md'
+      - 'sql/**'
+      - '.github/**'
+  # E continua dando para publicar na mão, escolhendo a branch.
   workflow_dispatch:
     inputs:
       branch:
         description: 'Branch a publicar'
         required: true
-        default: '3.0'
+        default: '3.1'
+
+concurrency:
+  group: deploy-hostinger
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -29,7 +42,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.branch }}
+          ref: ${{ inputs.branch || github.ref_name }}
 
       - name: Conferir se os secrets de FTP existem
         run: |
@@ -72,4 +85,4 @@ jobs:
           dangerous-clean-slate: false
 
       - name: Resumo
-        run: echo "Site publicado a partir da branch ${{ inputs.branch }}."
+        run: echo "Site publicado a partir da branch ${{ inputs.branch || github.ref_name }}."
