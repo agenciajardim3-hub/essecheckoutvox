@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Loader2, BadgeCheck, ShoppingCart, Clock, Users, ChevronRight, ChevronLeft, Tag, X, Check, Calendar, MapPin, Shield, ArrowRight, Eye } from 'lucide-react';
+import { Loader2, BadgeCheck, ShoppingCart, Clock, Users, ChevronRight, ChevronLeft, Tag, X, Check, Calendar, MapPin, Shield, ArrowRight } from 'lucide-react';
 import { Input } from '../ui/Input';
 import { AppConfig, CustomerData, MultiTicketPurchase, Coupon } from '../../types';
 
@@ -207,7 +207,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     };
 
     return (
-        <div className="w-full bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100 animate-in fade-in slide-in-from-bottom-8 duration-700 flex flex-col">
+        <div className="w-full bg-white rounded-2xl sm:rounded-[2rem] lg:rounded-[3rem] shadow-lg lg:shadow-2xl overflow-hidden border border-gray-100 animate-in fade-in slide-in-from-bottom-8 duration-700 flex flex-col">
 
             {/* ── Banner ── */}
             <div
@@ -224,7 +224,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
                 {/* Event badges */}
                 <div className="absolute bottom-0 left-0 right-0 p-5">
-                    <h1 className="text-base font-black text-white leading-tight mb-2 line-clamp-2">
+                    <h1 className="hidden lg:block text-base font-black text-white leading-tight mb-2 line-clamp-2">
                         {config.productName}
                     </h1>
                     <div className="flex flex-wrap gap-2">
@@ -239,7 +239,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                             </span>
                         )}
                         {config.turma && (
-                            <span className="text-[9px] font-black uppercase bg-blue-500/80 text-white rounded-full px-2.5 py-1">
+                            <span className="hidden lg:inline text-[9px] font-black uppercase bg-blue-500/80 text-white rounded-full px-2.5 py-1">
                                 🎓 {config.turma}
                             </span>
                         )}
@@ -247,58 +247,76 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                 </div>
             </div>
 
-            {/* ── Timer bar ── */}
+            {/* ── Barra de urgência ──
+                Antes eram duas faixas empilhadas (timer + "X pessoas vendo"), cada uma com
+                gradiente próprio. Numa tela de celular viravam duas tarjas berrantes antes
+                do formulário. Agora é uma só: cronômetro à esquerda, motivo à direita. ── */}
             {!isRegistrationMode && !isTicketMode && (
-                <div className={`flex items-center justify-center gap-2 py-2.5 px-4 transition-colors ${
+                <div className={`flex items-center gap-3 px-4 py-3 transition-colors ${
                     timerExpired
-                        ? 'bg-gray-200'
+                        ? 'bg-gray-100'
                         : timerUrgent
-                            ? 'bg-red-600 animate-pulse'
-                            : 'bg-gradient-to-r from-orange-500 to-red-500'
+                            ? 'bg-red-600'
+                            : 'bg-emerald-600'
                 }`}>
-                    <Clock size={12} className={timerExpired ? 'text-gray-500' : 'text-white'} />
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${timerExpired ? 'text-gray-500' : 'text-white'}`}>
+                    <div className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 shrink-0 ${
+                        timerExpired ? 'bg-gray-200' : 'bg-black/15'
+                    }`}>
+                        <Clock size={14} className={timerExpired ? 'text-gray-500' : 'text-white'} />
+                        <span className={`text-[15px] font-black tabular-nums leading-none ${
+                            timerExpired ? 'text-gray-500' : 'text-white'
+                        }`}>
+                            {timerExpired ? '00:00' : timerDisplay}
+                        </span>
+                    </div>
+
+                    <p className={`text-[11px] sm:text-xs font-bold leading-snug ${
+                        timerExpired ? 'text-gray-600' : 'text-white'
+                    }`}>
                         {timerExpired
-                            ? 'Verifique disponibilidade antes de continuar'
-                            : `Reserva expira em ${timerDisplay}`}
-                    </span>
+                            ? 'Sua reserva expirou. Confirme a disponibilidade antes de continuar.'
+                            : availableSpots !== undefined && availableSpots <= 20
+                                ? `Restam apenas ${availableSpots} ${availableSpots === 1 ? 'vaga' : 'vagas'} com o valor promocional. Garanta a sua antes que a oferta seja encerrada.`
+                                : viewerCount > 0
+                                    ? `${viewerCount} ${viewerCount === 1 ? 'pessoa está vendo' : 'pessoas estão vendo'} esta página agora. Garanta a sua vaga com o valor promocional.`
+                                    : 'Valor promocional reservado por tempo limitado. Garanta a sua vaga antes que a oferta seja encerrada.'}
+                    </p>
                 </div>
             )}
 
-            {/* ── "X pessoas vendo" bar ── */}
-            {viewerCount > 0 && !isRegistrationMode && !isTicketMode && (
-                <div className="flex items-center justify-center gap-3 py-4 px-5 bg-gradient-to-r from-amber-400 via-orange-400 to-red-500 border-b-4 border-red-600 shadow-lg">
-                    <div className="relative flex items-center">
-                        <Eye size={20} className="text-white drop-shadow-lg" />
-                        <span className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full animate-pulse" />
-                    </div>
-                    <span className="text-sm font-black text-white drop-shadow-md">
-                        🔥 <span className="text-white tabular-nums text-base">{viewerCount}</span> {viewerCount === 1 ? 'pessoa vendo' : 'pessoas vendo'} agora
-                    </span>
-                    {availableSpots !== undefined && availableSpots <= 10 && (
-                        <span className="ml-2 text-xs font-black uppercase text-white bg-red-700 px-3 py-1 rounded-full shadow-md">
-                            só {availableSpots} vagas!
-                        </span>
-                    )}
-                </div>
-            )}
+            {/* ── Título do produto (celular) ──
+                No desktop o nome aparece sobre o banner; ali há espaço. No celular o banner
+                é baixo e o texto sobreposto competia com a imagem, então o nome vem embaixo,
+                legível, como cabeçalho da página. ── */}
+            <div className="lg:hidden px-5 pt-5">
+                <h1 className="text-[19px] font-black text-gray-900 leading-tight">
+                    {config.productName}
+                </h1>
+                {config.turma && (
+                    <p className="text-[12px] font-bold text-gray-500 mt-1">{config.turma}</p>
+                )}
+            </div>
 
             {/* ── Mobile Order Summary ── */}
             {!isRegistrationMode && !isTicketMode && (
-                <div className="lg:hidden mx-5 mt-5">
-                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl px-5 py-4 flex items-center justify-between text-white">
-                        <div className="flex-1 min-w-0 pr-3">
-                            <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-0.5">Seu Pedido</p>
-                            <p className="text-sm font-black truncate">{config.productName}</p>
-                            {quantity > 1 && <p className="text-[10px] opacity-60">{quantity}x ingressos</p>}
+                <div className="lg:hidden mx-5 mt-4">
+                    <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3.5 flex items-end justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-bold text-gray-500">
+                                {quantity > 1 ? `${quantity} ingressos` : 'Valor total'}
+                            </p>
+                            {hasDiscount && (
+                                <p className="text-[12px] font-bold text-gray-400 line-through leading-tight">
+                                    R$ {(price * quantity).toFixed(2).replace('.', ',')}
+                                </p>
+                            )}
                         </div>
                         <div className="text-right shrink-0">
-                            {hasDiscount && (
-                                <p className="text-[10px] line-through opacity-40">R$ {(price * quantity).toFixed(2).replace('.', ',')}</p>
-                            )}
-                            <p className="text-xl font-black leading-none">R$ {displayPrice.toFixed(2).replace('.', ',')}</p>
+                            <p className="text-[26px] font-black text-blue-600 leading-none tracking-tight">
+                                R$ {displayPrice.toFixed(2).replace('.', ',')}
+                            </p>
                             {hasDiscount && appliedCoupon && (
-                                <p className="text-[9px] font-black text-emerald-300 mt-0.5">
+                                <p className="text-[11px] font-black text-emerald-600 mt-1">
                                     {appliedCoupon.discountType === 'percentage' ? `${appliedCoupon.discountValue}% OFF` : `−R$ ${appliedCoupon.discountValue}`}
                                 </p>
                             )}
@@ -307,7 +325,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="px-6 py-6 lg:px-8 lg:py-8 space-y-6 flex flex-col flex-1">
+            <form onSubmit={handleSubmit} className="px-5 py-5 lg:px-8 lg:py-8 space-y-5 lg:space-y-6 flex flex-col flex-1">
 
                 {/* ── Quantity Selector ── */}
                 {!isTicketMode && !isRegistrationMode && (
@@ -447,19 +465,19 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                 )}
 
                 {/* ── Form fields ── */}
-                <div ref={formRef} className="space-y-4">
+                <div ref={formRef} className="space-y-4 lg:space-y-4">
                     {quantity > 1 && (
                         <p className="text-sm font-black text-gray-700 text-center pb-2 border-b border-gray-100">
                             {currentParticipant === 0 ? '👤 Comprador (Responsável)' : `👥 Participante ${currentParticipant + 1}`}
                         </p>
                     )}
-                    <Input label="Nome Completo" type="text" placeholder="Ex: Maria Silva" value={currentP.name} onChange={v => updateParticipant(currentParticipant, 'name', v)} autoComplete="name" />
-                    <Input label="E-mail" type="email" placeholder="seu@email.com" value={currentP.email} onChange={v => updateParticipant(currentParticipant, 'email', v)} autoComplete="email" />
-                    <div className="grid grid-cols-2 gap-3">
-                        <Input label="WhatsApp" type="tel" placeholder="(00) 00000-0000" mask="phone" value={currentP.phone} onChange={v => updateParticipant(currentParticipant, 'phone', v)} autoComplete="tel" />
-                        <Input label="CPF" type="text" placeholder="000.000.000-00" mask="cpf" value={currentP.cpf} onChange={v => updateParticipant(currentParticipant, 'cpf', v)} autoComplete="off" />
+                    <Input variant="clean" label="Nome Completo" type="text" placeholder="Preencha seu nome" value={currentP.name} onChange={v => updateParticipant(currentParticipant, 'name', v)} autoComplete="name" />
+                    <Input variant="clean" label="E-mail" type="email" placeholder="Preencha seu email" value={currentP.email} onChange={v => updateParticipant(currentParticipant, 'email', v)} autoComplete="email" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-3">
+                        <Input variant="clean" label="WhatsApp" type="tel" placeholder="Preencha seu celular" mask="phone" value={currentP.phone} onChange={v => updateParticipant(currentParticipant, 'phone', v)} autoComplete="tel" />
+                        <Input variant="clean" label="CPF" type="text" placeholder="000.000.000-00" mask="cpf" value={currentP.cpf} onChange={v => updateParticipant(currentParticipant, 'cpf', v)} autoComplete="off" />
                     </div>
-                    <Input label="Cidade" type="text" placeholder="Ex: São Paulo" value={currentP.city} onChange={v => updateParticipant(currentParticipant, 'city', v)} autoComplete="address-level2" />
+                    <Input variant="clean" label="Cidade" type="text" placeholder="Preencha sua cidade" value={currentP.city} onChange={v => updateParticipant(currentParticipant, 'city', v)} autoComplete="address-level2" />
                 </div>
 
                 {/* ── Submit error ── */}
@@ -490,7 +508,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                 {/* ── CTA Button ── */}
                 <button
                     disabled={isSubmitting || !!isSoldOut}
-                    className={`w-full mt-auto py-7 px-6 rounded-2xl text-white font-black text-base lg:text-lg shadow-2xl active:scale-[0.97] transition-all flex items-center justify-center gap-3 group relative overflow-hidden ${
+                    className={`w-full mt-auto py-5 lg:py-7 px-6 rounded-xl lg:rounded-2xl text-white font-black text-[13.5px] sm:text-[15px] lg:text-lg tracking-tight lg:tracking-normal shadow-lg lg:shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-2.5 lg:gap-3 group relative overflow-hidden ${
                         isSoldOut ? 'bg-gray-400 cursor-not-allowed shadow-gray-400/20' :
                         isRegistrationMode ? 'bg-gradient-to-r from-blue-600 via-blue-600 to-blue-700 hover:shadow-2xl hover:shadow-blue-500/40 hover:from-blue-700 hover:to-blue-800' :
                         'bg-gradient-to-r from-emerald-500 via-emerald-500 to-green-600 hover:shadow-2xl hover:shadow-emerald-500/40 hover:from-emerald-600 hover:to-green-700'
@@ -498,22 +516,22 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                 >
                     {/* shimmer */}
                     {!isSoldOut && !isSubmitting && (
-                        <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                        <div className="hidden lg:block absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
                     )}
                     {isSubmitting ? (
                         <Loader2 className="animate-spin" size={24} />
                     ) : (
                         <>
-                            {!isSoldOut && (isRegistrationMode ? <BadgeCheck size={24} /> : <ShoppingCart size={24} strokeWidth={2.5} />)}
-                            <span className="flex-1 text-center">{ctaText()}</span>
-                            {!isSoldOut && !isSubmitting && <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />}
+                            {!isSoldOut && (isRegistrationMode ? <BadgeCheck size={20} className="shrink-0 lg:w-6 lg:h-6" /> : <ShoppingCart size={20} strokeWidth={2.5} className="shrink-0 lg:w-6 lg:h-6" />)}
+                            <span className="flex-1 text-center whitespace-nowrap lg:whitespace-normal">{ctaText()}</span>
+                            {!isSoldOut && !isSubmitting && <ArrowRight size={20} className="hidden sm:block group-hover:translate-x-1 transition-transform" />}
                         </>
                     )}
                 </button>
 
                 {/* ── Trust footer ── */}
                 {!isRegistrationMode && (
-                    <div className="space-y-4 pt-1">
+                    <div className="space-y-3 lg:space-y-4 pt-1">
                         {/* Payment methods */}
                         <div className="flex gap-2 items-center justify-center flex-wrap opacity-50">
                             <div className="flex items-center gap-1 bg-gray-100 rounded-lg px-2.5 py-1.5">
@@ -546,7 +564,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                         </div>
 
                         {/* Trust icons */}
-                        <div className="flex justify-center gap-8 pt-3 border-t border-gray-100">
+                        <div className="flex justify-center gap-6 lg:gap-8 pt-3 border-t border-gray-100">
                             {[
                                 { icon: <Shield size={14} />, color: 'text-blue-500 bg-blue-50', label: 'Pagamento\nSeguro' },
                                 { icon: <BadgeCheck size={14} />, color: 'text-emerald-500 bg-emerald-50', label: '7 Dias\nGarantia' },
