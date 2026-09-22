@@ -11,6 +11,7 @@ interface CheckoutsDashboardProps {
     onEditCheckout: (checkout: AppConfig) => void;
     onDeleteCheckout: (id: string) => Promise<void>;
     onSetCheckoutActive: (ids: string[], active: boolean) => Promise<void>;
+    onSetCheckoutFolder: (ids: string[], folder: string) => Promise<void>;
 }
 
 const money = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -87,7 +88,8 @@ export const CheckoutsDashboard: React.FC<CheckoutsDashboardProps> = ({
     onCreateCheckout,
     onEditCheckout,
     onDeleteCheckout,
-    onSetCheckoutActive
+    onSetCheckoutActive,
+    onSetCheckoutFolder
 }) => {
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -161,6 +163,20 @@ export const CheckoutsDashboard: React.FC<CheckoutsDashboardProps> = ({
             else visibleCheckoutIds.forEach(id => next.add(id));
             return next;
         });
+    };
+
+    const handleBulkFolder = async () => {
+        const ids = Array.from(selectedCheckoutIds);
+        if (!ids.length) return;
+        const folder = window.prompt('Digite a pasta/categoria para os checkouts selecionados:', 'São Paulo / Cursos / Tráfego Pago');
+        if (folder === null) return;
+        const normalizedFolder = folder.trim();
+        if (!normalizedFolder) {
+            alert('Informe um nome de pasta válido.');
+            return;
+        }
+        await onSetCheckoutFolder(ids, normalizedFolder);
+        setSelectedCheckoutIds(new Set());
     };
 
     const handleBulkStatus = async (active: boolean) => {
@@ -275,6 +291,7 @@ export const CheckoutsDashboard: React.FC<CheckoutsDashboardProps> = ({
                     <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3">
                         <span className="text-xs font-black uppercase text-blue-700">{selectedCheckoutIds.size} checkout(s) selecionado(s)</span>
                         <div className="flex flex-wrap gap-2">
+                            <button onClick={handleBulkFolder} className="rounded-xl bg-indigo-600 px-4 py-2 text-[10px] font-black uppercase text-white hover:bg-indigo-700">Mover para pasta</button>
                             <button onClick={() => handleBulkStatus(true)} className="rounded-xl bg-emerald-600 px-4 py-2 text-[10px] font-black uppercase text-white hover:bg-emerald-700">Ativar selecionados</button>
                             <button onClick={() => handleBulkStatus(false)} className="rounded-xl bg-gray-700 px-4 py-2 text-[10px] font-black uppercase text-white hover:bg-gray-800">Desativar selecionados</button>
                             <button onClick={() => setSelectedCheckoutIds(new Set())} className="rounded-xl bg-white px-4 py-2 text-[10px] font-black uppercase text-gray-600 border border-gray-200 hover:bg-gray-100">Limpar seleção</button>
