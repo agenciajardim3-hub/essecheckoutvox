@@ -16,6 +16,10 @@ CREATE TABLE IF NOT EXISTS leads (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   status TEXT DEFAULT 'Novo',
   paid_amount NUMERIC DEFAULT 0,
+  mp_payment_id TEXT,
+  mp_fee_amount NUMERIC DEFAULT 0,
+  mp_net_amount NUMERIC DEFAULT 0,
+  mp_fee_details JSONB DEFAULT '[]'::jsonb,
   payment_method TEXT,
   checked_in BOOLEAN DEFAULT FALSE,
   checked_in_at TIMESTAMPTZ,
@@ -35,6 +39,8 @@ CREATE TABLE IF NOT EXISTS leads (
 );
 
 -- Habilitar RLS
+CREATE INDEX IF NOT EXISTS idx_leads_mp_payment_id ON leads(mp_payment_id);
+
 ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on leads" ON leads;
 CREATE POLICY "Allow all on leads" ON leads FOR ALL USING (true) WITH CHECK (true);
