@@ -110,7 +110,8 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     const formRef = useRef<HTMLDivElement>(null);
 
     const { display: timerDisplay, expired: timerExpired, urgent: timerUrgent } = useCountdown(config.id || 'checkout', 15);
-    const viewerCount = useViewerCount(config.viewerCount || 0);
+    const locationLabel = config.city || config.neighborhood || config.turma || config.productName || 'esta turma';
+    const faqItems = config.faqItems === undefined ? DEFAULT_CHECKOUT_FAQ : config.faqItems;
 
     const ticketAmount = config.ticketAmount || 1;
     const totalParticipants = quantity * ticketAmount;
