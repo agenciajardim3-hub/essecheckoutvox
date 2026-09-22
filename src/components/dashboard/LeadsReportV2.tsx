@@ -1120,20 +1120,12 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                             />
                                         </div>
                                     )}
-                                    {userRole === 'master' && (Number(lead.mp_fee_amount) > 0 || Number(lead.mp_net_amount) > 0) && (
-                                        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
-                                            <div>
-                                                <span className="text-[10px] font-black uppercase text-gray-400">Taxa MP</span>
-                                                <p className="text-sm font-black text-orange-600">
-                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(lead.mp_fee_amount) || 0)}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <span className="text-[10px] font-black uppercase text-gray-400">Líquido</span>
-                                                <p className="text-sm font-black text-blue-600">
-                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(lead.mp_net_amount) || Math.max(0, (Number(lead.paid_amount) || 0) - (Number(lead.mp_fee_amount) || 0)))}
-                                                </p>
-                                            </div>
+                                    {userRole === 'master' && Number(lead.mp_net_amount) > 0 && (
+                                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100">
+                                            <span className="text-xs font-bold text-gray-600 uppercase">Valor líquido:</span>
+                                            <span className="text-sm font-black text-blue-600">
+                                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(lead.mp_net_amount))}
+                                            </span>
                                         </div>
                                     )}
 
@@ -1283,8 +1275,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                     {userRole === 'master' && (
                                         <>
                                             <th className="px-4 py-3 text-left font-black uppercase text-xs">Valor</th>
-                                            <th className="px-4 py-3 text-left font-black uppercase text-xs">Taxa MP</th>
-                                            <th className="px-4 py-3 text-left font-black uppercase text-xs">Líquido</th>
+                                            <th className="px-4 py-3 text-left font-black uppercase text-xs">Valor líquido</th>
                                         </>
                                     )}
                                     <th className="px-4 py-3 text-left font-black uppercase text-xs cursor-pointer hover:bg-gray-800 transition-colors" onClick={() => handleColumnSort('date')}>
@@ -1390,9 +1381,6 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                                         placeholder="0,00"
                                                         className="w-24 px-2 py-1.5 text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
                                                     />
-                                                </td>
-                                                <td className="px-4 py-3 text-xs font-black text-orange-600">
-                                                    {Number(lead.mp_fee_amount) > 0 ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(lead.mp_fee_amount)) : '—'}
                                                 </td>
                                                 <td className="px-4 py-3 text-xs font-black text-blue-600">
                                                     {Number(lead.mp_net_amount) > 0 ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(lead.mp_net_amount)) : '—'}
