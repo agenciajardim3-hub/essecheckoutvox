@@ -43,8 +43,26 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
     const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const { selectedLeads, toggleLead, selectAll, clearSelection } = useCertificateSelection();
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCity, setSelectedCity] = useState('all');
     const [selectedProduct, setSelectedProduct] = useState('all');
     const [selectedStatus, setSelectedStatus] = useState('all');
+
+    const checkoutCities = useMemo(() => {
+        const cities = new Map<string, string>();
+        allCheckouts.forEach(checkout => {
+            const city = (checkout.city || checkout.neighborhood || 'Sem cidade definida').trim();
+            if (city) cities.set(city.toLowerCase(), city);
+        });
+        return Array.from(cities.values()).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    }, [allCheckouts]);
+
+    const visibleCheckouts = useMemo(() => {
+        if (selectedCity === 'all') return allCheckouts;
+        return allCheckouts.filter(checkout => {
+            const city = (checkout.city || checkout.neighborhood || 'Sem cidade definida').trim();
+            return city.toLowerCase() === selectedCity.toLowerCase();
+        });
+    }, [allCheckouts, selectedCity]);
     const [sortBy, setSortBy] = useState<SortBy>('date');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
     const [currentPage, setCurrentPage] = useState(1);
@@ -106,7 +124,13 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
             }
         }
 
-        // Filtro por produto
+        // Filtro por cidade/localidade
+        if (selectedCity !== 'all') {
+            const cityCheckoutIds = new Set(visibleCheckouts.map(checkout => checkout.id));
+            result = result.filter(l => cityCheckoutIds.has(l.product_id || ''));
+        }
+
+        // Filtro por turma/checkout
         if (selectedProduct !== 'all') {
             result = result.filter(l => l.product_id === selectedProduct);
         }
@@ -150,7 +174,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
         });
 
         return result;
-    }, [leads, selectedProduct, selectedStatus, searchTerm, sortBy, sortDirection]);
+    }, [leads, selectedCity, visibleCheckouts, selectedProduct, selectedStatus, searchTerm, sortBy, sortDirection]);
 
     // Paginação com memoização otimizada
     const paginatedLeads = useMemo(() => {
@@ -791,7 +815,25 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Produto</label>
+                                <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Cidade / Local</label>
+                                <select
+                                    value={selectedCity}
+                                    onChange={(e) => {
+                                        setSelectedCity(e.target.value);
+                                        setSelectedProduct('all');
+                                        setCurrentPage(1);
+                                    }}
+                                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm"
+                                >
+                                    <option value="all">Todas as cidades</option>
+                                    {checkoutCities.map(city => (
+                                        <option key={city} value={city}>{city}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-600 uppercase mb-2">Turma / Checkout</label>
                                 <select
                                     value={selectedProduct}
                                     onChange={(e) => {
@@ -800,12 +842,17 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                     }}
                                     className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-sm"
                                 >
-                                    <option value="all">Todos</option>
-                                    {allCheckouts.map(c => (
-                                        <option key={c.id} value={c.id}>
-                                            {c.productName}
-                                        </option>
-                                    ))}
+                                    <option value="all">
+                                        {selectedCity === 'all' ? 'Todas as turmas' : 'Todas desta cidade'}
+                                    </option>
+                                    {visibleCheckouts
+                                        .slice()
+                                        .sort((a, b) => (a.productName || '').localeCompare(b.productName || '', 'pt-BR'))
+                                        .map(c => (
+                                            <option key={c.id} value={c.id}>
+                                                {c.productName}{c.turma && c.turma !== c.productName ? ` — ${c.turma}` : ''}
+                                            </option>
+                                        ))}
                                 </select>
                             </div>
 
