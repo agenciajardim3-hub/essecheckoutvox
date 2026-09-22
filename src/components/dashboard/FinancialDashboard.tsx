@@ -93,6 +93,8 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
         const pagarNoDia = filteredLeads.filter(l => l.status === 'Pagar no dia');
 
         const totalRevenue = paid.reduce((acc, l) => acc + (l.paid_amount || 0), 0);
+        const totalFees = paid.reduce((acc, l) => acc + (Number(l.mp_fee_amount) || 0), 0);
+        const netRevenue = totalRevenue - totalFees;
         const pendingRevenue = pending.reduce((acc, l) => acc + (l.paid_amount || 0), 0);
         const sinalRevenue = sinal.reduce((acc, l) => acc + (l.paid_amount || 0), 0);
         const totalExpenses = filteredExpenses.reduce((acc, expense) => acc + (expense.amount || 0), 0);
@@ -116,7 +118,9 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
             averageTicket,
             conversionRate,
             totalExpenses,
-            netProfit: totalRevenue - totalExpenses
+            totalFees,
+            netRevenue,
+            netProfit: netRevenue - totalExpenses
         };
     }, [filteredLeads, filteredExpenses]);
 
@@ -303,18 +307,23 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
             </div>
 
             {/* Fluxo financeiro */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-lg">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white rounded-[2rem] p-6 border border-orange-100 shadow-lg">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Taxas Mercado Pago</p>
+                    <p className="text-2xl font-black text-orange-600 mt-2">{formatCurrency(metrics.totalFees)}</p>
+                    <p className="text-xs font-bold text-gray-400 mt-1">Descontadas das vendas confirmadas</p>
+                </div>
+                <div className="bg-white rounded-[2rem] p-6 border border-red-100 shadow-lg">
                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Despesas no período</p>
                     <p className="text-2xl font-black text-red-600 mt-2">{expensesLoading ? '—' : formatCurrency(metrics.totalExpenses)}</p>
                     <p className="text-xs font-bold text-gray-400 mt-1">{filteredExpenses.length} lançamento(s)</p>
                 </div>
-                <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-lg">
+                <div className="bg-white rounded-[2rem] p-6 border border-emerald-100 shadow-lg">
                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Resultado líquido</p>
-                    <p className={`text-2xl font-black mt-2 ${metrics.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{expensesLoading ? '—' : formatCurrency(metrics.netProfit)}</p>
-                    <p className="text-xs font-bold text-gray-400 mt-1">Receita confirmada menos despesas</p>
+                    <p className={`text-2xl font-black mt-2 ${metrics.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{expensesLoading ? '—' : formatCurrency(metrics.netProfit)}</p>
+                    <p className="text-xs font-bold text-gray-400 mt-1">Receita líquida menos despesas</p>
                 </div>
-                <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-lg">
+                <div className="bg-white rounded-[2rem] p-6 border border-amber-100 shadow-lg">
                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">A receber</p>
                     <p className="text-2xl font-black text-amber-600 mt-2">{formatCurrency(metrics.pendingRevenue + metrics.sinalRevenue)}</p>
                     <p className="text-xs font-bold text-gray-400 mt-1">{metrics.pendingCount + metrics.sinalCount} pagamento(s) pendente(s)</p>
