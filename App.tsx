@@ -652,7 +652,8 @@ export default function App() {
       thank_you_button_url: cfg.thankYouButtonUrl || '',
       thank_you_image_url: cfg.thankYouImageUrl || '',
       variations: cfg.variations || [],
-      viewer_count: cfg.viewerCount || 0
+      viewer_count: cfg.viewerCount || 0,
+      faq_items: cfg.faqItems || []
     };
 
     try {
