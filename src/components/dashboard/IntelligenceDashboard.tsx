@@ -462,7 +462,7 @@ export const IntelligenceDashboard: React.FC<IntelligenceDashboardProps> = ({ le
                     />
                     <Legend
                       onClick={(e) => {
-                        const turma = e.dataKey;
+                        const turma = String(e.dataKey || '');
                         const newVisible = new Set(visibleTurmas);
                         if (newVisible.has(turma)) {
                           newVisible.delete(turma);
