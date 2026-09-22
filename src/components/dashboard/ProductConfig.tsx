@@ -1,8 +1,8 @@
 
 import React, { useMemo } from 'react';
-import { Tag, Wand2, ImageIcon as ImageIconLucide, Loader2, Upload, ImageIcon, PieChart, BarChart3, ListChecks, Plus, Trash2, CheckCircle, PartyPopper, Webhook, Layers, Link as LinkIcon, Megaphone, Users, DollarSign, TrendingUp } from 'lucide-react';
+import { Tag, Wand2, ImageIcon as ImageIconLucide, Loader2, Upload, ImageIcon, PieChart, BarChart3, ListChecks, Plus, Trash2, CheckCircle, PartyPopper, Webhook, Layers, Link as LinkIcon, Megaphone, MessageCircle, Users, DollarSign, TrendingUp } from 'lucide-react';
 import { Input } from '../ui/Input';
-import { AppConfig, ProductVariation, Lead } from '../../types';
+import { AppConfig, ProductVariation, Lead, CheckoutFaqItem, DEFAULT_CHECKOUT_FAQ } from '../../types';
 import { normalizePixelId } from '../../utils/metaPixel';
 
 interface ProductConfigProps {
@@ -74,7 +74,10 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
         }
     };
 
-    const [activeTab, setActiveTab] = React.useState<'geral' | 'conteudo' | 'evento' | 'marketing' | 'poscompra' | 'integracoes' | 'variacoes'>('geral');
+    const [activeTab, setActiveTab] = React.useState<'geral' | 'conteudo' | 'evento' | 'faq' | 'marketing' | 'poscompra' | 'integracoes' | 'variacoes'>('geral');
+
+    const faqItems = config.faqItems === undefined ? DEFAULT_CHECKOUT_FAQ : config.faqItems;
+    const updateFaqItems = (items: CheckoutFaqItem[]) => setConfig({ ...config, faqItems: items });
 
     return (
         <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
@@ -137,6 +140,12 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
                         className={`flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black text-xs uppercase tracking-widest ${activeTab === 'evento' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-gray-400 hover:bg-white hover:text-gray-600'}`}
                     >
                         <Wand2 size={18} /> Evento
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('faq')}
+                        className={`flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black text-xs uppercase tracking-widest ${activeTab === 'faq' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-gray-400 hover:bg-white hover:text-gray-600'}`}
+                    >
+                        <MessageCircle size={18} /> FAQ
                     </button>
                     <button
                         onClick={() => setActiveTab('marketing')}
@@ -342,6 +351,68 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
                         </div>
                     )}
 
+                    {activeTab === 'faq' && (
+                        <div className="space-y-8 animate-in fade-in duration-300">
+                            <div>
+                                <h3 className="text-2xl font-black text-gray-900">Perguntas frequentes</h3>
+                                <p className="text-sm text-gray-400 font-bold mt-1">Edite as respostas que aparecem depois do botão de compra neste checkout.</p>
+                            </div>
+                            <div className="space-y-4">
+                                {faqItems.map((item, index) => (
+                                    <div key={index} className="rounded-2xl border border-gray-100 bg-gray-50/60 p-5 space-y-4">
+                                        <div className="flex items-start gap-3">
+                                            <div className="flex-1 space-y-3">
+                                                <Input
+                                                    label={`Pergunta ${index + 1}`}
+                                                    type="text"
+                                                    placeholder="Ex: Preciso levar notebook?"
+                                                    value={item.question}
+                                                    onChange={v => {
+                                                        const next = [...faqItems];
+                                                        next[index] = { ...next[index], question: v };
+                                                        updateFaqItems(next);
+                                                    }}
+                                                />
+                                                <div>
+                                                    <label className="block text-[10px] font-black uppercase text-gray-500 tracking-widest mb-2">Resposta</label>
+                                                    <textarea
+                                                        value={item.answer}
+                                                        onChange={e => {
+                                                            const next = [...faqItems];
+                                                            next[index] = { ...next[index], answer: e.target.value };
+                                                            updateFaqItems(next);
+                                                        }}
+                                                        rows={3}
+                                                        placeholder="Digite uma resposta curta e objetiva."
+                                                        className="w-full px-5 py-3 rounded-xl border-2 border-gray-100 outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm bg-white resize-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => updateFaqItems(faqItems.filter((_, i) => i !== index))}
+                                                className="p-2 text-red-300 hover:text-red-500 transition-colors"
+                                                title="Remover pergunta"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                <button
+                                    type="button"
+                                    onClick={() => updateFaqItems([...faqItems, { question: '', answer: '' }])}
+                                    className="w-full py-4 rounded-2xl border-2 border-dashed border-gray-200 text-gray-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50/50 transition-all flex items-center justify-center gap-2 font-black text-xs uppercase tracking-widest"
+                                >
+                                    <Plus size={18} /> Adicionar pergunta
+                                </button>
+                                <div className="rounded-xl bg-blue-50 border border-blue-100 p-4 text-xs text-blue-800 leading-relaxed">
+                                    As perguntas padrão aparecem automaticamente em checkouts antigos. Ao salvar este checkout, você pode personalizar, adicionar ou remover qualquer item.
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {activeTab === 'marketing' && (
                         <div className="space-y-8 animate-in fade-in duration-300">
                             <div>
@@ -371,54 +442,19 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
                                     </div>
                                 </div>
 
-                                {/* Social Proof - Viewer Count */}
-                                <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-[2rem] border border-amber-100 space-y-5">
+                                <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-[2rem] border border-amber-100 space-y-3">
                                     <div className="flex items-start gap-4">
                                         <div className="bg-white p-3 rounded-2xl shadow-sm">
-                                            <Users className="text-amber-500" size={24} />
+                                            <MessageCircle className="text-amber-500" size={24} />
                                         </div>
                                         <div>
-                                            <h4 className="font-black text-sm text-amber-900">Prova Social — "X pessoas vendo agora"</h4>
-                                            <p className="text-[10px] font-bold text-amber-700/60 uppercase">Aparece no checkout com variação automática ±3</p>
+                                            <h4 className="font-black text-sm text-amber-900">Disponibilidade real</h4>
+                                            <p className="text-[10px] font-bold text-amber-700/70 uppercase">Mensagem baseada no limite de vagas</p>
                                         </div>
                                     </div>
-
-                                    <div className="space-y-3">
-                                        <div className="space-y-1.5">
-                                            <label className="block text-[10px] font-black uppercase text-amber-700 tracking-widest ml-1">
-                                                Número base de visualizações
-                                            </label>
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                max="999"
-                                                placeholder="0 = desativado"
-                                                value={config.viewerCount || ''}
-                                                onChange={e => setConfig({ ...config, viewerCount: e.target.value === '' ? 0 : parseInt(e.target.value) || 0 })}
-                                                className="w-full px-5 py-4 rounded-2xl border-2 border-amber-100 outline-none focus:ring-2 focus:ring-amber-400 font-bold text-gray-700 bg-white text-center text-2xl"
-                                            />
-                                        </div>
-                                        <div className="bg-white/70 rounded-xl p-3 space-y-1">
-                                            <p className="text-[10px] font-black uppercase text-amber-700">Como funciona:</p>
-                                            <p className="text-[10px] text-amber-600 leading-relaxed">
-                                                O número configurado varia automaticamente em ±3 a cada 4–8 segundos. Ex: se colocar <strong>12</strong>, o visitante verá entre <strong>9 e 15</strong> pessoas.
-                                            </p>
-                                            <p className="text-[10px] text-amber-600 mt-1">
-                                                ⚪ <strong>0</strong> = banner desativado &nbsp;|&nbsp; 🟡 <strong>1–999</strong> = ativo
-                                            </p>
-                                        </div>
-
-                                        {config.viewerCount && config.viewerCount > 0 ? (
-                                            <div className="bg-amber-500 rounded-xl p-3 flex items-center gap-2">
-                                                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                                                <span className="text-[11px] font-black text-white">Preview: "🔥 {config.viewerCount} pessoas vendo agora"</span>
-                                            </div>
-                                        ) : (
-                                            <div className="bg-gray-100 rounded-xl p-3">
-                                                <span className="text-[11px] font-bold text-gray-400">Banner desativado (defina um número &gt; 0 para ativar)</span>
-                                            </div>
-                                        )}
-                                    </div>
+                                    <p className="text-xs text-amber-800 leading-relaxed">
+                                        Defina o <strong>Limite de Vagas</strong> na aba Geral. O checkout mostra automaticamente “Últimas vagas para...” quando restarem até 10 vagas e não usa contagem artificial de visitantes.
+                                    </p>
                                 </div>
                             </div>
                         </div>
