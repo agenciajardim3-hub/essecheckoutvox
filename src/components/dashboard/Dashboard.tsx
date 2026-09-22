@@ -182,7 +182,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     const navItems = userRole === 'manager'
         ? allNavItems.filter(item => ['turmas', 'leads', 'checkin', 'scanner', 'ticket_logs', 'list'].includes(item.id))
-        : allNavItems.filter(item => item.roles.includes(userRole));
+        : (userRole === 'master' || userRole === 'manager')
+            ? allNavItems.filter(item => item.roles.includes(userRole))
+            : [];
 
     const handleTabChange = (id: string) => {
         if (id === 'product') handleCreateCheckout();
