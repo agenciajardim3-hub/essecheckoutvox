@@ -102,6 +102,7 @@ export interface AppConfig {  id: string;
   productPrice: string;
   productImage: string;
   bannerImage: string;
+  topBannerImage?: string;
   productDescription: string;
   benefits: string[];
   turma?: string;
