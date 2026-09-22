@@ -6,6 +6,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 import { useSupabase } from './src/hooks/useSupabase';
 import { useNotifications } from './src/hooks/useNotifications';
 import { usePullToRefresh } from './src/hooks/usePullToRefresh';
+import { useSupabaseRealtime } from './src/hooks/useSupabaseRealtime';
 import { AppConfig, Lead, CustomerData, UserRole, MultiTicketPurchase, Coupon } from './src/types';
 import {
   getFbc,
@@ -286,6 +287,17 @@ export default function App() {
     fetchData();
   }, [fetchData]);
 
+  useSupabaseRealtime({
+    supabase,
+    enabled: Boolean(supabase) && (userRole !== 'none' || Boolean(checkoutParam)),
+    channelName: 'app-data-realtime',
+    tables: userRole !== 'none' || isTicketMode || isCertificateMode
+      ? ['checkouts', 'leads', 'coupons']
+      : ['checkouts'],
+    onChange: fetchData,
+  });
+
+
   // Fix missing dates in leads
   useEffect(() => {
     if (leads.length === 0 || !supabase || userRole === 'none') return;
@@ -485,9 +497,6 @@ export default function App() {
             };
             return [formattedLead, ...prev];
           });
-
-          // Also refresh main data to be sure
-          fetchData();
         }
       )
       .subscribe();
