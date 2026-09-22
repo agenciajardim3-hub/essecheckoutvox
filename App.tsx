@@ -224,7 +224,8 @@ export default function App() {
         thankYouImageUrl: c.thank_you_image_url,
         variations: typeof c.variations === 'string' ? JSON.parse(c.variations) : (c.variations || []),
         viewerCount: c.viewer_count || 0,
-        faqItems: typeof c.faq_items === 'string' ? JSON.parse(c.faq_items) : (c.faq_items || undefined)
+        faqItems: typeof c.faq_items === 'string' ? JSON.parse(c.faq_items) : (c.faq_items || undefined),
+        testimonials: typeof c.testimonials === 'string' ? JSON.parse(c.testimonials) : (c.testimonials || [])
       }));
 
       setAllCheckouts(mappedCheckouts);
@@ -663,7 +664,8 @@ export default function App() {
       thank_you_image_url: cfg.thankYouImageUrl || '',
       variations: cfg.variations || [],
       viewer_count: cfg.viewerCount || 0,
-      faq_items: cfg.faqItems || []
+      faq_items: cfg.faqItems || [],
+      testimonials: cfg.testimonials || []
     };
 
     try {
