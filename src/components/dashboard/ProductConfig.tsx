@@ -337,6 +337,8 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <div className="space-y-6">
                                     <Input label="Identificador da Turma" type="text" placeholder="Ex: Turma 05" value={config.turma || ''} onChange={v => setConfig({ ...config, turma: v })} />
+                                    <Input label="Cidade / Localidade" type="text" placeholder="Ex: Jundiaí" value={config.city || ''} onChange={v => setConfig({ ...config, city: v })} />
+                                    <Input label="Bairro / Região" type="text" placeholder="Ex: Centro" value={config.neighborhood || ''} onChange={v => setConfig({ ...config, neighborhood: v })} />
                                     <Input label="Pasta / Categoria" type="text" placeholder="Ex: Cursos, Webinars, etc" value={config.folder || ''} onChange={v => setConfig({ ...config, folder: v })} />
                                     <Input label="Data do Evento" type="text" placeholder="Ex: 25/12/2024" value={config.eventDate || ''} onChange={v => setConfig({ ...config, eventDate: v })} />
                                 </div>
