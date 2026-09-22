@@ -1,8 +1,8 @@
 
 import React, { useMemo } from 'react';
-import { Tag, Wand2, ImageIcon as ImageIconLucide, Loader2, Upload, ImageIcon, PieChart, BarChart3, ListChecks, Plus, Trash2, CheckCircle, PartyPopper, Webhook, Layers, Link as LinkIcon, Megaphone, MessageCircle, Users, DollarSign, TrendingUp } from 'lucide-react';
+import { Tag, Wand2, ImageIcon as ImageIconLucide, Loader2, Upload, ImageIcon, PieChart, BarChart3, ListChecks, Plus, Trash2, CheckCircle, PartyPopper, Webhook, Layers, Link as LinkIcon, Megaphone, MessageCircle, Users, DollarSign, TrendingUp, Star } from 'lucide-react';
 import { Input } from '../ui/Input';
-import { AppConfig, ProductVariation, Lead, CheckoutFaqItem, DEFAULT_CHECKOUT_FAQ } from '../../types';
+import { AppConfig, ProductVariation, Lead, CheckoutFaqItem, CheckoutTestimonial, DEFAULT_CHECKOUT_FAQ } from '../../types';
 import { normalizePixelId } from '../../utils/metaPixel';
 
 interface ProductConfigProps {
@@ -74,10 +74,22 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
         }
     };
 
-    const [activeTab, setActiveTab] = React.useState<'geral' | 'conteudo' | 'evento' | 'faq' | 'marketing' | 'poscompra' | 'integracoes' | 'variacoes'>('geral');
+    const [activeTab, setActiveTab] = React.useState<'geral' | 'conteudo' | 'evento' | 'faq' | 'depoimentos' | 'marketing' | 'poscompra' | 'integracoes' | 'variacoes'>('geral');
 
     const faqItems = config.faqItems === undefined ? DEFAULT_CHECKOUT_FAQ : config.faqItems;
     const updateFaqItems = (items: CheckoutFaqItem[]) => setConfig({ ...config, faqItems: items });
+    const testimonialItems: CheckoutTestimonial[] = Array.isArray(config.testimonials) ? config.testimonials : [];
+    const updateTestimonials = (items: CheckoutTestimonial[]) => setConfig({ ...config, testimonials: items });
+
+    const handleTestimonialImageUpload = async (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        const url = await uploadService(file);
+        if (!url) return;
+        const next = [...testimonialItems];
+        next[index] = { ...next[index], imageUrl: url };
+        updateTestimonials(next);
+    };
 
     return (
         <div className="max-w-6xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
@@ -146,6 +158,12 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
                         className={`flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black text-xs uppercase tracking-widest ${activeTab === 'faq' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-gray-400 hover:bg-white hover:text-gray-600'}`}
                     >
                         <MessageCircle size={18} /> FAQ
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('depoimentos')}
+                        className={`flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black text-xs uppercase tracking-widest ${activeTab === 'depoimentos' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'text-gray-400 hover:bg-white hover:text-gray-600'}`}
+                    >
+                        <Star size={18} /> Depoimentos
                     </button>
                     <button
                         onClick={() => setActiveTab('marketing')}
@@ -411,6 +429,38 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
                                 <div className="rounded-xl bg-blue-50 border border-blue-100 p-4 text-xs text-blue-800 leading-relaxed">
                                     As perguntas padrão aparecem automaticamente em checkouts antigos. Ao salvar este checkout, você pode personalizar, adicionar ou remover qualquer item.
                                 </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'depoimentos' && (
+                        <div className="space-y-8 animate-in fade-in duration-300">
+                            <div>
+                                <h3 className="text-2xl font-black text-gray-900">Depoimentos opcionais</h3>
+                                <p className="text-sm text-gray-400 font-bold mt-1">Adicione prints ou textos de alunos. Se deixar vazio, esta seção não aparece no checkout.</p>
+                            </div>
+                            <div className="space-y-4">
+                                {testimonialItems.map((item, index) => (
+                                    <div key={index} className="rounded-2xl border border-gray-100 bg-gray-50/60 p-5 space-y-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <p className="text-xs font-black uppercase tracking-widest text-gray-500">Depoimento {index + 1}</p>
+                                            <button type="button" onClick={() => updateTestimonials(testimonialItems.filter((_, i) => i !== index))} className="p-2 text-red-300 hover:text-red-500" title="Remover depoimento"><Trash2 size={18} /></button>
+                                        </div>
+                                        <Input label="Nome ou identificação" type="text" placeholder="Ex: Maria, aluna de Curitiba" value={item.name || ''} onChange={v => { const next = [...testimonialItems]; next[index] = { ...next[index], name: v }; updateTestimonials(next); }} />
+                                        <div>
+                                            <label className="block text-[10px] font-black uppercase text-gray-500 tracking-widest mb-2">Texto do depoimento</label>
+                                            <textarea value={item.text || ''} onChange={e => { const next = [...testimonialItems]; next[index] = { ...next[index], text: e.target.value }; updateTestimonials(next); }} rows={3} placeholder="Ex: O curso foi muito prático e consegui aplicar no mesmo dia." className="w-full px-5 py-3 rounded-xl border-2 border-gray-100 outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm bg-white resize-none" />
+                                        </div>
+                                        <div className="rounded-xl border border-dashed border-gray-200 bg-white p-4">
+                                            <label className="block text-[10px] font-black uppercase text-gray-500 tracking-widest mb-2">Print do depoimento (opcional)</label>
+                                            <input type="file" accept="image/*" onChange={e => handleTestimonialImageUpload(index, e)} className="w-full text-xs font-bold text-gray-500" />
+                                            {item.imageUrl && <img src={item.imageUrl} alt="Prévia do depoimento" className="mt-3 max-h-40 rounded-xl object-contain bg-gray-50" />}
+                                        </div>
+                                    </div>
+                                ))}
+                                <button type="button" onClick={() => updateTestimonials([...testimonialItems, { name: '', text: '' }])} className="w-full py-4 rounded-2xl border-2 border-dashed border-gray-200 text-gray-400 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50/50 transition-all flex items-center justify-center gap-2 font-black text-xs uppercase tracking-widest">
+                                    <Plus size={18} /> Adicionar depoimento
+                                </button>
                             </div>
                         </div>
                     )}
