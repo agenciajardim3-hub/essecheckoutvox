@@ -43,6 +43,7 @@ interface DashboardProps {
     onRetryDb: () => void;
     onDeleteCheckout: (id: string) => Promise<void>;
     onSetCheckoutActive: (ids: string[], active: boolean) => Promise<void>;
+    onSetCheckoutFolder: (ids: string[], folder: string) => Promise<void>;
     onSaveConfig: (config: AppConfig, asNew: boolean) => Promise<void>;
     uploadService: (file: File) => Promise<string | null>;
     isUploading: string | null;
@@ -76,6 +77,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     onRetryDb,
     onDeleteCheckout,
     onSetCheckoutActive,
+    onSetCheckoutFolder,
     onSaveConfig,
     uploadService,
     isUploading,
@@ -281,6 +283,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             onEditCheckout={handleEditCheckout}
                             onDeleteCheckout={onDeleteCheckout}
                             onSetCheckoutActive={onSetCheckoutActive}
+                            onSetCheckoutFolder={onSetCheckoutFolder}
                         />
                     )}
 
