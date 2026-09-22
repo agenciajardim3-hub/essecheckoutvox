@@ -84,12 +84,12 @@ export const Input: React.FC<InputProps> = ({
           onChange={handleChange}
           onBlur={handleBlur}
           autoComplete={autoComplete}
-          className={`w-full px-4 sm:px-5 py-3.5 sm:py-4 pr-12 rounded-2xl border-2 border-transparent outline-none focus:ring-2 focus:border-transparent transition-all font-bold text-[16px] sm:text-base text-gray-700 bg-gray-50/50 hover:bg-white shadow-sm leading-normal ${
+          className={`w-full px-4 sm:px-5 py-3.5 sm:py-4 pr-12 rounded-2xl border-0 outline-none focus:ring-2 focus:border-transparent transition-all font-bold text-[16px] sm:text-base text-gray-700 bg-gray-50/40 hover:bg-gray-50/70 shadow-none leading-normal ${
             valid === true
               ? 'border-emerald-400 focus:ring-emerald-400 bg-emerald-50/30'
               : valid === false
               ? 'border-red-300 focus:ring-red-400 bg-red-50/20'
-              : 'border-transparent focus:ring-blue-500 hover:border-transparent'
+              : 'border-0 focus:ring-blue-500'
           }`}
         />
         {touched && value && (
