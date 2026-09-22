@@ -60,7 +60,7 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
         setConfig({ ...config, slug: clean });
     };
 
-    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'product' | 'banner') => {
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'product' | 'banner' | 'topBanner') => {
         const file = e.target.files?.[0];
         if (!file) return;
 
@@ -68,8 +68,10 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
         if (url) {
             if (type === 'product') {
                 setConfig(prev => ({ ...prev, productImage: url }));
-            } else {
+            } else if (type === 'banner') {
                 setConfig(prev => ({ ...prev, bannerImage: url }));
+            } else {
+                setConfig(prev => ({ ...prev, topBannerImage: url }));
             }
         }
     };
@@ -296,9 +298,27 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
                                             </label>
                                         </div>
                                     </div>
+
+                                    <div className="space-y-2">
+                                        <label className="block text-[10px] font-black uppercase text-gray-500 tracking-widest ml-1">Banner Adicional Superior (opcional)</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="url"
+                                                value={config.topBannerImage || ''}
+                                                onChange={e => setConfig({ ...config, topBannerImage: e.target.value })}
+                                                placeholder="Link da imagem sem texto"
+                                                className="flex-1 px-5 py-4 rounded-2xl border-2 border-gray-100 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-xs"
+                                            />
+                                            <label className={`cursor-pointer ${isUploading === 'topBanner' ? 'bg-gray-200 text-gray-400' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-100'} w-14 h-14 rounded-2xl flex items-center justify-center transition-all flex-shrink-0`}>
+                                                {isUploading === 'topBanner' ? <Loader2 className="animate-spin" size={24} /> : <Upload size={24} />}
+                                                <input type="file" className="hidden" accept="image/*" onChange={(e) => handleUpload(e, 'topBanner')} disabled={isUploading !== null} />
+                                            </label>
+                                        </div>
+                                        <p className="text-[10px] font-bold text-gray-400 ml-1">A imagem aparecerá acima do banner principal, sem nenhum texto sobreposto.</p>
+                                    </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div className="aspect-square bg-gray-50 rounded-3xl overflow-hidden border-2 border-dashed border-gray-200 flex flex-col items-center justify-center p-2">
                                         {config.productImage ? (
                                             <img src={config.productImage} className="w-full h-full object-cover rounded-2xl" alt="Preview" />
@@ -314,6 +334,14 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
                                             <ImageIcon size={32} className="text-gray-300" />
                                         )}
                                         <p className="text-[8px] font-black uppercase text-gray-400 mt-2">Preview Banner</p>
+                                    </div>
+                                    <div className="aspect-square bg-gray-50 rounded-3xl overflow-hidden border-2 border-dashed border-gray-200 flex flex-col items-center justify-center p-2">
+                                        {config.topBannerImage ? (
+                                            <img src={config.topBannerImage} className="w-full h-full object-cover rounded-2xl" alt="Preview banner adicional" />
+                                        ) : (
+                                            <ImageIcon size={32} className="text-gray-300" />
+                                        )}
+                                        <p className="text-[8px] font-black uppercase text-gray-400 mt-2">Preview Adicional</p>
                                     </div>
                                 </div>
                             </div>
