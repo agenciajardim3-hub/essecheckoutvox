@@ -483,7 +483,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                         <Check size={11} className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100 transition-opacity" strokeWidth={4} />
                     </div>
                     <label htmlFor="terms" className="text-[11px] text-gray-500 font-medium cursor-pointer leading-relaxed select-none">
-                        Li e concordo com os <a href="#" className="font-bold text-blue-600 hover:underline">Termos de Uso</a> e <a href="#" className="font-bold text-blue-600 hover:underline">Política de Privacidade</a>. Estou ciente que a vaga só é garantida após o pagamento.
+                        Li e concordo com os <a href="https://www.voxmarketingacademy.com.br/termos-uso-politica-privacidade-vox" target="_blank" rel="noopener noreferrer" className="font-bold text-blue-600 hover:underline">Termos de Uso</a> e <a href="https://www.voxmarketingacademy.com.br/termos-uso-politica-privacidade-vox" target="_blank" rel="noopener noreferrer" className="font-bold text-blue-600 hover:underline">Política de Privacidade</a>. Estou ciente que a vaga só é garantida após o pagamento.
                     </label>
                 </div>
 
