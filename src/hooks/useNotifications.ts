@@ -49,7 +49,6 @@ export const useNotifications = () => {
               id: options.id || Math.floor(Math.random() * 10000),
               smallIcon: options.smallIcon,
               largeBody: options.largeBody,
-              summary: options.summary,
               schedule: { at: new Date(Date.now() + 1000) }, // 1 second delay to ensure it shows
             },
           ],
