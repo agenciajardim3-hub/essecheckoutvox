@@ -172,7 +172,7 @@ export const ClientView: React.FC<ClientViewProps> = ({
     }, [effectiveConfig.id, effectiveConfig.productName, effectiveConfig.productPrice]);
 
     return (
-        <div className="min-h-screen bg-[#f1f5f9] flex flex-col items-center justify-start lg:justify-center py-4 sm:py-8 lg:py-12 px-3 sm:px-6 overflow-x-hidden">
+        <div className="min-h-screen bg-white sm:bg-[#f1f5f9] flex flex-col items-center justify-start lg:justify-center py-0 sm:py-8 lg:py-12 px-0 sm:px-6 overflow-x-hidden">
             {showSuccess && (
                 <RegistrationSuccess
                     customer={customer}
