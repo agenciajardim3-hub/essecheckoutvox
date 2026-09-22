@@ -51,6 +51,7 @@ ALTER TABLE checkouts ADD COLUMN IF NOT EXISTS city TEXT;
 ALTER TABLE checkouts ADD COLUMN IF NOT EXISTS neighborhood TEXT;
 ALTER TABLE checkouts ADD COLUMN IF NOT EXISTS folder TEXT;
 ALTER TABLE checkouts ADD COLUMN IF NOT EXISTS faq_items JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE checkouts ADD COLUMN IF NOT EXISTS testimonials JSONB DEFAULT '[]'::jsonb;
 
 -- ============================================
 -- TABELA FORM_REQUESTS - Solicitações de certificado
