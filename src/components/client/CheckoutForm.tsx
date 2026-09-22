@@ -111,7 +111,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
     const { display: timerDisplay, expired: timerExpired, urgent: timerUrgent } = useCountdown(config.id || 'checkout', 15);
     const locationLabel = config.city || config.neighborhood || config.turma || config.productName || 'esta turma';
-    const faqItems = config.faqItems === undefined ? DEFAULT_CHECKOUT_FAQ : config.faqItems;
+    const faqItems = Array.isArray(config.faqItems) && config.faqItems.length > 0 ? config.faqItems : DEFAULT_CHECKOUT_FAQ;
 
     const ticketAmount = config.ticketAmount || 1;
     const totalParticipants = quantity * ticketAmount;
