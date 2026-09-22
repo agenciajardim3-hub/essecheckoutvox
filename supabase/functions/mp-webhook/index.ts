@@ -70,8 +70,26 @@ Deno.serve(async (req) => {
     const leadId = payment.external_reference;
     const status = payment.status;
     const statusDetail = payment.status_detail;
-    const paidAmount = payment.transaction_amount;
+    const paidAmount = Number(payment.transaction_amount) || 0;
     const paymentMethod = payment.payment_method_id;
+    const feeDetails = Array.isArray(payment.fee_details) ? payment.fee_details : [];
+    const transactionDetails = Array.isArray(payment.transaction_details)
+      ? payment.transaction_details[0]
+      : payment.transaction_details || {};
+    const netReceivedAmount = Number(transactionDetails.net_received_amount);
+    const collectorFeeAmount = feeDetails
+      .filter((fee: any) => fee?.fee_payer === 'collector' || fee?.type === 'mercadopago_fee')
+      .reduce((total: number, fee: any) => total + (Number(fee?.amount) || 0), 0);
+    const feeAmount = status === 'approved'
+      ? (Number.isFinite(netReceivedAmount) && paidAmount > 0
+        ? Math.max(0, paidAmount - netReceivedAmount)
+        : collectorFeeAmount)
+      : 0;
+    const netAmount = status === 'approved'
+      ? (Number.isFinite(netReceivedAmount) && netReceivedAmount >= 0
+        ? netReceivedAmount
+        : Math.max(0, paidAmount - feeAmount))
+      : 0;
 
     if (!leadId) {
       return new Response(JSON.stringify({ received: true, message: 'Pagamento sem external_reference' }), {
