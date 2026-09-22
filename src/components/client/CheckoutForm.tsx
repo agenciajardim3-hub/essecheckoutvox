@@ -209,7 +209,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     };
 
     return (
-        <div className="w-full bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-gray-100 animate-in fade-in slide-in-from-bottom-8 duration-700 flex flex-col">
+        <div className="w-full bg-white rounded-[3rem] shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700 flex flex-col">
 
             {/* ── Banner ── */}
             <div
@@ -304,7 +304,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
                 {/* ── Quantity Selector ── */}
                 {!isTicketMode && !isRegistrationMode && (
-                    <div className="bg-gray-50 rounded-2xl p-5 space-y-4 border border-gray-100">
+                    <div className="bg-gray-50/70 rounded-2xl p-5 space-y-4 shadow-sm">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2.5">
                                 <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
@@ -342,7 +342,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                                     className={`flex-1 py-2.5 rounded-xl font-black text-sm transition-all ${
                                         quantity === num ? 'bg-blue-600 text-white shadow-md shadow-blue-200 scale-105' :
                                         num > maxQuantity ? 'bg-gray-100 text-gray-300 cursor-not-allowed' :
-                                        'bg-white text-blue-600 border border-gray-200 hover:border-blue-300 hover:scale-105'
+                                        'bg-white text-blue-600 shadow-sm hover:shadow-md hover:scale-105'
                                     }`}
                                 >
                                     {num}
@@ -364,7 +364,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                                 <Tag size={13} /> Tem um cupom de desconto?
                             </button>
                         ) : (
-                            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 space-y-3 animate-in fade-in duration-300">
+                            <div className="bg-emerald-50 p-4 rounded-2xl shadow-sm space-y-3 animate-in fade-in duration-300">
                                 <div className="flex items-center justify-between">
                                     <span className="text-[10px] font-black uppercase text-emerald-700 tracking-widest flex items-center gap-1.5"><Tag size={12} /> Cupom de Desconto</span>
                                     {!appliedCoupon && (
@@ -383,7 +383,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                                                 onKeyPress={(e) => e.key === 'Enter' && handleApplyCoupon()}
                                                 placeholder="CÓDIGO"
                                                 disabled={isApplyingCoupon}
-                                                className="flex-1 px-4 py-2.5 rounded-xl border-2 border-emerald-100 outline-none focus:ring-2 focus:ring-emerald-400 font-black text-sm bg-white uppercase tracking-widest"
+                                                className="flex-1 px-4 py-2.5 rounded-xl border-2 border-transparent outline-none focus:ring-2 focus:ring-emerald-400 font-black text-sm bg-white uppercase tracking-widest"
                                             />
                                             <button
                                                 type="button"
@@ -397,7 +397,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                                         {couponError && <p className="text-red-500 text-xs font-bold flex items-center gap-1"><X size={12} /> {couponError}</p>}
                                     </div>
                                 ) : (
-                                    <div className="bg-white rounded-xl p-3 border-2 border-emerald-400 flex items-center justify-between">
+                                    <div className="bg-white rounded-xl p-3 shadow-sm flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <span className="bg-emerald-100 text-emerald-700 font-black text-xs px-2 py-1 rounded-lg">{appliedCoupon.code}</span>
                                             <span className="text-emerald-700 font-black text-sm">
@@ -442,7 +442,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                 {/* ── Form fields ── */}
                 <div ref={formRef} className="space-y-4">
                     {quantity > 1 && (
-                        <p className="text-sm font-black text-gray-700 text-center pb-2 border-b border-gray-100">
+                        <p className="text-sm font-black text-gray-700 text-center pb-2">
                             {currentParticipant === 0 ? '👤 Comprador (Responsável)' : `👥 Participante ${currentParticipant + 1}`}
                         </p>
                     )}
@@ -511,7 +511,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                         </div>
                         <div className="space-y-3">
                             {testimonials.map((testimonial, index) => (
-                                <article key={`${testimonial.name || 'depoimento'}-${index}`} className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                                <article key={`${testimonial.name || 'depoimento'}-${index}`} className="overflow-hidden rounded-2xl bg-white shadow-sm">
                                     {testimonial.imageUrl && (
                                         <img src={testimonial.imageUrl} alt={`Depoimento de ${testimonial.name || 'aluno'}`} className="block w-full max-h-80 object-contain bg-gray-50" loading="lazy" />
                                     )}
@@ -536,7 +536,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                         </div>
                         <div className="space-y-2">
                             {faqItems.map((item, index) => (
-                                <details key={`${item.question}-${index}`} className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+                                <details key={`${item.question}-${index}`} className="rounded-xl bg-gray-50/70 shadow-sm px-4 py-3">
                                     <summary className="cursor-pointer list-none pr-2 text-xs font-black text-gray-700">{item.question}</summary>
                                     <p className="mt-2 text-xs leading-relaxed text-gray-500">{item.answer}</p>
                                 </details>
@@ -580,7 +580,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                         </div>
 
                         {/* Trust icons */}
-                        <div className="flex justify-center gap-8 pt-3 border-t border-gray-100">
+                        <div className="flex justify-center gap-8 pt-3">
                             {[
                                 { icon: <Shield size={14} />, color: 'text-blue-500 bg-blue-50', label: 'Pagamento\nSeguro' },
                                 { icon: <BadgeCheck size={14} />, color: 'text-emerald-500 bg-emerald-50', label: '7 Dias\nGarantia' },
@@ -594,7 +594,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                         </div>
 
                         {/* Mercado Pago note */}
-                        <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 flex items-start gap-2.5">
+                        <div className="bg-blue-50/60 rounded-xl p-3 flex items-start gap-2.5">
                             <Shield size={14} className="text-blue-500 shrink-0 mt-0.5" />
                             <p className="text-[10px] text-blue-700 font-bold leading-relaxed">
                                 <strong>Pagamento seguro pelo Mercado Pago</strong><br />
