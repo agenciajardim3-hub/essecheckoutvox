@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Loader2, BadgeCheck, ShoppingCart, Clock, Users, ChevronRight, ChevronLeft, Tag, X, Check, Calendar, MapPin, Shield, ArrowRight, HelpCircle } from 'lucide-react';
 import { Input } from '../ui/Input';
-import { AppConfig, CustomerData, MultiTicketPurchase, Coupon } from '../../types';
+import { AppConfig, CustomerData, MultiTicketPurchase, Coupon, DEFAULT_CHECKOUT_FAQ } from '../../types';
 
 interface CheckoutFormProps {
     config: AppConfig;
