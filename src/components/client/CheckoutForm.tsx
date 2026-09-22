@@ -445,12 +445,10 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                             {currentParticipant === 0 ? '👤 Comprador (Responsável)' : `👥 Participante ${currentParticipant + 1}`}
                         </p>
                     )}
-                    <Input label="Nome Completo" type="text" placeholder="Ex: Maria Silva" value={currentP.name} onChange={v => updateParticipant(currentParticipant, 'name', v)} autoComplete="name" />
-                    <Input label="E-mail" type="email" placeholder="seu@email.com" value={currentP.email} onChange={v => updateParticipant(currentParticipant, 'email', v)} autoComplete="email" />
-                    <div className="grid grid-cols-2 gap-3">
-                        <Input label="WhatsApp" type="tel" placeholder="(00) 00000-0000" mask="phone" value={currentP.phone} onChange={v => updateParticipant(currentParticipant, 'phone', v)} autoComplete="tel" />
-                        <Input label="CPF" type="text" placeholder="000.000.000-00" mask="cpf" value={currentP.cpf} onChange={v => updateParticipant(currentParticipant, 'cpf', v)} autoComplete="off" />
-                    </div>
+                    <Input label="Nome Completo" type="text" placeholder="Digite seu nome completo" value={currentP.name} onChange={v => updateParticipant(currentParticipant, 'name', v)} autoComplete="name" />
+                    <Input label="E-mail" type="email" placeholder="Digite seu melhor e-mail" value={currentP.email} onChange={v => updateParticipant(currentParticipant, 'email', v)} autoComplete="email" />
+                    <Input label="WhatsApp" type="tel" placeholder="(11) 99999-9999" mask="phone" value={currentP.phone} onChange={v => updateParticipant(currentParticipant, 'phone', v)} autoComplete="tel" />
+                    <Input label="CPF" type="text" placeholder="000.000.000-00" mask="cpf" value={currentP.cpf} onChange={v => updateParticipant(currentParticipant, 'cpf', v)} autoComplete="off" />
                     <Input label="Cidade" type="text" placeholder="Ex: São Paulo" value={currentP.city} onChange={v => updateParticipant(currentParticipant, 'city', v)} autoComplete="address-level2" />
                 </div>
 
