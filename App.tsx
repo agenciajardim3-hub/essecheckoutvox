@@ -266,7 +266,7 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, checkoutParam]);
+  }, [supabase, checkoutParam, userRole, isTicketMode, isCertificateMode]);
 
   // Refresh handler for both pull-to-refresh and button click
   const handleRefresh = useCallback(async () => {
