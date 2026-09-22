@@ -162,6 +162,10 @@ export const ProductConfig: React.FC<ProductConfigProps> = ({
                             <input type="checkbox" id="isActive" checked={config.isActive} onChange={(e) => setConfig({ ...config, isActive: e.target.checked })} className="w-5 h-5 text-blue-600 rounded-lg border-gray-300 focus:ring-blue-500" />
                             <label htmlFor="isActive" className="text-[10px] font-black uppercase text-gray-500 cursor-pointer">Checkout Ativo</label>
                         </div>
+                        <div className="flex items-center gap-3 bg-amber-50 p-4 rounded-2xl border border-amber-100">
+                            <input type="checkbox" id="isSoldOutManual" checked={config.isSoldOutManual || false} onChange={(e) => setConfig({ ...config, isSoldOutManual: e.target.checked })} className="w-5 h-5 text-amber-600 rounded-lg border-gray-300 focus:ring-amber-500" />
+                            <label htmlFor="isSoldOutManual" className="text-[10px] font-black uppercase text-amber-700 cursor-pointer">Mostrar como esgotado</label>
+                        </div>
                     </div>
                 </div>
 
