@@ -697,6 +697,23 @@ export default function App() {
     }
   };
 
+  const handleSetCheckoutFolder = async (ids: string[], folder: string) => {
+    if (!supabase || ids.length === 0) return;
+    setSavingId('bulk-checkouts-folder');
+    try {
+      const { error } = await supabase
+        .from('checkouts')
+        .update({ folder })
+        .in('id', ids);
+      if (error) throw error;
+      setAllCheckouts(prev => prev.map(checkout => ids.includes(checkout.id) ? { ...checkout, folder } : checkout));
+    } catch (err: any) {
+      alert('Erro ao mover os checkouts para a pasta:\n' + getErrorMessage(err));
+    } finally {
+      setSavingId(null);
+    }
+  };
+
   // Mercado Pago API Integration (via Supabase Edge Function)
   const createMercadoPagoPreference = async (purchase: MultiTicketPurchase, leadIds: string[]) => {
     if (!supabase) return null;
@@ -1523,6 +1540,7 @@ export default function App() {
           onRetryDb={fetchData}
           onDeleteCheckout={handleDeleteCheckout}
           onSetCheckoutActive={handleSetCheckoutActive}
+          onSetCheckoutFolder={handleSetCheckoutFolder}
           onSaveConfig={handleSaveConfig}
           uploadService={uploadFile}
           isUploading={isUploading}
