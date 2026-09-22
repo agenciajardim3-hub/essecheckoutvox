@@ -1120,11 +1120,13 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                             />
                                         </div>
                                     )}
-                                    {userRole === 'master' && Number(lead.mp_net_amount) > 0 && (
+                                    {userRole === 'master' && (
                                         <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100">
                                             <span className="text-xs font-bold text-gray-600 uppercase">Valor líquido:</span>
                                             <span className="text-sm font-black text-blue-600">
-                                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(lead.mp_net_amount))}
+                                                {Number(lead.mp_net_amount) > 0
+                                                    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(lead.mp_net_amount))
+                                                    : '—'}
                                             </span>
                                         </div>
                                     )}
