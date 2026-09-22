@@ -63,8 +63,11 @@ CREATE TABLE IF NOT EXISTS expenses (
   amount NUMERIC NOT NULL,
   category TEXT DEFAULT 'material',
   date DATE DEFAULT CURRENT_DATE,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  checkout_id TEXT DEFAULT 'global'
 );
+
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS checkout_id TEXT DEFAULT 'global';
 
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on expenses" ON expenses;
