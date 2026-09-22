@@ -7,6 +7,7 @@ import { useSupabase } from './src/hooks/useSupabase';
 import { useNotifications } from './src/hooks/useNotifications';
 import { usePullToRefresh } from './src/hooks/usePullToRefresh';
 import { useSupabaseRealtime } from './src/hooks/useSupabaseRealtime';
+import { isConfirmedPayment } from './src/utils/leadStatus';
 import { AppConfig, Lead, CustomerData, UserRole, MultiTicketPurchase, Coupon } from './src/types';
 import {
   getFbc,
@@ -1545,7 +1546,7 @@ export default function App() {
           }}
           onViewSite={() => setUserRole('none')}
           isLoading={isLoading}
-          totalRevenue={leads.filter(l => l.status === 'Pago').reduce((acc, curr) => acc + (curr.paid_amount || 0), 0)}
+          totalRevenue={leads.filter(isConfirmedPayment).reduce((acc, curr) => acc + (curr.paid_amount || 0), 0)}
           totalLeadsCount={leads.length}
           dbStatus={dbStatus}
           onRetryDb={fetchData}
