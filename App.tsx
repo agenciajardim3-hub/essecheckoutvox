@@ -90,6 +90,7 @@ export default function App() {
     gtmId: '',
     metaPixelId: '',
     isActive: true,
+    isSoldOutManual: false,
     slug: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -204,6 +205,7 @@ export default function App() {
         gtmId: c.gtm_id || '',
         metaPixelId: c.meta_pixel_id,
         isActive: c.is_active,
+        isSoldOutManual: c.is_sold_out === true,
         slug: c.slug,
         city: c.city || '',
         neighborhood: c.neighborhood || '',
@@ -638,6 +640,7 @@ export default function App() {
       gtm_id: cfg.gtmId || '',
       meta_pixel_id: cfg.metaPixelId || '',
       is_active: cfg.isActive !== undefined ? cfg.isActive : true,
+      is_sold_out: cfg.isSoldOutManual === true,
       max_vagas: cfg.maxVagas,
       use_mp_api: cfg.useMpApi || false,
       ticket_amount: cfg.ticketAmount || 1,
@@ -1548,7 +1551,7 @@ export default function App() {
   }
 
   const soldSpots = leads.filter(l => l.product_id === config.id && l.status === 'Pago').length;
-  const isSoldOut = !!(config.maxVagas && config.maxVagas > 0 && soldSpots >= config.maxVagas);
+  const isSoldOut = config.isSoldOutManual === true || !!(config.maxVagas && config.maxVagas > 0 && soldSpots >= config.maxVagas);
   const availableSpots = config.maxVagas && config.maxVagas > 0 ? config.maxVagas - soldSpots : undefined;
 
   // Show Thank You page after successful payment
