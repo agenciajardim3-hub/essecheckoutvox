@@ -221,7 +221,8 @@ export default function App() {
         thankYouButtonUrl: c.thank_you_button_url,
         thankYouImageUrl: c.thank_you_image_url,
         variations: typeof c.variations === 'string' ? JSON.parse(c.variations) : (c.variations || []),
-        viewerCount: c.viewer_count || 0
+        viewerCount: c.viewer_count || 0,
+        faqItems: typeof c.faq_items === 'string' ? JSON.parse(c.faq_items) : (c.faq_items || undefined)
       }));
 
       setAllCheckouts(mappedCheckouts);
