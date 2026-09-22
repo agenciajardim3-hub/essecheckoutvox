@@ -307,11 +307,16 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
             </div>
 
             {/* Fluxo financeiro */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div className="bg-white rounded-[2rem] p-6 border border-orange-100 shadow-lg">
                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Taxas Mercado Pago</p>
                     <p className="text-2xl font-black text-orange-600 mt-2">{formatCurrency(metrics.totalFees)}</p>
                     <p className="text-xs font-bold text-gray-400 mt-1">Descontadas das vendas confirmadas</p>
+                </div>
+                <div className="bg-white rounded-[2rem] p-6 border border-blue-100 shadow-lg">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Receita líquida</p>
+                    <p className="text-2xl font-black text-blue-600 mt-2">{formatCurrency(metrics.netRevenue)}</p>
+                    <p className="text-xs font-bold text-gray-400 mt-1">Receita bruta menos taxas</p>
                 </div>
                 <div className="bg-white rounded-[2rem] p-6 border border-red-100 shadow-lg">
                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Despesas no período</p>
