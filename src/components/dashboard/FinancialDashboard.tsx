@@ -1,7 +1,8 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { DollarSign, TrendingUp, Users, CreditCard, BarChart3, PieChart, ArrowUp, ArrowDown, Filter, Calendar, ChevronDown, Wallet, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
-import { Lead, AppConfig } from '../../types';
+import { Lead, AppConfig, Expense } from '../../types';
+import { useSupabase } from '../../hooks/useSupabase';
 
 interface FinancialDashboardProps {
     leads: Lead[];
@@ -11,6 +12,28 @@ interface FinancialDashboardProps {
 export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, checkouts }) => {
     const [selectedProduct, setSelectedProduct] = useState<string>('all');
     const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | 'all'>('all');
+    const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [expensesLoading, setExpensesLoading] = useState(true);
+    const supabase = useSupabase();
+
+    useEffect(() => {
+        let cancelled = false;
+        const fetchExpenses = async () => {
+            if (!supabase) {
+                setExpensesLoading(false);
+                return;
+            }
+            setExpensesLoading(true);
+            const { data, error } = await supabase.from('expenses').select('*').order('date', { ascending: false });
+            if (!cancelled) {
+                if (error) console.error('Erro ao carregar despesas no financeiro:', error);
+                setExpenses((data || []) as Expense[]);
+                setExpensesLoading(false);
+            }
+        };
+        fetchExpenses();
+        return () => { cancelled = true; };
+    }, [supabase]);
 
     // Safe date parser - returns null for invalid dates
     const safeDate = (d: any): Date | null => {
@@ -36,13 +59,25 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
             const days = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90;
             const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
             filtered = filtered.filter(l => {
-                const d = safeDate(l.date);
+                const d = safeDate(l.submitted_at || l.created_at || l.date);
                 return d ? d >= cutoff : false;
             });
         }
 
         return filtered;
     }, [leads, selectedProduct, dateRange]);
+
+    const filteredExpenses = useMemo(() => {
+        return expenses.filter(expense => {
+            const matchesProduct = selectedProduct === 'all' || !expense.checkout_id || expense.checkout_id === 'global' || expense.checkout_id === selectedProduct;
+            if (!matchesProduct) return false;
+            if (dateRange === 'all') return true;
+            const days = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90;
+            const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+            const expenseDate = safeDate(expense.date);
+            return expenseDate ? expenseDate >= cutoff : false;
+        });
+    }, [expenses, selectedProduct, dateRange]);
 
     // Financial metrics
     const metrics = useMemo(() => {
@@ -54,6 +89,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
         const totalRevenue = paid.reduce((acc, l) => acc + (l.paid_amount || 0), 0);
         const pendingRevenue = pending.reduce((acc, l) => acc + (l.paid_amount || 0), 0);
         const sinalRevenue = sinal.reduce((acc, l) => acc + (l.paid_amount || 0), 0);
+        const totalExpenses = filteredExpenses.reduce((acc, expense) => acc + (expense.amount || 0), 0);
 
         // Ticket médio
         const averageTicket = paid.length > 0 ? totalRevenue / paid.length : 0;
@@ -72,9 +108,11 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
             pagarNoDiaCount: pagarNoDia.length,
             newCount: filteredLeads.filter(l => l.status === 'Novo').length,
             averageTicket,
-            conversionRate
+            conversionRate,
+            totalExpenses,
+            netProfit: totalRevenue - totalExpenses
         };
-    }, [filteredLeads]);
+    }, [filteredLeads, filteredExpenses]);
 
     // Payment methods breakdown
     const paymentMethods = useMemo(() => {
@@ -139,7 +177,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
         const daily: Record<string, number> = {};
 
         paid.forEach(l => {
-            const d = safeDate(l.date);
+            const d = safeDate(l.submitted_at || l.created_at || l.date);
             if (!d) return;
             const day = d.toISOString().split('T')[0];
             daily[day] = (daily[day] || 0) + (l.paid_amount || 0);
@@ -255,6 +293,25 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
                     </div>
                     <p className="text-3xl font-black tracking-tight text-gray-900">{metrics.totalLeads}</p>
                     <p className="text-xs font-bold mt-2 text-gray-400">Cadastros realizados</p>
+                </div>
+            </div>
+
+            {/* Fluxo financeiro */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-lg">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Despesas no período</p>
+                    <p className="text-2xl font-black text-red-600 mt-2">{expensesLoading ? '—' : formatCurrency(metrics.totalExpenses)}</p>
+                    <p className="text-xs font-bold text-gray-400 mt-1">{filteredExpenses.length} lançamento(s)</p>
+                </div>
+                <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-lg">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Resultado líquido</p>
+                    <p className={`text-2xl font-black mt-2 ${metrics.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{expensesLoading ? '—' : formatCurrency(metrics.netProfit)}</p>
+                    <p className="text-xs font-bold text-gray-400 mt-1">Receita confirmada menos despesas</p>
+                </div>
+                <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-lg">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">A receber</p>
+                    <p className="text-2xl font-black text-amber-600 mt-2">{formatCurrency(metrics.pendingRevenue + metrics.sinalRevenue)}</p>
+                    <p className="text-xs font-bold text-gray-400 mt-1">{metrics.pendingCount + metrics.sinalCount} pagamento(s) pendente(s)</p>
                 </div>
             </div>
 
