@@ -2,6 +2,8 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Lead, AppConfig } from '../../types';
 import { DollarSign, UserPlus, Filter, Wallet, TrendingUp, BarChart3, Settings, Save } from 'lucide-react';
 import { useSupabase } from '../../hooks/useSupabase';
+import { useSupabaseRealtime } from '../../hooks/useSupabaseRealtime';
+import { isConfirmedPayment } from '../../utils/leadStatus';
 import { IntelligenceDashboard } from './IntelligenceDashboard';
 
 interface OverviewDashboardProps {
@@ -55,20 +57,27 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
+  const fetchGlobalExpenses = async () => {
+    if (!supabase) return;
+    try {
+      const { data, error } = await supabase.from('expenses').select('*');
+      if (error) throw error;
+      setGlobalExpenseItems(data || []);
+    } catch (err) {
+      console.error('Erro ao carregar despesas da Visão Geral:', err);
+    }
+  };
+
   useEffect(() => {
-    const fetchGlobalExpenses = async () => {
-      if (!supabase) return;
-      try {
-        const { data } = await supabase.from('expenses').select('*');
-        if (data) {
-          setGlobalExpenseItems(data);
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    fetchGlobalExpenses();
+    void fetchGlobalExpenses();
   }, [supabase]);
+
+  useSupabaseRealtime({
+    supabase,
+    tables: ['expenses'],
+    channelName: 'overview-expenses-realtime',
+    onChange: fetchGlobalExpenses,
+  });
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -94,8 +103,8 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
     return data;
   }, [leads, selectedProduct, dateRange]);
 
-  const paidLeads = useMemo(() => filteredLeads.filter((lead) => lead.status === 'Pago' || lead.status === 'Aprovado'), [filteredLeads]);
-  const allPaidLeads = useMemo(() => leads.filter((lead) => lead.status === 'Pago' || lead.status === 'Aprovado'), [leads]);
+  const paidLeads = useMemo(() => filteredLeads.filter(isConfirmedPayment), [filteredLeads]);
+  const allPaidLeads = useMemo(() => leads.filter(isConfirmedPayment), [leads]);
 
   const totalExpenses = useMemo(() => {
     let local = 0;
@@ -164,7 +173,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
   const productRows = useMemo(() => {
     return checkouts.map((checkout) => {
       const productLeads = leads.filter((lead) => lead.product_id === checkout.id);
-      const productPaid = productLeads.filter((lead) => lead.status === 'Pago' || lead.status === 'Aprovado');
+      const productPaid = productLeads.filter(isConfirmedPayment);
       const revenue = productPaid.reduce((sum, lead) => sum + (lead.paid_amount || 0), 0);
       const exp = expenses[checkout.id] || EMPTY_EXPENSES;
       
@@ -185,7 +194,7 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
         conversion: productLeads.length > 0 ? (productPaid.length / productLeads.length) * 100 : 0,
       };
     });
-  }, [checkouts, leads, expenses]);
+  }, [checkouts, leads, expenses, globalExpenseItems]);
 
   const latestPaid = useMemo(() => {
     return [...allPaidLeads].sort((a, b) => (safeDate(b.created_at || b.date)?.getTime() || 0) - (safeDate(a.created_at || a.date)?.getTime() || 0))[0];
