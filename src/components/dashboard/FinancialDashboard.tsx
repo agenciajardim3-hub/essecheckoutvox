@@ -25,11 +25,9 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
             }
             setExpensesLoading(true);
             const { data, error } = await supabase.from('expenses').select('*').order('date', { ascending: false });
-            if (!cancelled) {
-                if (error) console.error('Erro ao carregar despesas no financeiro:', error);
-                setExpenses((data || []) as Expense[]);
-                setExpensesLoading(false);
-            }
+            if (error) console.error('Erro ao carregar despesas no financeiro:', error);
+            setExpenses((data || []) as Expense[]);
+            setExpensesLoading(false);
     };
 
     useEffect(() => {
