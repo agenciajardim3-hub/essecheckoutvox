@@ -75,8 +75,22 @@ export interface ProductVariation {
   ticketAmount?: number; // How many tickets this variation represents (e.g. 5 for a table)
 }
 
-export interface AppConfig {
-  id: string;
+export interface CheckoutFaqItem {
+  question: string;
+  answer: string;
+}
+
+export const DEFAULT_CHECKOUT_FAQ: CheckoutFaqItem[] = [
+  { question: 'Preciso ter experiência?', answer: 'Não. O conteúdo é explicado de forma prática, do básico ao avançado.' },
+  { question: 'Preciso levar notebook?', answer: 'Recomendamos levar um notebook carregado para acompanhar as atividades práticas.' },
+  { question: 'Como recebo a confirmação?', answer: 'Após a confirmação do pagamento, você receberá as instruções no e-mail e no WhatsApp informados.' },
+  { question: 'Tem certificado?', answer: 'Sim, quando o evento oferecer certificado, as orientações serão enviadas após a participação.' },
+  { question: 'Onde será realizado?', answer: 'O endereço completo aparece nesta página e também na confirmação da inscrição.' },
+  { question: 'Posso pagar no Pix?', answer: 'Sim. O Mercado Pago aceita Pix e cartão de crédito em até 12x.' },
+  { question: 'O que acontece depois do pagamento?', answer: 'Você será redirecionado para a confirmação e receberá as próximas orientações pelos canais informados.' }
+];
+
+export interface AppConfig {  id: string;
   mercadoPagoLink: string;
   productName: string;
   productPrice: string;
