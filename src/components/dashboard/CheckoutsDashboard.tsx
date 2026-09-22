@@ -10,6 +10,7 @@ interface CheckoutsDashboardProps {
     onCreateCheckout: () => void;
     onEditCheckout: (checkout: AppConfig) => void;
     onDeleteCheckout: (id: string) => Promise<void>;
+    onSetCheckoutActive: (ids: string[], active: boolean) => Promise<void>;
 }
 
 const money = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -85,12 +86,14 @@ export const CheckoutsDashboard: React.FC<CheckoutsDashboardProps> = ({
     savingId,
     onCreateCheckout,
     onEditCheckout,
-    onDeleteCheckout
+    onDeleteCheckout,
+    onSetCheckoutActive
 }) => {
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
     const [expandedCities, setExpandedCities] = useState<Record<string, boolean>>({});
     const [expandedAreas, setExpandedAreas] = useState<Record<string, boolean>>({});
+    const [selectedCheckoutIds, setSelectedCheckoutIds] = useState<Set<string>>(new Set());
 
     const checkoutStats = useMemo(() => {
         const map = new Map<string, { total: number; paid: number; revenue: number }>();
@@ -139,12 +142,42 @@ export const CheckoutsDashboard: React.FC<CheckoutsDashboardProps> = ({
 
     const toggleCity = (city: string) => setExpandedCities(prev => ({ ...prev, [city]: !(prev[city] ?? true) }));
     const toggleArea = (areaKey: string) => setExpandedAreas(prev => ({ ...prev, [areaKey]: !(prev[areaKey] ?? true) }));
+    const visibleCheckoutIds = filteredCheckouts.map(checkout => checkout.id);
+    const allVisibleSelected = visibleCheckoutIds.length > 0 && visibleCheckoutIds.every(id => selectedCheckoutIds.has(id));
+
+    const toggleCheckoutSelection = (id: string) => {
+        setSelectedCheckoutIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const toggleSelectAllVisible = () => {
+        setSelectedCheckoutIds(prev => {
+            const next = new Set(prev);
+            if (allVisibleSelected) visibleCheckoutIds.forEach(id => next.delete(id));
+            else visibleCheckoutIds.forEach(id => next.add(id));
+            return next;
+        });
+    };
+
+    const handleBulkStatus = async (active: boolean) => {
+        const ids = Array.from(selectedCheckoutIds);
+        if (!ids.length) return;
+        const action = active ? 'ativar' : 'desativar';
+        if (!window.confirm(`Deseja ${action} ${ids.length} checkout(s) selecionado(s)?`)) return;
+        await onSetCheckoutActive(ids, active);
+        setSelectedCheckoutIds(new Set());
+    };
 
     const renderCheckoutTable = (areaCheckouts: AppConfig[]) => (
         <div className="overflow-x-auto bg-white rounded-3xl border border-gray-100">
             <table className="w-full min-w-[980px]">
                 <thead>
                     <tr className="text-left border-b border-gray-100">
+                        <th className="px-4 py-4 text-center"><input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAllVisible} aria-label="Selecionar todos os checkouts visíveis" className="h-4 w-4 accent-blue-600" /></th>
                         <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Checkout</th>
                         <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Data/Local</th>
                         <th className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Valor</th>
@@ -159,6 +192,7 @@ export const CheckoutsDashboard: React.FC<CheckoutsDashboardProps> = ({
                         const isDeleting = savingId === checkout.id;
                         return (
                             <tr key={checkout.id} className="hover:bg-gray-50/60 transition-all">
+                                <td className="px-4 py-4 text-center"><input type="checkbox" checked={selectedCheckoutIds.has(checkout.id)} onChange={() => toggleCheckoutSelection(checkout.id)} aria-label={`Selecionar ${checkout.productName || checkout.id}`} className="h-4 w-4 accent-blue-600" /></td>
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-4">
                                         <img src={checkout.productImage} onError={event => { (event.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=300'; }} className="w-14 h-14 rounded-2xl object-cover bg-gray-100" alt="" />
@@ -237,6 +271,16 @@ export const CheckoutsDashboard: React.FC<CheckoutsDashboardProps> = ({
                         <option value="inactive">Inativos</option>
                     </select>
                 </div>
+                {selectedCheckoutIds.size > 0 && (
+                    <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3">
+                        <span className="text-xs font-black uppercase text-blue-700">{selectedCheckoutIds.size} checkout(s) selecionado(s)</span>
+                        <div className="flex flex-wrap gap-2">
+                            <button onClick={() => handleBulkStatus(true)} className="rounded-xl bg-emerald-600 px-4 py-2 text-[10px] font-black uppercase text-white hover:bg-emerald-700">Ativar selecionados</button>
+                            <button onClick={() => handleBulkStatus(false)} className="rounded-xl bg-gray-700 px-4 py-2 text-[10px] font-black uppercase text-white hover:bg-gray-800">Desativar selecionados</button>
+                            <button onClick={() => setSelectedCheckoutIds(new Set())} className="rounded-xl bg-white px-4 py-2 text-[10px] font-black uppercase text-gray-600 border border-gray-200 hover:bg-gray-100">Limpar seleção</button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {checkouts.length === 0 ? (
