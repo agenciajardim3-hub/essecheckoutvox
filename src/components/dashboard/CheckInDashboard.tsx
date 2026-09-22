@@ -4,6 +4,7 @@ import {
     ChevronDown, RotateCcw, Loader2, MapPin, Calendar
 } from 'lucide-react';
 import { Lead, AppConfig } from '../../types';
+import { isConfirmedPayment } from '../../utils/leadStatus';
 
 interface CheckInDashboardProps {
     leads: Lead[];
@@ -16,19 +17,47 @@ export const CheckInDashboard: React.FC<CheckInDashboardProps> = ({ leads, check
     const [searchQuery, setSearchQuery] = useState('');
     const [loadingId, setLoadingId] = useState<string | null>(null);
     const [filterStatus, setFilterStatus] = useState<'all' | 'checked' | 'unchecked'>('all');
+    const [checkoutStatusFilter, setCheckoutStatusFilter] = useState<'active' | 'inactive' | 'all'>('active');
+    const [selectedCity, setSelectedCity] = useState('all');
+    const [turmaSearch, setTurmaSearch] = useState('');
+
+    const getCheckoutCity = (checkout: AppConfig) => (
+        checkout.city || checkout.neighborhood || checkout.folder || checkout.eventLocation || 'Sem cidade definida'
+    ).trim();
+
+    const cityOptions = useMemo(() => (
+        Array.from(new Set(checkouts.map(getCheckoutCity))).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    ), [checkouts]);
+
+    const visibleCheckouts = useMemo(() => {
+        const query = turmaSearch.trim().toLowerCase();
+        return checkouts.filter(checkout => {
+            const isActive = checkout.isActive !== false;
+            const matchesStatus = checkoutStatusFilter === 'all'
+                || (checkoutStatusFilter === 'active' && isActive)
+                || (checkoutStatusFilter === 'inactive' && !isActive);
+            const matchesCity = selectedCity === 'all' || getCheckoutCity(checkout) === selectedCity;
+            const matchesSearch = !query || [checkout.productName, checkout.turma, getCheckoutCity(checkout), checkout.eventLocation]
+                .filter(Boolean)
+                .some(value => String(value).toLowerCase().includes(query));
+            return matchesStatus && matchesCity && matchesSearch;
+        });
+    }, [checkouts, checkoutStatusFilter, selectedCity, turmaSearch]);
 
     // Auto-select first turma
     React.useEffect(() => {
-        if (!selectedTurma && checkouts.length > 0) {
-            setSelectedTurma(checkouts[0].id);
+        if (visibleCheckouts.length > 0 && !visibleCheckouts.some(checkout => checkout.id === selectedTurma)) {
+            setSelectedTurma(visibleCheckouts[0].id);
+        } else if (visibleCheckouts.length === 0) {
+            setSelectedTurma('');
         }
-    }, [checkouts, selectedTurma]);
+    }, [visibleCheckouts, selectedTurma]);
 
     // Get only paid leads for the selected turma
     const turmaLeads = useMemo(() => {
         if (!selectedTurma) return [];
         return leads
-            .filter(l => l.product_id === selectedTurma && l.status === 'Pago')
+            .filter(l => l.product_id === selectedTurma && isConfirmedPayment(l))
             .sort((a, b) => a.name.localeCompare(b.name));
     }, [leads, selectedTurma]);
 
@@ -98,7 +127,46 @@ export const CheckInDashboard: React.FC<CheckInDashboardProps> = ({ leads, check
             </div>
 
             {/* Turma Selector */}
-            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                        <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-2 block">Status do checkout</label>
+                        <select
+                            value={checkoutStatusFilter}
+                            onChange={e => setCheckoutStatusFilter(e.target.value as 'active' | 'inactive' | 'all')}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                        >
+                            <option value="active">Ativos</option>
+                            <option value="inactive">Inativos</option>
+                            <option value="all">Ativos e inativos</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-2 block">Cidade / Local</label>
+                        <select
+                            value={selectedCity}
+                            onChange={e => setSelectedCity(e.target.value)}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                        >
+                            <option value="all">Todas as cidades</option>
+                            {cityOptions.map(city => <option key={city} value={city}>{city}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-2 block">Procurar turma</label>
+                        <div className="relative">
+                            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" />
+                            <input
+                                type="text"
+                                value={turmaSearch}
+                                onChange={e => setTurmaSearch(e.target.value)}
+                                placeholder="Cidade, turma ou local..."
+                                className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-300 placeholder:text-gray-300"
+                            />
+                        </div>
+                    </div>
+                </div>
+
                 <label className="text-[9px] font-black uppercase text-gray-400 tracking-widest mb-2 block">
                     Selecione a Turma
                 </label>
@@ -109,12 +177,15 @@ export const CheckInDashboard: React.FC<CheckInDashboardProps> = ({ leads, check
                         className="w-full appearance-none bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pr-10 text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-300 focus:border-emerald-400 cursor-pointer"
                     >
                         <option value="">Escolha uma turma...</option>
-                        {checkouts.map(c => (
+                        {visibleCheckouts.map(c => (
                             <option key={c.id} value={c.id}>
-                                {c.productName} {c.turma ? `(${c.turma})` : ''} — {leads.filter(l => l.product_id === c.id && l.status === 'Pago').length} alunos
+                                {c.productName} {c.turma ? `(${c.turma})` : ''} — {leads.filter(l => l.product_id === c.id && isConfirmedPayment(l)).length} alunos
                             </option>
                         ))}
                     </select>
+                    {visibleCheckouts.length === 0 && (
+                        <p className="mt-2 text-xs font-bold text-amber-600">Nenhum checkout encontrado com esses filtros.</p>
+                    )}
                     <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 </div>
 
