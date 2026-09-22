@@ -65,6 +65,8 @@ export const IntegrationsStatus: React.FC<IntegrationsStatusProps> = ({ dbStatus
                             <span className="text-[10px] font-black uppercase tracking-widest">Project URL</span>
                         </div>
                         <Input
+                            label="Project URL"
+                            type="url"
                             placeholder="https://sua-url.supabase.co"
                             value={url}
                             onChange={setUrl}
@@ -76,10 +78,11 @@ export const IntegrationsStatus: React.FC<IntegrationsStatusProps> = ({ dbStatus
                             <span className="text-[10px] font-black uppercase tracking-widest">Anon Public Key</span>
                         </div>
                         <Input
+                            label="Anon Public Key"
+                            type="password"
                             placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI..."
                             value={key}
                             onChange={setKey}
-                            type="password"
                         />
                     </div>
                 </div>
