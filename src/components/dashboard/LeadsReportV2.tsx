@@ -86,6 +86,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
     // Temporary states for field editing
     const [tempPayerNames, setTempPayerNames] = useState<Record<string, string>>({});
     const [tempPaymentLocations, setTempPaymentLocations] = useState<Record<string, string>>({});
+    const [tempNetAmounts, setTempNetAmounts] = useState<Record<string, string>>({});
 
     // Verification states
     const [verifiedLeads, setVerifiedLeads] = useState<Set<string>>(() => {
@@ -448,6 +449,20 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
     // Handle payment amount changes
     const handlePaidAmountChange = (value: string) => {
         setManualLead({ ...manualLead, paid_amount: value as any });
+    };
+
+    // Permite informar manualmente o valor líquido de vendas antigas.
+    const handleNetAmountChange = (leadId: string, value: string) => {
+        setTempNetAmounts(prev => ({ ...prev, [leadId]: value }));
+    };
+
+    const handleNetAmountBlur = async (leadId: string, value: string) => {
+        const normalized = value.includes(',')
+            ? value.replace(/\./g, '').replace(',', '.')
+            : value;
+        const amount = Number(normalized);
+        if (!Number.isFinite(amount) || amount < 0) return;
+        await onUpdateLeadField?.(leadId, { mp_net_amount: amount });
     };
 
     const handleManualLeadSubmit = async () => {
@@ -1122,12 +1137,17 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                     )}
                                     {userRole === 'master' && (
                                         <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100">
-                                            <span className="text-xs font-bold text-gray-600 uppercase">Valor líquido:</span>
-                                            <span className="text-sm font-black text-blue-600">
-                                                {Number(lead.mp_net_amount) > 0
-                                                    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(lead.mp_net_amount))
-                                                    : '—'}
-                                            </span>
+                                            <label className="text-xs font-bold text-gray-600 uppercase" htmlFor={`net-${lead.id}`}>Valor líquido:</label>
+                                            <input
+                                                id={`net-${lead.id}`}
+                                                type="text"
+                                                inputMode="decimal"
+                                                value={tempNetAmounts[lead.id] !== undefined ? tempNetAmounts[lead.id] : (lead.mp_net_amount || '')}
+                                                onChange={(e) => handleNetAmountChange(lead.id, e.target.value)}
+                                                onBlur={(e) => handleNetAmountBlur(lead.id, e.target.value)}
+                                                placeholder="0,00"
+                                                className="w-28 px-2 py-1 text-right text-sm font-black text-blue-600 bg-blue-50 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                            />
                                         </div>
                                     )}
 
@@ -1384,8 +1404,16 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                                         className="w-24 px-2 py-1.5 text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
                                                     />
                                                 </td>
-                                                <td className="px-4 py-3 text-xs font-black text-blue-600">
-                                                    {Number(lead.mp_net_amount) > 0 ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(lead.mp_net_amount)) : '—'}
+                                                <td className="px-4 py-3">
+                                                    <input
+                                                        type="text"
+                                                        inputMode="decimal"
+                                                        value={tempNetAmounts[lead.id] !== undefined ? tempNetAmounts[lead.id] : (lead.mp_net_amount || '')}
+                                                        onChange={(e) => handleNetAmountChange(lead.id, e.target.value)}
+                                                        onBlur={(e) => handleNetAmountBlur(lead.id, e.target.value)}
+                                                        placeholder="0,00"
+                                                        className="w-24 px-2 py-1.5 text-xs font-black text-blue-600 bg-blue-50 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                                    />
                                                 </td>
                                             </>
                                         )}
