@@ -266,21 +266,12 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                 </div>
             )}
 
-            {/* ── "X pessoas vendo" bar ── */}
-            {viewerCount > 0 && !isRegistrationMode && !isTicketMode && (
-                <div className="flex items-center justify-center gap-3 py-4 px-5 bg-gradient-to-r from-amber-400 via-orange-400 to-red-500 border-b-4 border-red-600 shadow-lg">
-                    <div className="relative flex items-center">
-                        <Eye size={20} className="text-white drop-shadow-lg" />
-                        <span className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full animate-pulse" />
-                    </div>
+            {/* ── Disponibilidade real ── */}
+            {availableSpots !== undefined && availableSpots > 0 && !isRegistrationMode && !isTicketMode && (
+                <div className="flex items-center justify-center gap-2 py-3 px-5 bg-gradient-to-r from-amber-400 via-orange-400 to-red-500 border-b-4 border-red-600 shadow-lg text-center">
                     <span className="text-sm font-black text-white drop-shadow-md">
-                        🔥 <span className="text-white tabular-nums text-base">{viewerCount}</span> {viewerCount === 1 ? 'pessoa vendo' : 'pessoas vendo'} agora
+                        {availableSpots <= 10 ? 'Últimas vagas para' : 'Vagas disponíveis para'} <span className="uppercase">{locationLabel}</span>
                     </span>
-                    {availableSpots !== undefined && availableSpots <= 10 && (
-                        <span className="ml-2 text-xs font-black uppercase text-white bg-red-700 px-3 py-1 rounded-full shadow-md">
-                            só {availableSpots} vagas!
-                        </span>
-                    )}
                 </div>
             )}
 
