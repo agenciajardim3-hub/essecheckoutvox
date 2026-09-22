@@ -571,7 +571,9 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                         <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 flex items-start gap-2.5">
                             <Shield size={14} className="text-blue-500 shrink-0 mt-0.5" />
                             <p className="text-[10px] text-blue-700 font-bold leading-relaxed">
-                                Você será redirecionado para o <strong>Mercado Pago</strong>, a plataforma de pagamentos mais segura do Brasil.
+                                <strong>Pagamento seguro pelo Mercado Pago</strong><br />
+                                Pix ou cartão em até 12x<br />
+                                Você será redirecionado após clicar no botão acima.
                             </p>
                         </div>
                     </div>
