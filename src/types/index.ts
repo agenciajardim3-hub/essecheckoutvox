@@ -80,6 +80,12 @@ export interface CheckoutFaqItem {
   answer: string;
 }
 
+export interface CheckoutTestimonial {
+  name: string;
+  text: string;
+  imageUrl?: string;
+}
+
 export const DEFAULT_CHECKOUT_FAQ: CheckoutFaqItem[] = [
   { question: 'Preciso ter experiência?', answer: 'Não. O conteúdo é explicado de forma prática, do básico ao avançado.' },
   { question: 'Preciso levar notebook?', answer: 'Recomendamos levar um notebook carregado para acompanhar as atividades práticas.' },
@@ -132,6 +138,7 @@ export interface AppConfig {  id: string;
   // Social Proof
   viewerCount?: number; // Mantido para compatibilidade com checkouts antigos.
   faqItems?: CheckoutFaqItem[];
+  testimonials?: CheckoutTestimonial[];
 }
 
 export interface MultiTicketPurchase {
