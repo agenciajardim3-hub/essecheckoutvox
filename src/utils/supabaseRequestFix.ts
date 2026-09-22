@@ -8,7 +8,7 @@ const getSupabaseKey = () =>
   FALLBACK_SUPABASE_KEY;
 
 const patchFlag = '__voxSupabaseRequestFixInstalled';
-const globalWindow = window as Window & Record<string, unknown>;
+const globalWindow = window as unknown as Window & Record<string, unknown>;
 
 if (!globalWindow[patchFlag]) {
   globalWindow[patchFlag] = true;
