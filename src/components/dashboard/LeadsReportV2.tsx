@@ -279,9 +279,19 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
         }
     };
 
+    const getExportTurma = (lead: Lead) => {
+        const checkout = allCheckouts.find(c => c.id === lead.product_id);
+        return lead.turma || checkout?.turma || checkout?.productName || lead.product_name || 'Sem turma';
+    };
+
+    const getExportName = (lead: Lead) => {
+        const turma = getExportTurma(lead);
+        return `${lead.name || 'Sem nome'} (${turma})`;
+    };
+
     // Copy functions
     const copyAllNames = () => {
-        const names = filteredAndSortedLeads.map(l => l.name).join('\n');
+        const names = filteredAndSortedLeads.map(getExportName).join('\n');
         navigator.clipboard.writeText(names);
         setCopiedNames(true);
         setTimeout(() => setCopiedNames(false), 2000);
@@ -308,10 +318,12 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
     };
 
     const exportCSV = () => {
-        const headers = ['#', 'Nome', 'Email', 'Telefone', 'CPF', 'Cidade', 'Pago por', 'Onde foi pago', 'Status', 'Produto', 'Turma', 'Valor Pago', 'Data e Hora'];
+        const headers = ['#', 'Nome (Turma)', 'Nome', 'Turma', 'Email', 'Telefone', 'CPF', 'Cidade', 'Pago por', 'Onde foi pago', 'Status', 'Produto', 'Valor Pago', 'Data e Hora'];
         const rows = filteredAndSortedLeads.map((l, index) => [
             String(index + 1),
+            getExportName(l),
             l.name || '',
+            getExportTurma(l),
             l.email || '',
             l.phone?.replace(/\D/g, '') || '',
             l.cpf || '',
@@ -320,7 +332,6 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
             l.payment_location || '',
             l.status || '',
             l.product_name || '',
-            l.turma || '',
             l.paid_amount != null ? String(l.paid_amount) : '',
             l.created_at ? new Date(l.created_at).toLocaleString('pt-BR') : ''
         ]);
