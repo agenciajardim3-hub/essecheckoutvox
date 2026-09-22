@@ -130,7 +130,8 @@ export interface AppConfig {  id: string;
   neighborhood?: string;
   folder?: string;
   // Social Proof
-  viewerCount?: number; // Base number for "X people viewing now" (fluctuates ±3)
+  viewerCount?: number; // Mantido para compatibilidade com checkouts antigos.
+  faqItems?: CheckoutFaqItem[];
 }
 
 export interface MultiTicketPurchase {
