@@ -18,6 +18,11 @@ export interface Lead extends CustomerData {
   utmCampaign?: string;
   status?: 'Novo' | 'Pago' | 'Pendente' | 'Sinal' | 'Pagar no dia' | 'Aprovado' | 'Cancelado' | 'Devolvido' | 'Abandonado';
   paid_amount?: number;
+  /** Mercado Pago: valor bruto, taxa cobrada e valor líquido recebido. */
+  mp_payment_id?: string;
+  mp_fee_amount?: number;
+  mp_net_amount?: number;
+  mp_fee_details?: Array<{ type?: string; fee_payer?: string; amount?: number }>;
   payment_method?: 'Pix' | 'Cartão' | 'Boleto' | 'Dinheiro' | 'Outro';
   payment_location?: string;
   created_at?: string;
