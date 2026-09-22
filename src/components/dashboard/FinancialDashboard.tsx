@@ -69,7 +69,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
 
     const filteredExpenses = useMemo(() => {
         return expenses.filter(expense => {
-            const matchesProduct = selectedProduct === 'all' || !expense.checkout_id || expense.checkout_id === 'global' || expense.checkout_id === selectedProduct;
+            const matchesProduct = selectedProduct === 'all' ? true : expense.checkout_id === selectedProduct;
             if (!matchesProduct) return false;
             if (dateRange === 'all') return true;
             const days = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90;
