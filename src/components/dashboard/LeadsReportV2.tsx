@@ -47,10 +47,13 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
     const [selectedProduct, setSelectedProduct] = useState('all');
     const [selectedStatus, setSelectedStatus] = useState('all');
 
+    const getCheckoutLocation = (checkout: AppConfig) =>
+        (checkout.city || checkout.neighborhood || checkout.folder || 'Sem cidade definida').trim();
+
     const checkoutCities = useMemo(() => {
         const cities = new Map<string, string>();
         allCheckouts.forEach(checkout => {
-            const city = (checkout.city || checkout.neighborhood || 'Sem cidade definida').trim();
+            const city = getCheckoutLocation(checkout);
             if (city) cities.set(city.toLowerCase(), city);
         });
         return Array.from(cities.values()).sort((a, b) => a.localeCompare(b, 'pt-BR'));
@@ -58,10 +61,9 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
 
     const visibleCheckouts = useMemo(() => {
         if (selectedCity === 'all') return allCheckouts;
-        return allCheckouts.filter(checkout => {
-            const city = (checkout.city || checkout.neighborhood || 'Sem cidade definida').trim();
-            return city.toLowerCase() === selectedCity.toLowerCase();
-        });
+        return allCheckouts.filter(checkout =>
+            getCheckoutLocation(checkout).toLowerCase() === selectedCity.toLowerCase()
+        );
     }, [allCheckouts, selectedCity]);
     const [sortBy, setSortBy] = useState<SortBy>('date');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
