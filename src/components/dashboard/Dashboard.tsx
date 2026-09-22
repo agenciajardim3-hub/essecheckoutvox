@@ -182,7 +182,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     const navItems = userRole === 'manager'
         ? allNavItems.filter(item => ['turmas', 'leads', 'checkin', 'scanner', 'ticket_logs', 'list'].includes(item.id))
-        : (userRole === 'master' || userRole === 'manager')
+        : userRole === 'master'
             ? allNavItems.filter(item => item.roles.includes(userRole))
             : [];
 
