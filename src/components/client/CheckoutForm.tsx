@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Loader2, BadgeCheck, ShoppingCart, Clock, Users, ChevronRight, ChevronLeft, Tag, X, Check, Calendar, MapPin, Shield, ArrowRight, Eye } from 'lucide-react';
+import { Loader2, BadgeCheck, ShoppingCart, Clock, Users, ChevronRight, ChevronLeft, Tag, X, Check, Calendar, MapPin, Shield, ArrowRight, HelpCircle } from 'lucide-react';
 import { Input } from '../ui/Input';
 import { AppConfig, CustomerData, MultiTicketPurchase, Coupon } from '../../types';
 
