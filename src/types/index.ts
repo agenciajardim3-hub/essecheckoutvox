@@ -93,6 +93,7 @@ export interface AppConfig {
   gtmId?: string;
   metaPixelId?: string;
   isActive?: boolean;
+  isSoldOutManual?: boolean;
   slug?: string;
   webhookUrl?: string; // URL para disparo no Make/Zapier
   maxVagas?: number;
