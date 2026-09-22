@@ -112,6 +112,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     const { display: timerDisplay, expired: timerExpired, urgent: timerUrgent } = useCountdown(config.id || 'checkout', 15);
     const locationLabel = config.city || config.neighborhood || config.turma || config.productName || 'esta turma';
     const faqItems = Array.isArray(config.faqItems) && config.faqItems.length > 0 ? config.faqItems : DEFAULT_CHECKOUT_FAQ;
+    const testimonials = Array.isArray(config.testimonials) ? config.testimonials.filter(item => item && (item.text?.trim() || item.imageUrl)) : [];
 
     const ticketAmount = config.ticketAmount || 1;
     const totalParticipants = quantity * ticketAmount;
@@ -500,6 +501,31 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                         </>
                     )}
                 </button>
+
+                {/* ── Depoimentos opcionais ── */}
+                {!isRegistrationMode && testimonials.length > 0 && (
+                    <section className="space-y-3 pt-2" aria-label="Depoimentos de alunos">
+                        <div className="flex items-center gap-2">
+                            <span className="text-amber-500 text-lg" aria-hidden="true">★</span>
+                            <h3 className="text-sm font-black uppercase tracking-wide text-gray-800">O que nossos alunos dizem</h3>
+                        </div>
+                        <div className="space-y-3">
+                            {testimonials.map((testimonial, index) => (
+                                <article key={`${testimonial.name || 'depoimento'}-${index}`} className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                                    {testimonial.imageUrl && (
+                                        <img src={testimonial.imageUrl} alt={`Depoimento de ${testimonial.name || 'aluno'}`} className="block w-full max-h-80 object-contain bg-gray-50" loading="lazy" />
+                                    )}
+                                    {(testimonial.text || testimonial.name) && (
+                                        <div className="space-y-1 px-4 py-3">
+                                            {testimonial.text && <p className="text-xs leading-relaxed text-gray-600">{testimonial.text}</p>}
+                                            {testimonial.name && <p className="text-[10px] font-black uppercase tracking-wide text-blue-600">{testimonial.name}</p>}
+                                        </div>
+                                    )}
+                                </article>
+                            ))}
+                        </div>
+                    </section>
+                )}
 
                 {/* ── FAQ ── */}
                 {!isRegistrationMode && faqItems.length > 0 && (
