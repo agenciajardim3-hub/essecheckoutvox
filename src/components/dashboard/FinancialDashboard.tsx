@@ -4,6 +4,7 @@ import { DollarSign, TrendingUp, Users, CreditCard, BarChart3, PieChart, ArrowUp
 import { Lead, AppConfig, Expense } from '../../types';
 import { useSupabase } from '../../hooks/useSupabase';
 import { useSupabaseRealtime } from '../../hooks/useSupabaseRealtime';
+import { isConfirmedPayment } from '../../utils/leadStatus';
 
 interface FinancialDashboardProps {
     leads: Lead[];
@@ -88,7 +89,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
 
     // Financial metrics
     const metrics = useMemo(() => {
-        const paid = filteredLeads.filter(l => l.status === 'Pago');
+        const paid = filteredLeads.filter(isConfirmedPayment);
         const pending = filteredLeads.filter(l => l.status === 'Pendente');
         const sinal = filteredLeads.filter(l => l.status === 'Sinal');
         const pagarNoDia = filteredLeads.filter(l => l.status === 'Pagar no dia');
@@ -123,7 +124,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
 
     // Payment methods breakdown
     const paymentMethods = useMemo(() => {
-        const paid = filteredLeads.filter(l => l.status === 'Pago');
+        const paid = filteredLeads.filter(isConfirmedPayment);
         const methods: Record<string, { count: number; total: number }> = {};
 
         paid.forEach(l => {
@@ -163,7 +164,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
                 };
             }
             data[pid].totalLeads++;
-            if (l.status === 'Pago') {
+            if (isConfirmedPayment(l)) {
                 data[pid].paidCount++;
                 data[pid].revenue += l.paid_amount || 0;
             }
@@ -180,7 +181,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
 
     // Daily revenue for chart (last 30 days or filtered range)
     const dailyRevenue = useMemo(() => {
-        const paid = filteredLeads.filter(l => l.status === 'Pago');
+        const paid = filteredLeads.filter(isConfirmedPayment);
         const daily: Record<string, number> = {};
 
         paid.forEach(l => {
@@ -433,7 +434,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
                     {paymentMethods.length > 0 ? (
                         <div className="space-y-4">
                             {paymentMethods.map(([method, data]) => {
-                                const totalPaid = filteredLeads.filter(l => l.status === 'Pago').length;
+                                const totalPaid = filteredLeads.filter(isConfirmedPayment).length;
                                 const pct = totalPaid > 0 ? (data.count / totalPaid) * 100 : 0;
                                 return (
                                     <div key={method} className="space-y-2">
