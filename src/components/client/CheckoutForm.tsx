@@ -211,6 +211,17 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
     return (
         <div className="w-full bg-white rounded-none sm:rounded-[3rem] shadow-none sm:shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-8 duration-700 flex flex-col">
 
+            {/* ── Banner adicional opcional, sem texto sobreposto ── */}
+            {config.topBannerImage && (
+                <div className="relative h-[120px] lg:h-[180px] overflow-hidden">
+                    <img
+                        src={config.topBannerImage}
+                        className="block w-full h-full object-cover"
+                        alt=""
+                    />
+                </div>
+            )}
+
             {/* ── Banner ── */}
             <div
                 onClick={onClickHeader}
