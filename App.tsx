@@ -1574,7 +1574,7 @@ export default function App() {
     );
   }
 
-  const soldSpots = leads.filter(l => l.product_id === config.id && l.status === 'Pago').length;
+  const soldSpots = leads.filter(l => l.product_id === config.id && (l.status === 'Pago' || l.status === 'Aprovado')).length;
   const isSoldOut = config.isSoldOutManual === true || !!(config.maxVagas && config.maxVagas > 0 && soldSpots >= config.maxVagas);
   const availableSpots = config.maxVagas && config.maxVagas > 0 ? config.maxVagas - soldSpots : undefined;
 
