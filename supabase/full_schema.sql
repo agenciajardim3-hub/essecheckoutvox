@@ -42,6 +42,7 @@ CREATE POLICY "Allow all on leads" ON leads FOR ALL USING (true) WITH CHECK (tru
 -- ============================================
 -- TABELA CHECKOUTS - Campos de evento
 -- ============================================
+ALTER TABLE checkouts ADD COLUMN IF NOT EXISTS is_sold_out BOOLEAN DEFAULT FALSE;
 ALTER TABLE checkouts ADD COLUMN IF NOT EXISTS event_date TEXT;
 ALTER TABLE checkouts ADD COLUMN IF NOT EXISTS event_start_time TEXT;
 ALTER TABLE checkouts ADD COLUMN IF NOT EXISTS event_end_time TEXT;
