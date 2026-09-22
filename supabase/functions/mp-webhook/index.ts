@@ -108,7 +108,12 @@ Deno.serve(async (req) => {
 
     const updatePayload: Record<string, unknown> = {
       status: normalizedLeadStatus,
+      // paid_amount permanece bruto para não alterar checkout, relatórios existentes ou CAPI/Pixel.
       paid_amount: status === 'approved' ? paidAmount : 0,
+      mp_payment_id: String(payment.id || paymentId),
+      mp_fee_amount: feeAmount,
+      mp_net_amount: netAmount,
+      mp_fee_details: feeDetails,
       payment_location: 'Mercado Pago API'
     };
 
