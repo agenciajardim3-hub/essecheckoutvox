@@ -501,6 +501,24 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
                     )}
                 </button>
 
+                {/* ── FAQ ── */}
+                {!isRegistrationMode && faqItems.length > 0 && (
+                    <section className="space-y-3 pt-2" aria-label="Perguntas frequentes">
+                        <div className="flex items-center gap-2">
+                            <HelpCircle size={18} className="text-blue-600" />
+                            <h3 className="text-sm font-black uppercase tracking-wide text-gray-800">Perguntas frequentes</h3>
+                        </div>
+                        <div className="space-y-2">
+                            {faqItems.map((item, index) => (
+                                <details key={`${item.question}-${index}`} className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+                                    <summary className="cursor-pointer list-none pr-2 text-xs font-black text-gray-700">{item.question}</summary>
+                                    <p className="mt-2 text-xs leading-relaxed text-gray-500">{item.answer}</p>
+                                </details>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
                 {/* ── Trust footer ── */}
                 {!isRegistrationMode && (
                     <div className="space-y-4 pt-1">
