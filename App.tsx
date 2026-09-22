@@ -785,6 +785,10 @@ export default function App() {
   const handleCheckoutSubmit = async (purchase: MultiTicketPurchase) => {
     setCustomer(purchase.participants[purchase.responsibleIndex]); // Sync local state with responsible buyer
     if (isSubmitting || !supabase) return;
+    if (config.isSoldOutManual) {
+      alert('Este checkout está esgotado no momento.');
+      return;
+    }
     setIsSubmitting(true);
 
     // Tracking - GTM dataLayer
