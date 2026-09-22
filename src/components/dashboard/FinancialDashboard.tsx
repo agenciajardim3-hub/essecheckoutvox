@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { DollarSign, TrendingUp, Users, CreditCard, BarChart3, PieChart, ArrowUp, ArrowDown, Filter, Calendar, ChevronDown, Wallet, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { Lead, AppConfig, Expense } from '../../types';
 import { useSupabase } from '../../hooks/useSupabase';
+import { useSupabaseRealtime } from '../../hooks/useSupabaseRealtime';
 
 interface FinancialDashboardProps {
     leads: Lead[];
@@ -16,9 +17,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
     const [expensesLoading, setExpensesLoading] = useState(true);
     const supabase = useSupabase();
 
-    useEffect(() => {
-        let cancelled = false;
-        const fetchExpenses = async () => {
+    const fetchExpenses = async () => {
             if (!supabase) {
                 setExpensesLoading(false);
                 return;
@@ -30,10 +29,18 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
                 setExpenses((data || []) as Expense[]);
                 setExpensesLoading(false);
             }
-        };
-        fetchExpenses();
-        return () => { cancelled = true; };
+    };
+
+    useEffect(() => {
+        void fetchExpenses();
     }, [supabase]);
+
+    useSupabaseRealtime({
+        supabase,
+        tables: ['expenses'],
+        channelName: 'financial-expenses-realtime',
+        onChange: fetchExpenses,
+    });
 
     // Safe date parser - returns null for invalid dates
     const safeDate = (d: any): Date | null => {
