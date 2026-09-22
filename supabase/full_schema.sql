@@ -47,6 +47,9 @@ ALTER TABLE checkouts ADD COLUMN IF NOT EXISTS event_date TEXT;
 ALTER TABLE checkouts ADD COLUMN IF NOT EXISTS event_start_time TEXT;
 ALTER TABLE checkouts ADD COLUMN IF NOT EXISTS event_end_time TEXT;
 ALTER TABLE checkouts ADD COLUMN IF NOT EXISTS event_location TEXT;
+ALTER TABLE checkouts ADD COLUMN IF NOT EXISTS city TEXT;
+ALTER TABLE checkouts ADD COLUMN IF NOT EXISTS neighborhood TEXT;
+ALTER TABLE checkouts ADD COLUMN IF NOT EXISTS folder TEXT;
 ALTER TABLE checkouts ADD COLUMN IF NOT EXISTS faq_items JSONB DEFAULT '[]'::jsonb;
 
 -- ============================================
