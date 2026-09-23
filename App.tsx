@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { Loader2, RotateCw } from 'lucide-react';
 
 import { useSupabase } from './src/hooks/useSupabase';
@@ -103,6 +103,7 @@ export default function App() {
 
   // Dashboard Data
   const [leads, setLeads] = useState<Lead[]>([]);
+  const leadStatusRef = useRef<Map<string, Lead['status']>>(new Map());
   const [savingId, setSavingId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -433,22 +434,36 @@ export default function App() {
     }
   }, [isTicketMode, leads, ticketCpf]);
 
+  // Mantém o último status conhecido para diferenciar uma mudança para pago
+  // de uma simples edição no cadastro.
+  useEffect(() => {
+    leads.forEach((lead) => leadStatusRef.current.set(lead.id, lead.status));
+  }, [leads]);
+
   // Realtime Notifications & Sound
   useEffect(() => {
     // Only for admin roles
     if (userRole !== 'master' && userRole !== 'manager') return;
     if (!supabase) return;
 
-    const playSuccessSound = () => {
+    const playSound = (url: string, label: string) => {
       try {
-        // Cash register / Coins sound
-        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3');
+        const audio = new Audio(url);
         audio.volume = 1.0;
-        audio.play().catch(e => console.error("Audio play error:", e));
+        audio.play().catch(e => console.warn(`[Som de ${label}] reprodução bloqueada:`, e));
       } catch (e) {
-        console.error("Audio error:", e);
+        console.warn(`[Som de ${label}] erro:`, e);
       }
     };
+
+    const playRegistrationSound = () => playSound(
+      'https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3',
+      'cadastro',
+    );
+    const playPaymentSound = () => playSound(
+      'https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3',
+      'pagamento',
+    );
 
     const channel = supabase
       .channel('leads-realtime')
@@ -459,8 +474,13 @@ export default function App() {
           console.log('New lead received!', payload);
           const newLead = payload.new as Lead;
 
-          // Play sound
-          playSuccessSound();
+          // Cadastro: aviso próprio, sem chamar isso de pagamento.
+          playRegistrationSound();
+          leadStatusRef.current.set(newLead.id, newLead.status);
+
+          // Se o lead já entrar aprovado (caso raro/importação manual),
+          // registra também o som de pagamento sem duplicar no próximo update.
+          if (isConfirmedPayment(newLead)) playPaymentSound();
 
           // Notifica cadastro tanto no APK Android quanto no navegador, quando
           // a permissão já foi concedida. O pagamento continua sendo tratado
@@ -482,6 +502,21 @@ export default function App() {
             return [formattedLead, ...prev];
           });
         }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'leads' },
+        (payload) => {
+          const newLead = payload.new as Lead;
+          const previousStatus = leadStatusRef.current.get(newLead.id);
+          leadStatusRef.current.set(newLead.id, newLead.status);
+
+          // Só toca moedas quando o status entra em Pago/Aprovado.
+          // Alterações de nome, telefone ou outros campos não disparam o som.
+          if (isConfirmedPayment(newLead) && !(previousStatus && isConfirmedPayment({ status: previousStatus }))) {
+            playPaymentSound();
+          }
+        },
       )
       .subscribe();
 
