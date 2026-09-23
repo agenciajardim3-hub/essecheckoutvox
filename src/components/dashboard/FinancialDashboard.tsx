@@ -319,7 +319,6 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
                 </div>
             </div>
 
-                </div>
             </div>
 
             {/* Fluxo financeiro */}
@@ -356,7 +355,6 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
                 </div>
             </div>
 
-                </div>
             </div>
 
             {/* Status Breakdown */}
