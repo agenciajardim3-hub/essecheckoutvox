@@ -142,10 +142,14 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads, checkouts
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div id="finance-expenses" className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h3 className="font-black text-gray-900 text-lg flex items-center gap-3">
-                    <DollarSign className="text-red-500" /> Registro de Despesas
+                    <DollarSign className="text-red-500 flex-shrink-0" />
+                    <span>
+                        <span className="block">Lançamentos de despesas</span>
+                        <span className="block text-xs font-bold text-gray-400 mt-1">Registre custos globais ou vinculados a uma turma.</span>
+                    </span>
                 </h3>
                 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full md:w-auto">
