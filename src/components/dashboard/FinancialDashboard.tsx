@@ -216,8 +216,14 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex flex-col gap-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">Gestão financeira</p>
+                <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-gray-900">Financeiro</h2>
+                <p className="text-sm font-medium text-gray-500">Acompanhe vendas, taxas, despesas e resultado em um só lugar.</p>
+            </div>
+
             {/* Filters */}
-            <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4 items-stretch sm:items-center">
                 <div className="flex items-center gap-2">
                     <Filter size={16} className="text-gray-400" />
                     <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Filtros</span>
@@ -227,7 +233,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
                     <select
                         value={selectedProduct}
                         onChange={e => setSelectedProduct(e.target.value)}
-                        className="appearance-none bg-white border-2 border-gray-100 rounded-2xl px-5 py-3 pr-10 font-bold text-xs text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer"
+                        className="w-full sm:w-auto appearance-none bg-white border-2 border-gray-100 rounded-2xl px-5 py-3 pr-10 font-bold text-xs text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none cursor-pointer"
                     >
                         <option value="all">Todos os Produtos</option>
                         {checkouts.map(c => (
@@ -239,7 +245,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
                     <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 </div>
 
-                <div className="flex bg-white rounded-2xl border-2 border-gray-100 overflow-hidden">
+                <div className="grid grid-cols-2 sm:flex bg-white rounded-2xl border-2 border-gray-100 overflow-hidden w-full sm:w-auto">
                     {([['7d', '7 dias'], ['30d', '30 dias'], ['90d', '90 dias'], ['all', 'Todos']] as const).map(([value, label]) => (
                         <button
                             key={value}
@@ -255,8 +261,15 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
                 </div>
             </div>
 
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Resumo */}
+            <div>
+                <div className="flex items-end justify-between gap-3 mb-3">
+                    <div>
+                        <h3 className="text-sm font-black text-gray-900">Resumo da operação</h3>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">Visão geral do período selecionado</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Total Revenue */}
                 <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-[2rem] p-6 text-white shadow-xl shadow-emerald-200/50">
                     <div className="flex items-center gap-3 mb-4">
@@ -306,8 +319,16 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
                 </div>
             </div>
 
+                </div>
+            </div>
+
             {/* Fluxo financeiro */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div>
+                <div className="mb-3">
+                    <h3 className="text-sm font-black text-gray-900">Fluxo financeiro</h3>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">O que entrou, o que foi descontado e o que sobrou</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div className="bg-white rounded-[2rem] p-6 border border-orange-100 shadow-lg">
                     <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Taxas Mercado Pago</p>
                     <p className="text-2xl font-black text-orange-600 mt-2">{formatCurrency(metrics.totalFees)}</p>
@@ -335,8 +356,16 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
                 </div>
             </div>
 
+                </div>
+            </div>
+
             {/* Status Breakdown */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div>
+                <div className="mb-3">
+                    <h3 className="text-sm font-black text-gray-900">Status das vendas</h3>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">Acompanhe pagamentos confirmados e pendentes</p>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 <div className="bg-white rounded-2xl p-4 border border-gray-100 flex items-center gap-3">
                     <div className="w-8 h-8 bg-emerald-100 rounded-xl flex items-center justify-center">
                         <CheckCircle size={14} className="text-emerald-600" />
@@ -384,7 +413,14 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            </div>
+
+            <div>
+                <div className="mb-3">
+                    <h3 className="text-sm font-black text-gray-900">Análises</h3>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">Entenda como as vendas estão acontecendo</p>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Revenue Chart */}
                 <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-lg">
                     <div className="flex items-center justify-between mb-6">
@@ -477,10 +513,16 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
                         </div>
                     )}
                 </div>
+                </div>
             </div>
 
             {/* Per-Product Breakdown */}
-            <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-lg">
+            <div>
+                <div className="mb-3">
+                    <h3 className="text-sm font-black text-gray-900">Resultado por turma</h3>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">Compare leads, vendas e receita entre os checkouts</p>
+                </div>
+                <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-lg">
                 <div className="flex items-center justify-between mb-6">
                     <div>
                         <h3 className="font-black text-gray-900 text-sm">Desempenho por Produto / Turma</h3>
@@ -562,6 +604,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
                         <p className="text-xs font-bold">Sem dados para exibir</p>
                     </div>
                 )}
+                </div>
             </div>
 
             {/* Revenue Pending Summary */}
