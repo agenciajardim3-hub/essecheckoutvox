@@ -88,7 +88,8 @@ export const useNotifications = () => {
       await sendNotification({
         title: '🎉 Novo Cadastro!',
         body: `${leadName} se cadastrou em "${product}"`,
-        id: Date.now(),
+        // Android espera um ID inteiro compatível com o limite do sistema.
+        id: Math.floor(Date.now() / 1000) % 2147483647,
         summary: 'Novo lead recebido',
       });
     },
