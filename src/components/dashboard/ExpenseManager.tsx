@@ -148,11 +148,11 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads, checkouts
                     <DollarSign className="text-red-500" /> Registro de Despesas
                 </h3>
                 
-                <div className="flex items-center gap-4 w-full md:w-auto">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full md:w-auto">
                     <select
                         value={selectedCheckout}
                         onChange={(e) => setSelectedCheckout(e.target.value)}
-                        className="bg-white border border-gray-200 text-sm font-bold rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-red-500"
+                        className="w-full sm:w-auto min-w-0 bg-white border border-gray-200 text-sm font-bold rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-red-500"
                     >
                         <option value="all">Visão Geral (Todos)</option>
                         <option value="global">Custos Globais (Sem Turma)</option>
@@ -163,7 +163,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads, checkouts
 
                     <button
                         onClick={() => setShowForm(!showForm)}
-                        className="bg-gray-900 whitespace-nowrap text-white px-5 py-2.5 rounded-xl font-black text-xs uppercase shadow-lg hover:bg-black transition-all flex items-center gap-2"
+                        className="w-full sm:w-auto justify-center bg-gray-900 whitespace-nowrap text-white px-5 py-2.5 rounded-xl font-black text-xs uppercase shadow-lg hover:bg-black transition-all flex items-center gap-2"
                     >
                         <Plus size={16} /> Nova Despesa
                     </button>
@@ -171,7 +171,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads, checkouts
             </div>
 
             {showForm && (
-                <div className="bg-red-50 border-2 border-red-100 p-6 rounded-[2rem] animate-in slide-in-from-top-2">
+                <div className="bg-red-50 border-2 border-red-100 p-4 sm:p-6 rounded-[2rem] animate-in slide-in-from-top-2">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="md:col-span-2">
                             <label className="text-sm font-black text-gray-700">Descrição</label>
@@ -222,17 +222,17 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads, checkouts
                             </select>
                         </div>
                     </div>
-                    <div className="flex gap-3 mt-4">
+                    <div className="flex flex-col sm:flex-row gap-3 mt-4">
                         <button
                             onClick={handleSubmit}
                             disabled={submitting}
-                            className="bg-red-600 text-white px-6 py-2.5 rounded-xl font-black text-xs uppercase shadow-lg hover:bg-red-700 transition-all flex items-center gap-2"
+                            className="w-full sm:w-auto justify-center bg-red-600 text-white px-6 py-2.5 rounded-xl font-black text-xs uppercase shadow-lg hover:bg-red-700 transition-all flex items-center gap-2"
                         >
                             {submitting ? <Loader2 className="animate-spin" /> : <Save size={16} />} Salvar
                         </button>
                         <button
                             onClick={() => setShowForm(false)}
-                            className="bg-gray-200 text-gray-600 px-6 py-2.5 rounded-xl font-black text-xs uppercase hover:bg-gray-300 transition-all"
+                            className="w-full sm:w-auto bg-gray-200 text-gray-600 px-6 py-2.5 rounded-xl font-black text-xs uppercase hover:bg-gray-300 transition-all"
                         >
                             Cancelar
                         </button>
@@ -291,7 +291,8 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads, checkouts
                         <p className="text-xs font-bold uppercase">Nenhuma despesa registrada</p>
                     </div>
                 ) : (
-                    <table className="w-full">
+                    <div className="overflow-x-auto">
+                    <table className="w-full min-w-[760px]">
                         <thead>
                             <tr className="bg-gray-50">
                                 <th className="p-4 text-[10px] font-black uppercase text-left text-gray-500">Descrição</th>
@@ -330,6 +331,7 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads, checkouts
                             ))}
                         </tbody>
                     </table>
+                    </div>
                 )}
             </div>
         </div>
