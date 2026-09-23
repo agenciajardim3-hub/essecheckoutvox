@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { Loader2, RotateCw } from 'lucide-react';
-import { LocalNotifications } from '@capacitor/local-notifications';
 
 import { useSupabase } from './src/hooks/useSupabase';
 import { useNotifications } from './src/hooks/useNotifications';
@@ -440,16 +439,6 @@ export default function App() {
     if (userRole !== 'master' && userRole !== 'manager') return;
     if (!supabase) return;
 
-    // Request permissions on load
-    const requestPermissions = async () => {
-      try {
-        await LocalNotifications.requestPermissions();
-      } catch (e) {
-        console.error("Notification permissions error:", e);
-      }
-    };
-    requestPermissions();
-
     const playSuccessSound = () => {
       try {
         // Cash register / Coins sound
@@ -473,22 +462,13 @@ export default function App() {
           // Play sound
           playSuccessSound();
 
-          // Schedule Notification
-          try {
-            await LocalNotifications.schedule({
-              notifications: [{
-                title: '💰 Nova Venda!',
-                body: userRole === 'manager'
-                  ? `Venda confirmada! Cliente: ${newLead.name}`
-                  : `Venda de R$ ${newLead.paid_amount || '0,00'} confirmada! Cliente: ${newLead.name}`,
-                id: Math.floor(Date.now() / 1000), // Unique ID (integer)
-                sound: 'beep.wav', // Default or custom if added
-                extra: newLead
-              }]
-            });
-          } catch (e) {
-            console.error("LocalNotification error:", e);
-          }
+          // Notifica cadastro tanto no APK Android quanto no navegador, quando
+          // a permissão já foi concedida. O pagamento continua sendo tratado
+          // separadamente pelo webhook do Mercado Pago.
+          await sendNewLeadNotification(
+            newLead.name || 'Novo cliente',
+            newLead.product_name || newLead.turma || 'checkout',
+          );
 
           // Update list locally to reflect changes immediately
           setLeads((prev) => {
@@ -508,7 +488,7 @@ export default function App() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userRole, supabase, fetchData]);
+  }, [userRole, supabase, fetchData, sendNewLeadNotification]);
 
   // Load Scripts (GTM / GA4 / Pixel)
   useEffect(() => {
