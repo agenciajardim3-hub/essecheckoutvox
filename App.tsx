@@ -51,7 +51,7 @@ const withoutMetaFields = (payload: any) => {
 
 export default function App() {
   const supabase = useSupabase();
-  const { sendNewLeadNotification } = useNotifications();
+  const { sendNewLeadNotification, sendPaymentNotification } = useNotifications();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Global State
@@ -506,7 +506,7 @@ export default function App() {
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'leads' },
-        (payload) => {
+        async (payload) => {
           const newLead = payload.new as Lead;
           const previousStatus = leadStatusRef.current.get(newLead.id);
           leadStatusRef.current.set(newLead.id, newLead.status);
@@ -515,6 +515,10 @@ export default function App() {
           // Alterações de nome, telefone ou outros campos não disparam o som.
           if (isConfirmedPayment(newLead) && !(previousStatus && isConfirmedPayment({ status: previousStatus }))) {
             playPaymentSound();
+            await sendPaymentNotification(
+              newLead.name || 'Cliente',
+              newLead.product_name || newLead.turma || 'checkout',
+            );
           }
         },
       )
@@ -523,7 +527,7 @@ export default function App() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userRole, supabase, fetchData, sendNewLeadNotification]);
+  }, [userRole, supabase, fetchData, sendNewLeadNotification, sendPaymentNotification]);
 
   // Load Scripts (GTM / GA4 / Pixel)
   useEffect(() => {
