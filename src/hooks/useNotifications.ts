@@ -20,6 +20,29 @@ export const useNotifications = () => {
     requestPermissions();
   }, [isNative]);
 
+  const requestNotificationPermission = useCallback(async (): Promise<boolean> => {
+    if (isNative) {
+      try {
+        const result = await LocalNotifications.requestPermissions();
+        return result.display === 'granted';
+      } catch (error) {
+        console.warn('Notification permissions not granted:', error);
+        return false;
+      }
+    }
+
+    if (!('Notification' in window)) return false;
+    if (Notification.permission === 'granted') return true;
+    if (Notification.permission === 'denied') return false;
+
+    try {
+      return (await Notification.requestPermission()) === 'granted';
+    } catch (error) {
+      console.warn('Browser notification permission was not granted:', error);
+      return false;
+    }
+  }, [isNative]);
+
   const sendNotification = useCallback(
     async (options: {
       title: string;
@@ -75,6 +98,7 @@ export const useNotifications = () => {
   return {
     sendNotification,
     sendNewLeadNotification,
+    requestNotificationPermission,
     isNative,
   };
 };
