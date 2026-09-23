@@ -1201,7 +1201,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                             </button>
                                         )}
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2">
+                                    <div className="grid grid-cols-3 gap-2">
                                         <div className="flex items-center gap-2">
                                             <select
                                                 className="px-1 py-1 text-[10px] border border-gray-200 rounded bg-white w-full"
@@ -1221,6 +1221,17 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                                 {sendingEmailId === lead.id ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
                                             </button>
                                         </div>
+                                        {lead.phone && (
+                                            <a
+                                                href={`https://wa.me/${lead.phone.replace(/\\D/g, '').startsWith('55') ? lead.phone.replace(/\\D/g, '') : `55${lead.phone.replace(/\\D/g, '')}`}?text=${encodeURIComponent(generateWhatsAppMessage(lead))}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="px-2 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 font-bold text-[10px] uppercase hover:bg-emerald-100 transition-all flex items-center justify-center gap-1"
+                                                title="Chamar no WhatsApp"
+                                            >
+                                                <MessageCircle size={14} />
+                                            </a>
+                                        )}
                                         <button
                                             onClick={() => handleDeleteWithConfirm(lead.id)}
                                             disabled={savingId === lead.id}
