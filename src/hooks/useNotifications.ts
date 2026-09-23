@@ -51,6 +51,7 @@ export const useNotifications = () => {
       smallIcon?: string;
       largeBody?: string;
       summary?: string;
+      sound?: string;
     }) => {
       if (!isNative) {
         // For web, use the Notifications API if available
@@ -72,6 +73,7 @@ export const useNotifications = () => {
               id: options.id || Math.floor(Math.random() * 10000),
               smallIcon: options.smallIcon,
               largeBody: options.largeBody,
+              sound: options.sound,
               schedule: { at: new Date(Date.now() + 1000) }, // 1 second delay to ensure it shows
             },
           ],
@@ -90,7 +92,21 @@ export const useNotifications = () => {
         body: `${leadName} se cadastrou em "${product}"`,
         // Android espera um ID inteiro compatível com o limite do sistema.
         id: Math.floor(Date.now() / 1000) % 2147483647,
+        sound: 'default',
         summary: 'Novo lead recebido',
+      });
+    },
+    [sendNotification]
+  );
+
+  const sendPaymentNotification = useCallback(
+    async (leadName: string, product: string) => {
+      await sendNotification({
+        title: '💰 Pagamento confirmado!',
+        body: `${leadName} pagou a inscrição em "${product}"`,
+        id: (Math.floor(Date.now() / 1000) + 1) % 2147483647,
+        sound: 'default',
+        summary: 'Pagamento recebido',
       });
     },
     [sendNotification]
@@ -99,6 +115,7 @@ export const useNotifications = () => {
   return {
     sendNotification,
     sendNewLeadNotification,
+    sendPaymentNotification,
     requestNotificationPermission,
     isNative,
   };
