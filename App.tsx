@@ -148,21 +148,18 @@ export default function App() {
 
   // --- Fetch Logic ---
   const fetchData = useCallback(async () => {
-    // Try to load from cache first if offline or just to show something fast
-    const cachedLeads = localStorage.getItem('vox_leads_cache');
-    if (cachedLeads) {
-      try {
-        setLeads(JSON.parse(cachedLeads));
-      } catch (e) { console.error('Cache parse error', e); }
+    if (!navigator.onLine) {
+      const cachedLeads = localStorage.getItem('vox_leads_cache');
+      if (cachedLeads) {
+        try {
+          setLeads(JSON.parse(cachedLeads));
+        } catch (e) { console.error('Cache parse error', e); }
+      }
+      setIsLoading(false);
+      return;
     }
 
     if (!supabase) return;
-    setIsLoading(true);
-
-    if (!navigator.onLine) {
-      setIsLoading(false);
-      return; // Stop here if offline, reliance on cache
-    }
 
     try {
       // Always fetch all checkouts to ensure we have the right one
@@ -1075,7 +1072,6 @@ export default function App() {
     const pending = JSON.parse(localStorage.getItem('vox_pending_checkins') || '[]');
     if (pending.length === 0) return;
 
-    setIsLoading(true);
     let successCount = 0;
     const failed = [];
 
@@ -1104,7 +1100,6 @@ export default function App() {
       alert(`${successCount} operações sincronizadas com sucesso!`);
       fetchData(); // Refresh to ensure valid state
     }
-    setIsLoading(false);
   };
 
   const handleDeleteLead = async (leadId: string) => {
