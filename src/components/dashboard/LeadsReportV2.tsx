@@ -16,7 +16,7 @@ interface LeadsReportV2Props {
     leads: Lead[];
     allCheckouts: AppConfig[];
     onUpdateStatus: (id: string, status: Lead['status']) => void;
-    onUpdatePaidAmount: (id: string, amount: string) => void;
+    onUpdatePaidAmount: (id: string, amount: string) => void | Promise<void>;
     onDeleteLead: (id: string) => void;
     savingId: string | null;
     onCheckIn?: (leadId: string, checkedIn: boolean) => Promise<void>;
@@ -86,6 +86,7 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
     // Temporary states for field editing
     const [tempPayerNames, setTempPayerNames] = useState<Record<string, string>>({});
     const [tempPaymentLocations, setTempPaymentLocations] = useState<Record<string, string>>({});
+    const [paidAmountDrafts, setPaidAmountDrafts] = useState<Record<string, string>>({});
     const [tempNetAmounts, setTempNetAmounts] = useState<Record<string, string>>({});
 
     // Verification states
@@ -498,8 +499,17 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
         setShowDeleteConfirm(null);
     };
 
-    const handleUpdatePaidAmountWithLog = (leadId: string, value: string) => {
-        onUpdatePaidAmount(leadId, value);
+    const savePaidAmount = async (leadId: string) => {
+        const draft = paidAmountDrafts[leadId];
+        if (draft === undefined) return;
+
+        await onUpdatePaidAmount(leadId, draft);
+        setPaidAmountDrafts(prev => {
+            if (prev[leadId] !== draft) return prev;
+            const next = { ...prev };
+            delete next[leadId];
+            return next;
+        });
     };
 
     return (
@@ -1128,8 +1138,16 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                             <span className="text-xs font-bold text-gray-600 uppercase">Valor:</span>
                                             <input
                                                 type="text"
-                                                value={lead.paid_amount || ''}
-                                                onChange={(e) => handleUpdatePaidAmountWithLog(lead.id, e.target.value)}
+                                                inputMode="decimal"
+                                                value={paidAmountDrafts[lead.id] ?? (lead.paid_amount || '')}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    setPaidAmountDrafts(prev => ({ ...prev, [lead.id]: value }));
+                                                }}
+                                                onBlur={() => void savePaidAmount(lead.id)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') e.currentTarget.blur();
+                                                }}
                                                 placeholder="0,00"
                                                 className="flex-1 px-2 py-1.5 text-sm font-black text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
                                             />
@@ -1409,8 +1427,16 @@ export const LeadsReportV2: React.FC<LeadsReportV2Props> = ({
                                                 <td className="px-4 py-3">
                                                     <input
                                                         type="text"
-                                                        value={lead.paid_amount || ''}
-                                                        onChange={(e) => handleUpdatePaidAmountWithLog(lead.id, e.target.value)}
+                                                        inputMode="decimal"
+                                                        value={paidAmountDrafts[lead.id] ?? (lead.paid_amount || '')}
+                                                        onChange={(e) => {
+                                                            const value = e.target.value;
+                                                            setPaidAmountDrafts(prev => ({ ...prev, [lead.id]: value }));
+                                                        }}
+                                                        onBlur={() => void savePaidAmount(lead.id)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') e.currentTarget.blur();
+                                                        }}
                                                         placeholder="0,00"
                                                         className="w-24 px-2 py-1.5 text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400"
                                                     />
