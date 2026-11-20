@@ -4,6 +4,7 @@ import { verifyAgentKey } from '../middleware/authAgent';
 import { webhookDispatcher } from '../services/webhookDispatcher';
 import { emailService } from '../services/emailService';
 import { env } from '../config/env';
+import { sendMetaCapiServerEvent } from './tracking';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import fs from 'fs';
 import path from 'path';
@@ -437,6 +438,40 @@ export async function agentRoutes(fastify: FastifyInstance) {
             }
 
             const updatedLead = updateResult.rows[0];
+
+            // Se o lead foi marcado como Pago (ex: venda offline, recuperação Deskcomm/CRM),
+            // dispara a Conversions API do Meta server-side com fbp/fbc/event_id originais da captura!
+            if (status === 'Pago' && !body.skip_capi) {
+                const checkoutRes = await db.query(`SELECT * FROM checkouts WHERE id = $1 LIMIT 1`, [updatedLead.product_id]);
+                const checkout = checkoutRes.rows[0];
+                const [firstName, ...lastNameParts] = String(updatedLead.name || '').trim().split(/\s+/);
+                sendMetaCapiServerEvent({
+                    pixelId: checkout?.meta_pixel_id || env.META_PIXEL_ID,
+                    eventName: 'Purchase',
+                    eventId: updatedLead.fb_event_id || `lead_${updatedLead.id}`,
+                    eventTime: Math.floor(Date.now() / 1000),
+                    eventSourceUrl: `${env.FRONTEND_URL}/?checkout=${encodeURIComponent(checkout?.id || updatedLead.product_id || '')}`,
+                    actionSource: 'system_generated',
+                    useRequestClient: false,
+                    userData: {
+                        email: updatedLead.email,
+                        phone: updatedLead.phone,
+                        firstName,
+                        lastName: lastNameParts.join(' '),
+                        city: updatedLead.city,
+                        cpf: updatedLead.cpf,
+                        fbp: updatedLead.fbp,
+                        fbc: updatedLead.fbc,
+                    },
+                    customData: {
+                        value: Number(updatedLead.paid_amount) || 0,
+                        currency: 'BRL',
+                        content_type: 'product',
+                        content_ids: [checkout?.id || updatedLead.product_id].filter(Boolean),
+                        content_name: checkout?.productName || updatedLead.product_name || '',
+                    }
+                }).catch(err => console.warn('[AgentLeadUpdate] Meta CAPI Purchase falhou:', err));
+            }
 
             // Se foi marcado check-in agora, dispara webhook checkin.completed
             if (wasCheckedInNow) {
