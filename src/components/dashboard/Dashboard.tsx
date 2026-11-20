@@ -7,7 +7,6 @@ import { CouponManager } from './CouponManager';
 import { OverviewDashboard } from './OverviewDashboard';
 import { useSupabase } from '../../hooks/useSupabase';
 import { CheckInDashboard } from './CheckInDashboard';
-import { ExpenseManager } from './ExpenseManager';
 import { FinancialDashboard } from './FinancialDashboard';
 import { SignatureManager } from './SignatureManager';
 import { CheckoutViews } from './CheckoutViews';
@@ -481,7 +480,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     {setupTab === 'financeiro' && (
                         <div className="animate-in fade-in duration-500">
                             <FinancialDashboard leads={leads} checkouts={checkouts} />
-                            <div className="mt-8"><ExpenseManager leads={leads} checkouts={checkouts} /></div>
                         </div>
                     )}
                     {setupTab === 'signatures' && (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Trash2, Loader2, DollarSign, TrendingUp, TrendingDown, Save, X, Target, Tag, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Loader2, DollarSign, TrendingUp, TrendingDown, Save, X, Target, Tag, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { useSupabase } from '../../hooks/useSupabase';
 import { Expense, AppConfig } from '../../types';
 import { STANDARDIZED_EXPENSE_CATEGORIES, getExpenseCategoryConfig } from '../../utils/expenseCategories';
@@ -7,15 +7,35 @@ import { STANDARDIZED_EXPENSE_CATEGORIES, getExpenseCategoryConfig } from '../..
 interface ExpenseManagerProps {
     leads: any[];
     checkouts?: AppConfig[];
+    selectedCheckout?: string;
+    onSelectCheckout?: (id: string) => void;
+    defaultCollapsed?: boolean;
 }
 
-export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads, checkouts = [] }) => {
+export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ 
+    leads, 
+    checkouts = [],
+    selectedCheckout: controlledSelectedCheckout,
+    onSelectCheckout,
+    defaultCollapsed = false
+}) => {
     const supabase = useSupabase();
     const [expenses, setExpenses] = useState<Expense[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [selectedCheckout, setSelectedCheckout] = useState('all');
+    const [internalSelectedCheckout, setInternalSelectedCheckout] = useState('all');
+    const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
+
+    const selectedCheckout = controlledSelectedCheckout !== undefined ? controlledSelectedCheckout : internalSelectedCheckout;
+
+    const handleSelectCheckout = (val: string) => {
+        if (onSelectCheckout) {
+            onSelectCheckout(val);
+        }
+        setInternalSelectedCheckout(val);
+    };
+
     const [newExpense, setNewExpense] = useState<Partial<Expense>>({
         description: '',
         amount: 0,
@@ -138,40 +158,94 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads, checkouts
 
     return (
         <div id="finance-expenses" className="space-y-6 animate-in fade-in duration-500">
-            {/* Barra Superior de Ações com Largura Equilibrada */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center shadow-sm">
-                        <DollarSign size={20} />
-                    </div>
-                    <div>
-                        <h3 className="font-black text-gray-900 text-base leading-tight">Lançamentos de Despesas</h3>
-                        <p className="text-xs font-bold text-gray-400 mt-0.5">Registre custos da operação e vincule às turmas para cálculo do Break-Even</p>
-                    </div>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
-                    {/* Seletor com Largura Máxima Equilibrada (max-w-xs / w-72) */}
-                    <select
-                        value={selectedCheckout}
-                        onChange={(e) => setSelectedCheckout(e.target.value)}
-                        className="w-full sm:w-72 max-w-xs bg-gray-50 border-2 border-transparent focus:border-blue-500 text-xs font-black rounded-2xl px-4 py-3 outline-none cursor-pointer text-gray-700 transition-all"
+            {/* Barra Superior de Ações com Largura Equilibrada e Setinha de Recolher */}
+            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm transition-all">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div 
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        className="flex items-center gap-3 cursor-pointer select-none group"
                     >
-                        <option value="all">Visão Geral (Todos)</option>
-                        <option value="global">Custos Globais (Sem Turma)</option>
-                        {checkouts.map(c => (
-                            <option key={c.id} value={c.id}>{c.productName} {c.turma ? `— ${c.turma}` : ''}</option>
-                        ))}
-                    </select>
+                        <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+                            <DollarSign size={20} />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h3 className="font-black text-gray-900 text-base leading-tight group-hover:text-rose-600 transition-colors">
+                                    Lançamentos de Despesas
+                                </h3>
+                                <span className="p-1 rounded-lg text-gray-400 group-hover:text-gray-700 transition-colors">
+                                    {isCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                                </span>
+                            </div>
+                            <p className="text-xs font-bold text-gray-400 mt-0.5">Registre custos da operação e vincule às turmas para cálculo do Break-Even</p>
+                        </div>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+                        {/* Seletor com Largura Máxima Equilibrada (max-w-xs / w-72) */}
+                        <select
+                            value={selectedCheckout}
+                            onChange={(e) => handleSelectCheckout(e.target.value)}
+                            className="w-full sm:w-72 max-w-xs bg-gray-50 border-2 border-transparent focus:border-blue-500 text-xs font-black rounded-2xl px-4 py-3 outline-none cursor-pointer text-gray-700 transition-all"
+                        >
+                            <option value="all">Visão Geral (Todas as Turmas)</option>
+                            <option value="global">Custos Globais (Sem Turma)</option>
+                            {checkouts.map(c => (
+                                <option key={c.id} value={c.id}>{c.productName} {c.turma ? `— ${c.turma}` : ''}</option>
+                            ))}
+                        </select>
 
-                    <button
-                        onClick={() => setShowForm(!showForm)}
-                        className="w-full sm:w-auto bg-gray-900 hover:bg-black text-white px-5 py-3 rounded-2xl font-black text-xs uppercase shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                    >
-                        <Plus size={16} /> Nova Despesa
-                    </button>
+                        <button
+                            onClick={() => {
+                                setIsCollapsed(false);
+                                setShowForm(!showForm);
+                            }}
+                            className="w-full sm:w-auto bg-gray-900 hover:bg-black text-white px-5 py-3 rounded-2xl font-black text-xs uppercase shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 flex-shrink-0"
+                        >
+                            <Plus size={16} /> Nova Despesa
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setIsCollapsed(!isCollapsed)}
+                            className="w-10 h-10 rounded-2xl bg-gray-50 hover:bg-gray-100 border border-gray-100 flex items-center justify-center text-gray-500 hover:text-gray-900 transition-all flex-shrink-0"
+                            title={isCollapsed ? "Expandir Despesas" : "Minimizar Despesas"}
+                        >
+                            {isCollapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
+                        </button>
+                    </div>
                 </div>
+
+                {/* Resumo compacto quando recolhido */}
+                {isCollapsed && (
+                    <div 
+                        onClick={() => setIsCollapsed(false)}
+                        className="pt-4 mt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 cursor-pointer group"
+                    >
+                        <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-gray-600">
+                            <span className="text-rose-700 font-black bg-rose-50 px-2.5 py-1 rounded-xl border border-rose-100">
+                                Despesas: {money(totalExpenses)}
+                            </span>
+                            <span>•</span>
+                            <span className="text-gray-700">{filteredExpenses.length} lançamento(s)</span>
+                            <span>•</span>
+                            <span className="text-gray-500">Receita: {money(totalRevenue)}</span>
+                            <span>•</span>
+                            <span className={`font-black px-2 py-0.5 rounded-lg ${
+                                netProfit >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                            }`}>
+                                Resultado: {money(netProfit)} ({profitMargin.toFixed(1)}%)
+                            </span>
+                        </div>
+                        <span className="text-[11px] font-black uppercase tracking-wider text-rose-600 group-hover:underline flex items-center gap-1">
+                            Ver lançamentos e categorias <ChevronRight size={14} />
+                        </span>
+                    </div>
+                )}
             </div>
+
+            {!isCollapsed && (
+                <div className="space-y-6 animate-in fade-in duration-300">
 
             {/* Modal / Formulário Expansível de Nova Despesa */}
             {showForm && (
@@ -422,6 +496,8 @@ export const ExpenseManager: React.FC<ExpenseManagerProps> = ({ leads, checkouts
                     </div>
                 )}
             </div>
+            </div>
+            )}
         </div>
     );
 };
