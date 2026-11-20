@@ -1,10 +1,11 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { DollarSign, TrendingUp, Users, CreditCard, BarChart3, PieChart, ArrowUp, ArrowDown, Filter, Calendar, ChevronDown, Wallet, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { DollarSign, TrendingUp, Users, CreditCard, BarChart3, PieChart, ArrowUp, ArrowDown, Filter, Calendar, ChevronDown, Wallet, Clock, CheckCircle, XCircle, AlertTriangle, Target, ShieldAlert, Sparkles } from 'lucide-react';
 import { Lead, AppConfig, Expense } from '../../types';
 import { useSupabase } from '../../hooks/useSupabase';
 import { useSupabaseRealtime } from '../../hooks/useSupabaseRealtime';
 import { isConfirmedPayment } from '../../utils/leadStatus';
+import { calculateBreakEven } from '../../utils/breakEven';
 
 interface FinancialDashboardProps {
     leads: Lead[];
@@ -181,6 +182,28 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
         return Object.entries(data).sort((a, b) => b[1].revenue - a[1].revenue);
     }, [filteredLeads, checkouts]);
 
+    // Cálculo do Ponto de Equilíbrio das Turmas (Vox Turmas OS)
+    const turmasBreakEven = useMemo(() => {
+        return checkouts
+            .filter(c => c.isActive !== false)
+            .map(checkout => {
+                const metrics = calculateBreakEven(checkout, leads, expenses);
+                return {
+                    checkout,
+                    metrics
+                };
+            })
+            .sort((a, b) => b.metrics.netProfit - a.metrics.netProfit);
+    }, [checkouts, leads, expenses]);
+
+    const totalStudentsNeededToBreakEven = useMemo(() => {
+        return turmasBreakEven.reduce((sum, item) => sum + item.metrics.remainingStudentsToBreakEven, 0);
+    }, [turmasBreakEven]);
+
+    const profitableTurmasCount = useMemo(() => {
+        return turmasBreakEven.filter(item => item.metrics.breakEvenStatus === 'lucro').length;
+    }, [turmasBreakEven]);
+
     // Daily revenue for chart (last 30 days or filtered range)
     const dailyRevenue = useMemo(() => {
         const paid = filteredLeads.filter(isConfirmedPayment);
@@ -271,51 +294,69 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Total Revenue */}
-                <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-[2rem] p-6 text-white shadow-xl shadow-emerald-200/50">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center">
-                            <DollarSign size={20} />
+                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                    <div>
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Receita Total</span>
+                            <div className="w-9 h-9 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center shadow-sm">
+                                <DollarSign size={18} />
+                            </div>
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest opacity-80">Receita Total</span>
+                        <p className="text-3xl font-black tracking-tight text-gray-900">{formatCurrency(metrics.totalRevenue)}</p>
                     </div>
-                    <p className="text-3xl font-black tracking-tight">{formatCurrency(metrics.totalRevenue)}</p>
-                    <p className="text-xs font-bold mt-2 opacity-70">{metrics.paidCount} vendas confirmadas</p>
+                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100 text-xs font-bold text-gray-500">
+                        <span className="text-emerald-700 font-black bg-emerald-50 px-2 py-0.5 rounded-md">{metrics.paidCount} vendas</span>
+                        <span>•</span>
+                        <span>Líquido {formatCurrency(metrics.netRevenue)}</span>
+                    </div>
                 </div>
 
                 {/* Ticket Médio */}
-                <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-lg">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center">
-                            <TrendingUp size={20} className="text-blue-600" />
+                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                    <div>
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Ticket Médio</span>
+                            <div className="w-9 h-9 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl flex items-center justify-center shadow-sm">
+                                <TrendingUp size={18} />
+                            </div>
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Ticket Médio</span>
+                        <p className="text-3xl font-black tracking-tight text-gray-900">{formatCurrency(metrics.averageTicket)}</p>
                     </div>
-                    <p className="text-3xl font-black tracking-tight text-gray-900">{formatCurrency(metrics.averageTicket)}</p>
-                    <p className="text-xs font-bold mt-2 text-gray-400">Valor médio por venda</p>
+                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100 text-xs font-bold text-gray-400">
+                        <span>Valor médio bruto por venda</span>
+                    </div>
                 </div>
 
                 {/* Conversion Rate */}
-                <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-lg">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-purple-50 rounded-2xl flex items-center justify-center">
-                            <BarChart3 size={20} className="text-purple-600" />
+                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                    <div>
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Taxa Conversão</span>
+                            <div className="w-9 h-9 bg-purple-50 border border-purple-100 text-purple-600 rounded-xl flex items-center justify-center shadow-sm">
+                                <BarChart3 size={18} />
+                            </div>
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Taxa Conversão</span>
+                        <p className="text-3xl font-black tracking-tight text-gray-900">{metrics.conversionRate.toFixed(1)}%</p>
                     </div>
-                    <p className="text-3xl font-black tracking-tight text-gray-900">{metrics.conversionRate.toFixed(1)}%</p>
-                    <p className="text-xs font-bold mt-2 text-gray-400">{metrics.paidCount} de {metrics.totalLeads} leads</p>
+                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100 text-xs font-bold text-gray-400">
+                        <span>{metrics.paidCount} de {metrics.totalLeads} cadastros</span>
+                    </div>
                 </div>
 
                 {/* Total Leads */}
-                <div className="bg-white rounded-[2rem] p-6 border border-gray-100 shadow-lg">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-amber-50 rounded-2xl flex items-center justify-center">
-                            <Users size={20} className="text-amber-600" />
+                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                    <div>
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Total Leads</span>
+                            <div className="w-9 h-9 bg-amber-50 border border-amber-100 text-amber-600 rounded-xl flex items-center justify-center shadow-sm">
+                                <Users size={18} />
+                            </div>
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Total Leads</span>
+                        <p className="text-3xl font-black tracking-tight text-gray-900">{metrics.totalLeads}</p>
                     </div>
-                    <p className="text-3xl font-black tracking-tight text-gray-900">{metrics.totalLeads}</p>
-                    <p className="text-xs font-bold mt-2 text-gray-400">Cadastros realizados</p>
+                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100 text-xs font-bold text-gray-400">
+                        <span>Cadastros registrados no período</span>
+                    </div>
                 </div>
             </div>
 
@@ -328,30 +369,45 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
                     <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">O que entrou, o que foi descontado e o que sobrou</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                <div className="bg-white rounded-[2rem] p-6 border border-orange-100 shadow-lg">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Taxas Mercado Pago</p>
-                    <p className="text-2xl font-black text-orange-600 mt-2">{formatCurrency(metrics.totalFees)}</p>
-                    <p className="text-xs font-bold text-gray-400 mt-1">Descontadas das vendas confirmadas</p>
+                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Taxas MP</p>
+                        <span className="w-2 h-2 rounded-full bg-orange-400" />
+                    </div>
+                    <p className="text-2xl font-black text-orange-600 mt-1">{formatCurrency(metrics.totalFees)}</p>
+                    <p className="text-xs font-bold text-gray-400 mt-1">Descontadas das vendas</p>
                 </div>
-                <div className="bg-white rounded-[2rem] p-6 border border-blue-100 shadow-lg">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Receita líquida</p>
-                    <p className="text-2xl font-black text-blue-600 mt-2">{formatCurrency(metrics.netRevenue)}</p>
+                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Receita Líquida</p>
+                        <span className="w-2 h-2 rounded-full bg-blue-500" />
+                    </div>
+                    <p className="text-2xl font-black text-blue-600 mt-1">{formatCurrency(metrics.netRevenue)}</p>
                     <p className="text-xs font-bold text-gray-400 mt-1">Receita bruta menos taxas</p>
                 </div>
-                <div className="bg-white rounded-[2rem] p-6 border border-red-100 shadow-lg">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Despesas no período</p>
-                    <p className="text-2xl font-black text-red-600 mt-2">{expensesLoading ? '—' : formatCurrency(metrics.totalExpenses)}</p>
+                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Despesas Totais</p>
+                        <span className="w-2 h-2 rounded-full bg-red-500" />
+                    </div>
+                    <p className="text-2xl font-black text-red-600 mt-1">{expensesLoading ? '—' : formatCurrency(metrics.totalExpenses)}</p>
                     <p className="text-xs font-bold text-gray-400 mt-1">{filteredExpenses.length} lançamento(s)</p>
                 </div>
-                <div className="bg-white rounded-[2rem] p-6 border border-emerald-100 shadow-lg">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Resultado líquido</p>
-                    <p className={`text-2xl font-black mt-2 ${metrics.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{expensesLoading ? '—' : formatCurrency(metrics.netProfit)}</p>
+                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Resultado Líquido</p>
+                        <span className={`w-2 h-2 rounded-full ${metrics.netProfit >= 0 ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                    </div>
+                    <p className={`text-2xl font-black mt-1 ${metrics.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{expensesLoading ? '—' : formatCurrency(metrics.netProfit)}</p>
                     <p className="text-xs font-bold text-gray-400 mt-1">Receita líquida menos despesas</p>
                 </div>
-                <div className="bg-white rounded-[2rem] p-6 border border-amber-100 shadow-lg">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">A receber</p>
-                    <p className="text-2xl font-black text-amber-600 mt-2">{formatCurrency(metrics.pendingRevenue + metrics.sinalRevenue)}</p>
-                    <p className="text-xs font-bold text-gray-400 mt-1">{metrics.pendingCount + metrics.sinalCount} pagamento(s) pendente(s)</p>
+                <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">A Receber</p>
+                        <span className="w-2 h-2 rounded-full bg-amber-400" />
+                    </div>
+                    <p className="text-2xl font-black text-amber-600 mt-1">{formatCurrency(metrics.pendingRevenue + metrics.sinalRevenue)}</p>
+                    <p className="text-xs font-bold text-gray-400 mt-1">{metrics.pendingCount + metrics.sinalCount} pendente(s)</p>
                 </div>
             </div>
 
@@ -511,6 +567,112 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({ leads, c
                         </div>
                     )}
                 </div>
+                </div>
+            </div>
+
+            {/* VOX TURMAS OS - Ponto de Equilíbrio (Break-Even) das Turmas */}
+            <div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-700">Vox Turmas OS</span>
+                            <h3 className="text-base font-black text-gray-900">Ponto de Equilíbrio das Turmas (Break-Even)</h3>
+                        </div>
+                        <p className="text-xs text-gray-400 font-medium mt-1">Cálculo em tempo real de alunos e vagas necessárias para cobrir custos e gerar lucro</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5">
+                            <Sparkles size={14} />
+                            <span>{profitableTurmasCount} de {turmasBreakEven.length} no lucro</span>
+                        </div>
+                        {totalStudentsNeededToBreakEven > 0 && (
+                            <div className="bg-amber-50 text-amber-800 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5">
+                                <Target size={14} />
+                                <span>Faltam {totalStudentsNeededToBreakEven} alunos para empatar todas</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-[2rem] p-6 md:p-8 border border-gray-100 shadow-lg">
+                    {turmasBreakEven.length > 0 ? (
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[700px]">
+                                <thead>
+                                    <tr className="border-b-2 border-gray-100 text-left">
+                                        <th className="text-[10px] font-black uppercase text-gray-400 tracking-widest py-3 px-3">Turma / Cidade</th>
+                                        <th className="text-[10px] font-black uppercase text-gray-400 tracking-widest py-3 px-3">Custos Totais</th>
+                                        <th className="text-[10px] font-black uppercase text-gray-400 tracking-widest py-3 px-3">Receita Líquida</th>
+                                        <th className="text-center text-[10px] font-black uppercase text-gray-400 tracking-widest py-3 px-3">Alunos Pagos</th>
+                                        <th className="text-center text-[10px] font-black uppercase text-gray-400 tracking-widest py-3 px-3">Meta Empate</th>
+                                        <th className="text-center text-[10px] font-black uppercase text-gray-400 tracking-widest py-3 px-3">Vagas Faltantes</th>
+                                        <th className="text-center text-[10px] font-black uppercase text-gray-400 tracking-widest py-3 px-3">Progresso Empate</th>
+                                        <th className="text-right text-[10px] font-black uppercase text-gray-400 tracking-widest py-3 px-3">Resultado Líquido</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {turmasBreakEven.map(({ checkout, metrics: b }) => (
+                                        <tr key={checkout.id} className="hover:bg-gray-50/60 transition-colors">
+                                            <td className="py-4 px-3">
+                                                <div className="font-bold text-sm text-gray-900">{checkout.productName}</div>
+                                                <div className="text-xs text-gray-400 font-bold">{checkout.turma || checkout.city || 'Sem turma definida'}</div>
+                                            </td>
+                                            <td className="py-4 px-3 font-bold text-xs text-red-600">
+                                                {formatCurrency(b.totalExpenses)}
+                                            </td>
+                                            <td className="py-4 px-3 font-bold text-xs text-emerald-600">
+                                                {formatCurrency(b.netRevenue)}
+                                            </td>
+                                            <td className="py-4 px-3 text-center">
+                                                <span className="inline-block bg-blue-50 text-blue-700 px-3 py-1 rounded-lg text-xs font-black">
+                                                    {b.confirmedStudentsCount}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-3 text-center">
+                                                <span className="inline-block bg-gray-100 text-gray-700 px-3 py-1 rounded-lg text-xs font-black">
+                                                    {b.studentsNeededToBreakEven > 0 ? `${b.studentsNeededToBreakEven} alunos` : '0 (Sem custos)'}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-3 text-center">
+                                                {b.remainingStudentsToBreakEven === 0 ? (
+                                                    <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-lg text-xs font-black">
+                                                        <CheckCircle size={13} /> Empatada!
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 px-2.5 py-1 rounded-lg text-xs font-black">
+                                                        <AlertTriangle size={13} /> Faltam {b.remainingStudentsToBreakEven}
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="py-4 px-3">
+                                                <div className="w-full min-w-[120px] bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                                                    <div
+                                                        className={`h-full rounded-full transition-all duration-500 ${
+                                                            b.breakEvenProgressPercent >= 100 ? 'bg-emerald-500' : b.breakEvenProgressPercent >= 50 ? 'bg-amber-500' : 'bg-red-500'
+                                                        }`}
+                                                        style={{ width: `${b.breakEvenProgressPercent}%` }}
+                                                    />
+                                                </div>
+                                                <div className="text-[10px] text-right font-black text-gray-400 mt-1">{b.breakEvenProgressPercent}%</div>
+                                            </td>
+                                            <td className="py-4 px-3 text-right">
+                                                <div className={`font-black text-sm ${b.netProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                                    {formatCurrency(b.netProfit)}
+                                                </div>
+                                                <div className="text-[10px] font-bold text-gray-400">
+                                                    Margem: {b.profitMarginPercent.toFixed(1)}%
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="text-center py-8 text-gray-400 text-xs font-bold">
+                            Nenhuma turma ativa cadastrada.
+                        </div>
+                    )}
                 </div>
             </div>
 

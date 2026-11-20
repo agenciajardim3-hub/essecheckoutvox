@@ -1,6 +1,9 @@
-import React, { useMemo, useState } from 'react';
-import { Calendar, CheckCircle2, ChevronDown, ChevronUp, Copy, Edit3, Eye, GraduationCap, Link as LinkIcon, Plus, Search, Users, Wallet, MapPin, Clock, UserCheck } from 'lucide-react';
-import { Lead, AppConfig, UserRole } from '../../types';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Calendar, CheckCircle2, ChevronDown, ChevronUp, Copy, Edit3, Eye, GraduationCap, Link as LinkIcon, Plus, Search, Users, Wallet, MapPin, Clock, UserCheck, Target, AlertTriangle, Tag, X, Sparkles, Percent, DollarSign, Check, Loader2 } from 'lucide-react';
+import { Lead, AppConfig, UserRole, Expense } from '../../types';
+import { useSupabase } from '../../hooks/useSupabase';
+import { useSupabaseRealtime } from '../../hooks/useSupabaseRealtime';
+import { calculateBreakEven } from '../../utils/breakEven';
 
 interface TurmasDashboardProps {
     checkouts: AppConfig[];
@@ -107,6 +110,8 @@ export const TurmasDashboard: React.FC<TurmasDashboardProps> = ({
     onEditCheckout,
     onCreateCheckout
 }) => {
+    const supabase = useSupabase();
+    const [expenses, setExpenses] = useState<Expense[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -114,6 +119,110 @@ export const TurmasDashboard: React.FC<TurmasDashboardProps> = ({
     const [expandedArea, setExpandedArea] = useState<string | null>(null);
     const [expandedTurma, setExpandedTurma] = useState<string | null>(null);
     const [activeTabByTurma, setActiveTabByTurma] = useState<Record<string, 'resumo' | 'checkouts' | 'alunos'>>({});
+
+    // Estado do Modal de Link com Desconto Individual
+    const [discountModalCheckout, setDiscountModalCheckout] = useState<AppConfig | null>(null);
+    const [discountMode, setDiscountMode] = useState<'fixed' | 'percentage' | 'final_price'>('fixed');
+    const [discountInputValue, setDiscountInputValue] = useState<string>('200');
+    const [discountPrefix, setDiscountPrefix] = useState<string>('VIP');
+    const [isCreatingCoupon, setIsCreatingCoupon] = useState<boolean>(false);
+    const [generatedLinkResult, setGeneratedLinkResult] = useState<{ code: string; url: string; finalPrice: number; discountAmount: number } | null>(null);
+    const [copiedLink, setCopiedLink] = useState(false);
+
+    const handleOpenDiscountModal = (checkout: AppConfig) => {
+        setDiscountModalCheckout(checkout);
+        setDiscountMode('fixed');
+        setDiscountInputValue('200');
+        setDiscountPrefix('VIP');
+        setGeneratedLinkResult(null);
+        setCopiedLink(false);
+    };
+
+    const handleGeneratePersonalLink = async () => {
+        if (!discountModalCheckout || !supabase) return;
+        setIsCreatingCoupon(true);
+        try {
+            const rawPrice = parseFloat(String(discountModalCheckout.productPrice || '0').replace(/[^0-9,.-]/g, '').replace(',', '.')) || 0;
+            const inputNum = parseFloat(discountInputValue.replace(',', '.')) || 0;
+
+            let discountType: 'fixed' | 'percentage' = 'fixed';
+            let discountValue = 0;
+            let finalPrice = rawPrice;
+            let discountAmount = 0;
+
+            if (discountMode === 'percentage') {
+                discountType = 'percentage';
+                discountValue = Math.min(100, Math.max(1, inputNum));
+                discountAmount = (rawPrice * discountValue) / 100;
+                finalPrice = Math.max(0, rawPrice - discountAmount);
+            } else if (discountMode === 'final_price') {
+                discountType = 'fixed';
+                finalPrice = Math.max(0, inputNum);
+                discountAmount = Math.max(0, rawPrice - finalPrice);
+                discountValue = discountAmount;
+            } else {
+                discountType = 'fixed';
+                discountAmount = Math.min(rawPrice, Math.max(0, inputNum));
+                discountValue = discountAmount;
+                finalPrice = Math.max(0, rawPrice - discountAmount);
+            }
+
+            const prefix = (discountPrefix || 'VIP').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+            const randomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+            const code = `${prefix}_${randomCode}`;
+
+            const { error } = await supabase.from('coupons').insert({
+                id: crypto.randomUUID(),
+                code,
+                discount_type: discountType,
+                discount_value: discountValue,
+                max_uses: 1,
+                current_uses: 0,
+                product_id: discountModalCheckout.id,
+                is_active: true,
+                created_at: new Date().toISOString()
+            });
+
+            if (error) throw error;
+
+            const url = new URL(window.location.origin + window.location.pathname);
+            if (discountModalCheckout.slug) url.searchParams.set('p', discountModalCheckout.slug);
+            else url.searchParams.set('checkout', discountModalCheckout.id);
+            url.searchParams.set('cupom', code);
+
+            setGeneratedLinkResult({
+                code,
+                url: url.toString(),
+                finalPrice,
+                discountAmount
+            });
+        } catch (err: any) {
+            alert('Erro ao gerar cupom individual: ' + (err?.message || err));
+        } finally {
+            setIsCreatingCoupon(false);
+        }
+    };
+
+    const fetchExpenses = async () => {
+        if (!supabase) return;
+        try {
+            const { data, error } = await supabase.from('expenses').select('*');
+            if (!error && data) setExpenses(data as Expense[]);
+        } catch (err) {
+            console.error('Erro ao buscar despesas em turmas:', err);
+        }
+    };
+
+    useEffect(() => {
+        void fetchExpenses();
+    }, [supabase]);
+
+    useSupabaseRealtime({
+        supabase,
+        tables: ['expenses'],
+        channelName: 'turmas-expenses-realtime',
+        onChange: fetchExpenses,
+    });
 
     const turmas = useMemo<TurmaGroup[]>(() => {
         const grouped = new Map<string, TurmaGroup>();
@@ -200,6 +309,7 @@ export const TurmasDashboard: React.FC<TurmasDashboardProps> = ({
         const isExpanded = expandedTurma === turma.key;
         const activeTab = activeTabByTurma[turma.key] || 'resumo';
         const mainCheckout = turma.checkouts[0];
+        const breakEvenMetrics = mainCheckout ? calculateBreakEven(mainCheckout, leads, expenses) : null;
 
         return (
             <div key={turma.key} className="border border-gray-100 rounded-3xl overflow-hidden bg-white">
@@ -233,17 +343,94 @@ export const TurmasDashboard: React.FC<TurmasDashboardProps> = ({
                                 <button key={tab} onClick={() => setActiveTabByTurma(prev => ({ ...prev, [turma.key]: tab }))} className={`px-4 py-3 rounded-2xl text-xs font-black uppercase ${activeTab === tab ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}>{tab}</button>
                             ))}
                             <div className="ml-auto flex gap-2">
+                                {mainCheckout && (
+                                    <button
+                                        onClick={() => handleOpenDiscountModal(mainCheckout)}
+                                        className="px-4 py-3 rounded-2xl bg-amber-50 text-amber-700 hover:bg-amber-100 font-black text-xs uppercase flex items-center gap-2 border border-amber-200 transition-all shadow-sm"
+                                        title="Gerar Link com Desconto Individual (Cupom Único)"
+                                    >
+                                        <Tag size={14} /> Desconto Individual
+                                    </button>
+                                )}
                                 {mainCheckout && <button onClick={() => window.open(getCheckoutUrl(mainCheckout), '_blank')} className="px-4 py-3 rounded-2xl bg-blue-50 text-blue-600 font-black text-xs uppercase flex items-center gap-2"><Eye size={14} /> Ver</button>}
                                 {mainCheckout && <button onClick={() => copyToClipboard(getCheckoutUrl(mainCheckout), 'Link principal copiado!')} className="px-4 py-3 rounded-2xl bg-emerald-50 text-emerald-600 font-black text-xs uppercase flex items-center gap-2"><LinkIcon size={14} /> Copiar</button>}
                             </div>
                         </div>
 
                         {activeTab === 'resumo' && (
-                            <div className="p-5 grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="bg-gray-50 rounded-3xl p-5"><Users className="text-gray-400 mb-3" size={20} /><p className="text-[10px] font-black uppercase text-gray-400">Leads totais</p><p className="text-2xl font-black text-gray-900">{turma.leads.length}</p></div>
-                                <div className="bg-emerald-50 rounded-3xl p-5"><CheckCircle2 className="text-emerald-500 mb-3" size={20} /><p className="text-[10px] font-black uppercase text-emerald-500">Pagos</p><p className="text-2xl font-black text-emerald-700">{paidLeads.length}</p></div>
-                                <div className="bg-blue-50 rounded-3xl p-5"><UserCheck className="text-blue-500 mb-3" size={20} /><p className="text-[10px] font-black uppercase text-blue-500">Check-in</p><p className="text-2xl font-black text-blue-700">{checkedIn}</p></div>
-                                <div className="bg-indigo-50 rounded-3xl p-5"><Wallet className="text-indigo-500 mb-3" size={20} /><p className="text-[10px] font-black uppercase text-indigo-500">Receita</p><p className="text-2xl font-black text-indigo-700">{money(revenue)}</p></div>
+                            <div className="p-5 space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className="bg-gray-50 rounded-3xl p-5"><Users className="text-gray-400 mb-3" size={20} /><p className="text-[10px] font-black uppercase text-gray-400">Leads totais</p><p className="text-2xl font-black text-gray-900">{turma.leads.length}</p></div>
+                                    <div className="bg-emerald-50 rounded-3xl p-5"><CheckCircle2 className="text-emerald-500 mb-3" size={20} /><p className="text-[10px] font-black uppercase text-emerald-500">Pagos</p><p className="text-2xl font-black text-emerald-700">{paidLeads.length}</p></div>
+                                    <div className="bg-blue-50 rounded-3xl p-5"><UserCheck className="text-blue-500 mb-3" size={20} /><p className="text-[10px] font-black uppercase text-blue-500">Check-in</p><p className="text-2xl font-black text-blue-700">{checkedIn}</p></div>
+                                    <div className="bg-indigo-50 rounded-3xl p-5"><Wallet className="text-indigo-500 mb-3" size={20} /><p className="text-[10px] font-black uppercase text-indigo-500">Receita</p><p className="text-2xl font-black text-indigo-700">{money(revenue)}</p></div>
+                                </div>
+
+                                {breakEvenMetrics && (
+                                    <div className="p-5 rounded-3xl border border-gray-100 bg-gradient-to-r from-gray-50 via-white to-blue-50/30">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                            <div className="flex items-center gap-2.5">
+                                                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-600/20">
+                                                    <Target size={16} />
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Vox Turmas OS</span>
+                                                        <h5 className="text-xs font-black uppercase text-gray-900 tracking-wider">Ponto de Equilíbrio (Break-Even)</h5>
+                                                    </div>
+                                                    <p className="text-[10px] text-gray-400 font-bold mt-0.5">Meta operacional de alunos para empatar e margem da turma</p>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                {breakEvenMetrics.remainingStudentsToBreakEven === 0 ? (
+                                                    <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-800 px-3 py-1 rounded-xl text-xs font-black">
+                                                        <CheckCircle2 size={14} /> Ponto de Equilíbrio Atingido! (Lucro: {money(breakEvenMetrics.netProfit)})
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 px-3 py-1 rounded-xl text-xs font-black">
+                                                        <AlertTriangle size={14} /> Faltam {breakEvenMetrics.remainingStudentsToBreakEven} vagas para empatar
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                                            <div className="bg-white rounded-2xl p-3 border border-gray-100">
+                                                <p className="text-[9px] font-black uppercase text-gray-400">Custos Totais</p>
+                                                <p className="text-sm font-black text-red-600">{money(breakEvenMetrics.totalExpenses)}</p>
+                                            </div>
+                                            <div className="bg-white rounded-2xl p-3 border border-gray-100">
+                                                <p className="text-[9px] font-black uppercase text-gray-400">Alunos Necessários</p>
+                                                <p className="text-sm font-black text-gray-900">{breakEvenMetrics.studentsNeededToBreakEven > 0 ? `${breakEvenMetrics.studentsNeededToBreakEven} alunos` : '0 (Sem custos)'}</p>
+                                            </div>
+                                            <div className="bg-white rounded-2xl p-3 border border-gray-100">
+                                                <p className="text-[9px] font-black uppercase text-gray-400">Vagas Faltantes</p>
+                                                <p className="text-sm font-black text-amber-600">{breakEvenMetrics.remainingStudentsToBreakEven} vagas</p>
+                                            </div>
+                                            <div className="bg-white rounded-2xl p-3 border border-gray-100">
+                                                <p className="text-[9px] font-black uppercase text-gray-400">Resultado Líquido</p>
+                                                <p className={`text-sm font-black ${breakEvenMetrics.netProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                                    {money(breakEvenMetrics.netProfit)}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between text-[10px] font-black text-gray-400 uppercase">
+                                                <span>Progresso em direção ao Empate</span>
+                                                <span>{breakEvenMetrics.breakEvenProgressPercent}%</span>
+                                            </div>
+                                            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                                <div
+                                                    className={`h-full rounded-full transition-all duration-500 ${
+                                                        breakEvenMetrics.breakEvenProgressPercent >= 100 ? 'bg-emerald-500' : breakEvenMetrics.breakEvenProgressPercent >= 50 ? 'bg-amber-500' : 'bg-red-500'
+                                                    }`}
+                                                    style={{ width: `${breakEvenMetrics.breakEvenProgressPercent}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -260,6 +447,13 @@ export const TurmasDashboard: React.FC<TurmasDashboardProps> = ({
                                                 {checkout.variations && checkout.variations.length > 0 && <p className="text-[10px] font-black uppercase text-indigo-600 mt-1">{checkout.variations.length} variações cadastradas</p>}
                                             </div>
                                             <div className="flex flex-wrap gap-2">
+                                                <button
+                                                    onClick={() => handleOpenDiscountModal(checkout)}
+                                                    className="p-3 rounded-xl bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 transition-all shadow-sm"
+                                                    title="Gerar Link com Desconto Individual (Cupom Único)"
+                                                >
+                                                    <Tag size={15} />
+                                                </button>
                                                 <button onClick={() => window.open(getCheckoutUrl(checkout), '_blank')} className="p-3 rounded-xl bg-blue-600 text-white"><Eye size={15} /></button>
                                                 <button onClick={() => copyToClipboard(getCheckoutUrl(checkout), 'Link do checkout copiado!')} className="p-3 rounded-xl bg-blue-50 text-blue-600"><LinkIcon size={15} /></button>
                                                 <button onClick={() => copyToClipboard(getCheckoutUrl(checkout, 'reg'), 'Link de registro copiado!')} className="p-3 rounded-xl bg-emerald-50 text-emerald-600"><Copy size={15} /></button>
@@ -376,6 +570,179 @@ export const TurmasDashboard: React.FC<TurmasDashboardProps> = ({
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {/* Modal de Gerador de Link com Desconto Individual (Cupom Único) */}
+            {discountModalCheckout && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-6 sm:p-8 shadow-2xl border border-gray-100 space-y-6 animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-amber-500/30">
+                                    <Tag size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-black text-gray-900 leading-tight">Link com Desconto Individual</h3>
+                                    <p className="text-xs text-gray-500 font-bold">Cupom de uso único vinculado a esta turma</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setDiscountModalCheckout(null)}
+                                className="p-2 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-all"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Dados da Turma */}
+                        <div className="bg-gray-50 rounded-2xl p-4 space-y-1">
+                            <p className="text-[10px] font-black uppercase text-gray-400">Turma Selecionada</p>
+                            <p className="font-black text-gray-900 text-sm">{discountModalCheckout.productName}</p>
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-200 text-xs">
+                                <span className="text-gray-500 font-bold">Preço de Tabela:</span>
+                                <span className="font-black text-gray-900">R$ {discountModalCheckout.productPrice || '0,00'}</span>
+                            </div>
+                        </div>
+
+                        {!generatedLinkResult ? (
+                            <div className="space-y-5">
+                                {/* Tipo de Cálculo */}
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase text-gray-500 mb-2">Formato do Desconto</label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setDiscountMode('fixed')}
+                                            className={`p-3 rounded-xl text-xs font-black uppercase flex flex-col items-center gap-1.5 transition-all ${
+                                                discountMode === 'fixed'
+                                                    ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30'
+                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            }`}
+                                        >
+                                            <DollarSign size={16} />
+                                            <span>R$ Off</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setDiscountMode('percentage')}
+                                            className={`p-3 rounded-xl text-xs font-black uppercase flex flex-col items-center gap-1.5 transition-all ${
+                                                discountMode === 'percentage'
+                                                    ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30'
+                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            }`}
+                                        >
+                                            <Percent size={16} />
+                                            <span>% Off</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setDiscountMode('final_price')}
+                                            className={`p-3 rounded-xl text-xs font-black uppercase flex flex-col items-center gap-1.5 transition-all ${
+                                                discountMode === 'final_price'
+                                                    ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30'
+                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            }`}
+                                        >
+                                            <Sparkles size={16} />
+                                            <span>Preço Final</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Input de Valor */}
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase text-gray-500 mb-2">
+                                        {discountMode === 'percentage' ? 'Porcentagem de Desconto (%)' : discountMode === 'final_price' ? 'Preço Final Desejado para o Aluno (R$)' : 'Valor do Desconto (R$)'}
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="number"
+                                            value={discountInputValue}
+                                            onChange={(e) => setDiscountInputValue(e.target.value)}
+                                            placeholder={discountMode === 'percentage' ? 'Ex: 20' : 'Ex: 200'}
+                                            className="w-full px-4 py-3.5 bg-gray-50 border-2 border-transparent focus:border-amber-500 rounded-2xl outline-none font-black text-gray-900 text-base transition-all"
+                                        />
+                                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black uppercase text-gray-400">
+                                            {discountMode === 'percentage' ? '%' : 'BRL'}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Prefixo do Cupom */}
+                                <div>
+                                    <label className="block text-[11px] font-black uppercase text-gray-500 mb-2">Prefixo do Código (Opcional)</label>
+                                    <input
+                                        type="text"
+                                        value={discountPrefix}
+                                        onChange={(e) => setDiscountPrefix(e.target.value.toUpperCase())}
+                                        placeholder="Ex: VIP, PARCERIA, AMIGO"
+                                        maxLength={10}
+                                        className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-amber-500 rounded-2xl outline-none font-black text-gray-900 text-sm uppercase transition-all"
+                                    />
+                                    <p className="text-[10px] text-gray-400 font-bold mt-1">Será gerado um código único de 1 uso só (ex: {discountPrefix || 'VIP'}_A82DF)</p>
+                                </div>
+
+                                <button
+                                    onClick={handleGeneratePersonalLink}
+                                    disabled={isCreatingCoupon || !discountInputValue}
+                                    className="w-full py-4 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-2xl font-black text-sm uppercase flex items-center justify-center gap-2 shadow-lg shadow-amber-500/30 transition-all"
+                                >
+                                    {isCreatingCoupon ? <Loader2 size={18} className="animate-spin" /> : <Tag size={18} />}
+                                    <span>Criar Link com Desconto</span>
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center space-y-2">
+                                    <div className="w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto">
+                                        <Check size={20} />
+                                    </div>
+                                    <h4 className="font-black text-emerald-900 text-base">Link Criado com Sucesso!</h4>
+                                    <p className="text-xs text-emerald-700 font-bold">
+                                        Preço Final para o Aluno: <strong className="text-sm font-black text-emerald-950">R$ {generatedLinkResult.finalPrice.toFixed(2).replace('.', ',')}</strong>
+                                        {' '}(Desconto de R$ {generatedLinkResult.discountAmount.toFixed(2).replace('.', ',')})
+                                    </p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="block text-[11px] font-black uppercase text-gray-400">Link Completo com Auto-Aplicação</label>
+                                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-gray-700 break-all select-all">
+                                        {generatedLinkResult.url}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="block text-[11px] font-black uppercase text-gray-400">Código do Cupom (Uso Único)</label>
+                                    <div className="p-3 bg-gray-100 rounded-xl font-black text-sm text-gray-900 tracking-wider">
+                                        {generatedLinkResult.code}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 pt-2">
+                                    <button
+                                        onClick={() => {
+                                            void navigator.clipboard.writeText(generatedLinkResult.url);
+                                            setCopiedLink(true);
+                                            setTimeout(() => setCopiedLink(false), 2500);
+                                        }}
+                                        className="py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2 shadow-md transition-all"
+                                    >
+                                        {copiedLink ? <Check size={16} /> : <Copy size={16} />}
+                                        <span>{copiedLink ? 'Copiado!' : 'Copiar Link'}</span>
+                                    </button>
+                                    <button
+                                        onClick={() => window.open(generatedLinkResult.url, '_blank')}
+                                        className="py-3.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2 shadow-md transition-all"
+                                    >
+                                        <Eye size={16} />
+                                        <span>Testar Link</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
         </div>

@@ -62,7 +62,28 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
     try {
       const { data, error } = await supabase.from('expenses').select('*');
       if (error) throw error;
-      setGlobalExpenseItems(data || []);
+      const items = data || [];
+      setGlobalExpenseItems(items);
+
+      // Sincroniza estado de edição a partir do banco de dados (adeus localStorage!)
+      const remoteExpenses: Record<string, Expenses> = {};
+      items.forEach((item: any) => {
+        if (!item.checkout_id) return;
+        if (!remoteExpenses[item.checkout_id]) {
+          remoteExpenses[item.checkout_id] = { ...EMPTY_EXPENSES };
+        }
+        const cat = item.category;
+        const amount = Number(item.amount) || 0;
+        if (cat === 'marketing') remoteExpenses[item.checkout_id].trafego += amount;
+        else if (cat === 'infraestrutura') remoteExpenses[item.checkout_id].estrutura += amount;
+        else if (cat === 'servico') remoteExpenses[item.checkout_id].equipe += amount;
+        else remoteExpenses[item.checkout_id].alimentacao += amount;
+      });
+
+      setExpenses(prev => ({
+        ...prev,
+        ...remoteExpenses
+      }));
     } catch (err) {
       console.error('Erro ao carregar despesas da Visão Geral:', err);
     }
@@ -214,17 +235,72 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
     }));
   };
 
-  const handleSave = () => {
-    saveExpenses(expenses);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1800);
+  const handleSave = async () => {
+    if (!supabase) return;
+    try {
+      setSaved(true);
+      for (const [checkoutId, exp] of Object.entries(expenses)) {
+        for (const [cat, val] of Object.entries(exp)) {
+          const numVal = Number(val) || 0;
+          if (numVal > 0) {
+            const mappedCat = cat === 'trafego' ? 'marketing' : cat === 'estrutura' ? 'infraestrutura' : cat === 'equipe' ? 'servico' : 'material';
+            await supabase.from('expenses').insert({
+              description: `Custo de ${cat} - ${checkouts.find(c => c.id === checkoutId)?.productName || 'Turma'}`,
+              amount: numVal,
+              category: mappedCat,
+              checkout_id: checkoutId,
+              date: new Date().toISOString().split('T')[0]
+            });
+          }
+        }
+      }
+      await fetchGlobalExpenses();
+      setTimeout(() => setSaved(false), 1800);
+    } catch (err) {
+      console.error('Erro ao salvar despesas no banco:', err);
+      setSaved(false);
+    }
   };
 
+  const averageTicket = metrics.paid > 0 ? metrics.revenue / metrics.paid : 0;
+  const expenseRatio = metrics.revenue > 0 ? (metrics.expenses / metrics.revenue) * 100 : (metrics.expenses > 0 ? 100 : 0);
+  const profitMargin = metrics.revenue > 0 ? (metrics.profit / metrics.revenue) * 100 : (metrics.expenses > 0 ? -100 : 0);
+
   const statCards = [
-    { label: 'Receita Total', value: formatCurrency(metrics.revenue), icon: DollarSign, className: 'text-emerald-600' },
-    { label: 'Despesas', value: formatCurrency(metrics.expenses), icon: Wallet, className: 'text-orange-600' },
-    { label: 'Lucro Líquido', value: formatCurrency(metrics.profit), icon: TrendingUp, className: 'text-emerald-600' },
-    { label: 'Taxa Conversão', value: `${metrics.conversion.toFixed(1)}%`, icon: BarChart3, className: 'text-indigo-600' },
+    {
+      label: 'Receita Total',
+      value: formatCurrency(metrics.revenue),
+      subtext: `${metrics.paid} vendas • Ticket médio ${formatCurrency(averageTicket)}`,
+      icon: DollarSign,
+      className: 'text-emerald-600',
+      badgeBg: 'bg-emerald-50 border-emerald-100',
+    },
+    {
+      label: 'Despesas Totais',
+      value: formatCurrency(metrics.expenses),
+      subtext: `${expenseRatio.toFixed(1)}% da receita comprometida`,
+      icon: Wallet,
+      className: 'text-rose-600',
+      badgeBg: 'bg-rose-50 border-rose-100',
+    },
+    {
+      label: 'Lucro Líquido',
+      value: formatCurrency(metrics.profit),
+      subtext: `Margem Real: ${profitMargin >= 0 ? '+' : ''}${profitMargin.toFixed(1)}%`,
+      icon: TrendingUp,
+      className: metrics.profit >= 0 ? 'text-emerald-600' : 'text-rose-600',
+      badgeBg: metrics.profit >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100',
+      isMargin: true,
+      marginVal: profitMargin
+    },
+    {
+      label: 'Taxa Conversão',
+      value: `${metrics.conversion.toFixed(1)}%`,
+      subtext: `${metrics.paid} de ${filteredLeads.length} leads`,
+      icon: BarChart3,
+      className: 'text-indigo-600',
+      badgeBg: 'bg-indigo-50 border-indigo-100',
+    },
   ];
 
   return (
@@ -275,12 +351,14 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
 
       {activeTab === 'financeiro' && (
         <>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col md:flex-row gap-3 items-center">
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400"><Filter size={13} /> Filtro</div>
-            <select value={selectedProduct} onChange={(e) => setSelectedProduct(e.target.value)} className="flex-1 w-full border border-gray-200 rounded-xl px-4 py-3 text-xs font-black bg-white">
-              <option value="all">Todos os Produtos</option>
-              {checkouts.map((checkout) => <option key={checkout.id} value={checkout.id}>{checkout.productName} {checkout.turma ? `- ${checkout.turma}` : ''}</option>)}
-            </select>
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400"><Filter size={13} /> Filtro</div>
+              <select value={selectedProduct} onChange={(e) => setSelectedProduct(e.target.value)} className="w-full sm:w-72 max-w-xs border border-gray-200 rounded-xl px-4 py-3 text-xs font-black bg-white cursor-pointer">
+                <option value="all">Todos os Produtos</option>
+                {checkouts.map((checkout) => <option key={checkout.id} value={checkout.id}>{checkout.productName} {checkout.turma ? `- ${checkout.turma}` : ''}</option>)}
+              </select>
+            </div>
             <div className="flex gap-2 w-full md:w-auto">
               {(['7d', '30d', '90d', 'all'] as const).map((range) => (
                 <button key={range} onClick={() => setDateRange(range)} className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase ${dateRange === range ? 'bg-violet-600 text-white' : 'bg-gray-100 text-gray-500'}`}>{range === 'all' ? 'Todos' : range.replace('d', ' dias')}</button>
@@ -292,13 +370,27 @@ export const OverviewDashboard: React.FC<OverviewDashboardProps> = ({ leads, che
             {statCards.map((card) => {
               const Icon = card.icon;
               return (
-                <div key={card.label} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className={`text-[10px] font-black uppercase tracking-widest ${card.className}`}>{card.label}</p>
-                      <p className="text-2xl font-black text-gray-900 mt-2">{card.value}</p>
+                <div key={card.label} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{card.label}</span>
+                      <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shadow-sm ${card.badgeBg}`}>
+                        <Icon size={18} className={card.className} />
+                      </div>
                     </div>
-                    <Icon size={20} className={card.className} />
+                    <p className="text-3xl font-black text-gray-900 tracking-tight">{card.value}</p>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between text-xs font-bold text-gray-500">
+                    <span>{card.subtext}</span>
+                    {card.isMargin && (
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
+                        (card.marginVal || 0) >= 30 ? 'bg-emerald-50 text-emerald-700' :
+                        (card.marginVal || 0) > 0 ? 'bg-blue-50 text-blue-700' :
+                        'bg-rose-50 text-rose-700'
+                      }`}>
+                        {(card.marginVal || 0) >= 0 ? `+${(card.marginVal || 0).toFixed(0)}%` : `${(card.marginVal || 0).toFixed(0)}%`}
+                      </span>
+                    )}
                   </div>
                 </div>
               );

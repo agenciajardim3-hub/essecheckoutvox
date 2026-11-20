@@ -29,3 +29,6 @@ dist-ssr
 
 # Supabase CLI
 supabase/.temp/
+
+# Atalhos locais
+ABRIR_CHECKOUT_LOCAL.bat

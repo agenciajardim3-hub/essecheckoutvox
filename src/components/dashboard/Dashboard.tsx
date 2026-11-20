@@ -3,21 +3,10 @@ import { Layout, ListChecks, Plus, Ticket, ListFilter, Award, Terminal, LogOut, 
 import { AppConfig, Lead, UserRole, Coupon } from '../../types';
 import { ProductConfig } from './ProductConfig';
 import { LeadsReportV2 } from './LeadsReportV2';
-import { TicketGenerator } from './TicketGenerator';
-import { TicketLogs } from './TicketLogs';
-import { CertificateGenerator } from './CertificateGenerator';
-import { CertificateSender } from './CertificateSender';
-import { TicketSender } from './TicketSender';
-import { CustomEmailSender } from './CustomEmailSender';
-import { AutomationDashboard } from './AutomationDashboard';
-import { IntegrationsStatus } from './IntegrationsStatus';
-import { TicketScanner } from './TicketScanner';
 import { CouponManager } from './CouponManager';
 import { OverviewDashboard } from './OverviewDashboard';
 import { useSupabase } from '../../hooks/useSupabase';
 import { CheckInDashboard } from './CheckInDashboard';
-import { SupportMaterials } from './SupportMaterials';
-import { SolicitacoesDashboard } from './SolicitacoesDashboard';
 import { ExpenseManager } from './ExpenseManager';
 import { FinancialDashboard } from './FinancialDashboard';
 import { SignatureManager } from './SignatureManager';
@@ -25,9 +14,11 @@ import { CheckoutViews } from './CheckoutViews';
 import { RemarketingDashboard } from './RemarketingDashboard';
 import { GlobalSettings } from './GlobalSettings';
 import { TurmasDashboard } from './TurmasDashboard';
-import { EmailMarketingDashboard } from './EmailMarketingDashboard';
 import { CheckoutsDashboard } from './CheckoutsDashboard';
-import { EmailTemplatesDashboard } from './EmailTemplatesDashboard';
+import { IntegrationsStatus } from './IntegrationsStatus';
+import { TicketsPresenceHub } from './TicketsPresenceHub';
+import { CertificatesHub } from './CertificatesHub';
+import { MessagingHub } from './MessagingHub';
 
 interface DashboardProps {
     userRole: UserRole;
@@ -63,7 +54,7 @@ interface DashboardProps {
     onSync: () => Promise<void>;
 }
 
-type TabId = 'list' | 'product' | 'integrations' | 'leads' | 'tickets' | 'ticket_logs' | 'send_tickets' | 'certificates' | 'send_certificates' | 'custom_email' | 'automacao' | 'scanner' | 'coupons' | 'overview' | 'checkin' | 'materials' | 'solicitacoes' | 'financeiro' | 'signatures' | 'views' | 'remarketing' | 'global_settings' | 'turmas' | 'email_marketing' | 'email_templates';
+type TabId = 'list' | 'product' | 'integrations' | 'leads' | 'tickets' | 'ticket_logs' | 'send_tickets' | 'certificates' | 'send_certificates' | 'custom_email' | 'automacao' | 'scanner' | 'coupons' | 'overview' | 'checkin' | 'materials' | 'solicitacoes' | 'financeiro' | 'signatures' | 'views' | 'remarketing' | 'global_settings' | 'turmas' | 'email_marketing' | 'email_templates' | 'tickets_hub' | 'certificates_hub' | 'messaging_hub';
 
 export const Dashboard: React.FC<DashboardProps> = ({
     userRole,
@@ -163,18 +154,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
         { id: 'list', label: 'Checkouts', icon: ListChecks, roles: ['master', 'manager'], category: 'produtos' },
         { id: 'product', label: 'Novo Checkout', icon: Plus, roles: ['master'], category: 'produtos' },
         { id: 'coupons', label: 'Cupons', icon: Tag, roles: ['master'], category: 'produtos' },
-        { id: 'materials', label: 'Materiais', icon: FileText, roles: ['master'], category: 'produtos' },
 
-        { id: 'tickets', label: 'Gerar Ingresso', icon: Ticket, roles: ['master'], category: 'operacoes' },
-        { id: 'send_tickets', label: 'Enviar Ingressos', icon: Send, roles: ['master'], category: 'operacoes' },
-        { id: 'certificates', label: 'Gerar Certificado', icon: Award, roles: ['master'], category: 'operacoes' },
-        { id: 'send_certificates', label: 'Enviar Certificados', icon: Mail, roles: ['master'], category: 'operacoes' },
-        { id: 'custom_email', label: 'Email Personalizado', icon: Mail, roles: ['master'], category: 'operacoes' },
-        { id: 'automacao', label: 'Automação WhatsApp', icon: Smartphone, roles: ['master'], category: 'operacoes' },
-        { id: 'email_marketing', label: 'Email Marketing', icon: Send, roles: ['master'], category: 'operacoes' },
-        { id: 'email_templates', label: 'Modelos de Email', icon: Mail, roles: ['master'], category: 'operacoes' },
-        { id: 'solicitacoes', label: 'Pedidos de Certificado', icon: FileCheck, roles: ['master'], category: 'operacoes' },
-        { id: 'scanner', label: 'Escanear QR Code', icon: QrCode, roles: ['master', 'manager'], category: 'operacoes' },
+        { id: 'tickets_hub', label: 'Ingressos & Portaria', icon: Ticket, roles: ['master', 'manager'], category: 'operacoes' },
+        { id: 'certificates_hub', label: 'Hub Certificados', icon: Award, roles: ['master'], category: 'operacoes' },
+        { id: 'messaging_hub', label: 'Comunicação & IA', icon: Send, roles: ['master'], category: 'operacoes' },
 
         { id: 'financeiro', label: 'Financeiro', icon: Wallet, roles: ['master'], category: 'adm' },
         { id: 'signatures', label: 'Assinaturas', icon: Signature, roles: ['master'], category: 'adm' },
@@ -183,7 +166,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     ] as const;
 
     const navItems = userRole === 'manager'
-        ? allNavItems.filter(item => ['turmas', 'leads', 'checkin', 'scanner', 'ticket_logs', 'list'].includes(item.id))
+        ? allNavItems.filter(item => ['turmas', 'leads', 'checkin', 'tickets_hub', 'list'].includes(item.id))
         : userRole === 'master'
             ? allNavItems.filter(item => item.roles.includes(userRole))
             : [];
@@ -335,21 +318,166 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         />
                     )}
 
-                    {setupTab === 'scanner' && <TicketScanner leads={leads} allCheckouts={checkouts} onUpdateStatus={onUpdateLeadStatus} />}
-                    {setupTab === 'tickets' && <TicketGenerator allCheckouts={checkouts} />}
-                    {setupTab === 'send_tickets' && <TicketSender leads={leads} checkouts={checkouts} uploadService={uploadService} isUploading={isUploading} />}
-                    {setupTab === 'ticket_logs' && <TicketLogs leads={leads} allCheckouts={checkouts} savingId={savingId} onDeleteLead={onDeleteLead} onReprintTicket={onReprintTicket} />}
+                    {setupTab === 'tickets_hub' && (
+                        <TicketsPresenceHub
+                            userRole={userRole}
+                            leads={leads}
+                            checkouts={checkouts}
+                            uploadService={uploadService}
+                            isUploading={isUploading}
+                            savingId={savingId}
+                            onDeleteLead={onDeleteLead}
+                            onReprintTicket={onReprintTicket}
+                            onUpdateStatus={onUpdateLeadStatus}
+                            onCheckIn={onCheckIn}
+                        />
+                    )}
+                    {setupTab === 'scanner' && (
+                        <TicketsPresenceHub
+                            userRole={userRole}
+                            leads={leads}
+                            checkouts={checkouts}
+                            uploadService={uploadService}
+                            isUploading={isUploading}
+                            savingId={savingId}
+                            onDeleteLead={onDeleteLead}
+                            onReprintTicket={onReprintTicket}
+                            onUpdateStatus={onUpdateLeadStatus}
+                            onCheckIn={onCheckIn}
+                            initialSubTab="scanner"
+                        />
+                    )}
+                    {setupTab === 'tickets' && (
+                        <TicketsPresenceHub
+                            userRole={userRole}
+                            leads={leads}
+                            checkouts={checkouts}
+                            uploadService={uploadService}
+                            isUploading={isUploading}
+                            savingId={savingId}
+                            onDeleteLead={onDeleteLead}
+                            onReprintTicket={onReprintTicket}
+                            onUpdateStatus={onUpdateLeadStatus}
+                            onCheckIn={onCheckIn}
+                            initialSubTab="generator"
+                        />
+                    )}
+                    {setupTab === 'send_tickets' && (
+                        <TicketsPresenceHub
+                            userRole={userRole}
+                            leads={leads}
+                            checkouts={checkouts}
+                            uploadService={uploadService}
+                            isUploading={isUploading}
+                            savingId={savingId}
+                            onDeleteLead={onDeleteLead}
+                            onReprintTicket={onReprintTicket}
+                            onUpdateStatus={onUpdateLeadStatus}
+                            onCheckIn={onCheckIn}
+                            initialSubTab="sender"
+                        />
+                    )}
+                    {setupTab === 'ticket_logs' && (
+                        <TicketsPresenceHub
+                            userRole={userRole}
+                            leads={leads}
+                            checkouts={checkouts}
+                            uploadService={uploadService}
+                            isUploading={isUploading}
+                            savingId={savingId}
+                            onDeleteLead={onDeleteLead}
+                            onReprintTicket={onReprintTicket}
+                            onUpdateStatus={onUpdateLeadStatus}
+                            onCheckIn={onCheckIn}
+                            initialSubTab="logs"
+                        />
+                    )}
+
+                    {setupTab === 'certificates_hub' && (
+                        <CertificatesHub
+                            leads={leads}
+                            checkouts={checkouts}
+                            uploadService={uploadService}
+                            isUploading={isUploading}
+                            selectedSignature={selectedSignature}
+                        />
+                    )}
+                    {setupTab === 'certificates' && (
+                        <CertificatesHub
+                            leads={leads}
+                            checkouts={checkouts}
+                            uploadService={uploadService}
+                            isUploading={isUploading}
+                            selectedSignature={selectedSignature}
+                            initialSubTab="generator"
+                        />
+                    )}
+                    {setupTab === 'send_certificates' && (
+                        <CertificatesHub
+                            leads={leads}
+                            checkouts={checkouts}
+                            uploadService={uploadService}
+                            isUploading={isUploading}
+                            selectedSignature={selectedSignature}
+                            initialSubTab="sender"
+                        />
+                    )}
+                    {setupTab === 'solicitacoes' && (
+                        <CertificatesHub
+                            leads={leads}
+                            checkouts={checkouts}
+                            uploadService={uploadService}
+                            isUploading={isUploading}
+                            selectedSignature={selectedSignature}
+                            initialSubTab="solicitacoes"
+                        />
+                    )}
+
+                    {setupTab === 'messaging_hub' && (
+                        <MessagingHub
+                            userRole={userRole}
+                            leads={leads}
+                            checkouts={checkouts}
+                        />
+                    )}
+                    {setupTab === 'custom_email' && (
+                        <MessagingHub
+                            userRole={userRole}
+                            leads={leads}
+                            checkouts={checkouts}
+                            initialSubTab="custom_email"
+                        />
+                    )}
+                    {setupTab === 'automacao' && (
+                        <MessagingHub
+                            userRole={userRole}
+                            leads={leads}
+                            checkouts={checkouts}
+                            initialSubTab="whatsapp"
+                        />
+                    )}
+                    {setupTab === 'email_marketing' && (
+                        <MessagingHub
+                            userRole={userRole}
+                            leads={leads}
+                            checkouts={checkouts}
+                            initialSubTab="email_marketing"
+                        />
+                    )}
+                    {setupTab === 'email_templates' && (
+                        <MessagingHub
+                            userRole={userRole}
+                            leads={leads}
+                            checkouts={checkouts}
+                            initialSubTab="templates"
+                        />
+                    )}
+
                     {setupTab === 'coupons' && <CouponManager coupons={coupons} allCheckouts={checkouts} onSave={onSaveCoupon} onDelete={onDeleteCoupon} onToggleActive={onToggleCouponActive} />}
-                    {setupTab === 'certificates' && <CertificateGenerator allCheckouts={checkouts} leads={leads} uploadService={uploadService} isUploading={isUploading} defaultSignature={selectedSignature} />}
-                    {setupTab === 'send_certificates' && <CertificateSender leads={leads} checkouts={checkouts} />}
-                    {setupTab === 'custom_email' && <CustomEmailSender userRole={userRole} />}
-                    {setupTab === 'automacao' && <AutomationDashboard userRole={userRole} />}
                     {setupTab === 'global_settings' && <GlobalSettings />}
                     {setupTab === 'integrations' && <IntegrationsStatus dbStatus={dbStatus} onRetry={onRetryDb} />}
-                    {setupTab === 'materials' && <SupportMaterials checkouts={checkouts} />}
                     {setupTab === 'overview' && <OverviewDashboard leads={leads} checkouts={checkouts} />}
                     {setupTab === 'checkin' && <CheckInDashboard leads={leads} checkouts={checkouts} onCheckIn={onCheckIn} />}
-                    {setupTab === 'solicitacoes' && <SolicitacoesDashboard checkouts={checkouts} />}
                     {setupTab === 'financeiro' && (
                         <div className="animate-in fade-in duration-500">
                             <FinancialDashboard leads={leads} checkouts={checkouts} />
@@ -369,8 +497,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     )}
                     {setupTab === 'views' && <CheckoutViews checkouts={checkouts} />}
                     {setupTab === 'remarketing' && <RemarketingDashboard checkouts={checkouts} />}
-                    {setupTab === 'email_marketing' && <EmailMarketingDashboard leads={leads} checkouts={checkouts} />}
-                    {setupTab === 'email_templates' && <EmailTemplatesDashboard />}
                 </div>
             </main>
         </div>

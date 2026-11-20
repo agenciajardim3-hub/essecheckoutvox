@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vox_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vox_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vox_secure_password_contabo}
+      POSTGRES_DB: ${POSTGRES_DB:-vox_control}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./supabase/full_schema.sql:/docker-entrypoint-initdb.d/01_full_schema.sql:ro
+      - ./sql/migrations/20261120_notion_webhooks_schema.sql:/docker-entrypoint-initdb.d/02_notion_webhooks.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vox_user} -d ${POSTGRES_DB:-vox_control}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vox-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vox_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 3333
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-vox_user}:${POSTGRES_PASSWORD:-vox_secure_password_contabo}@postgres:5432/${POSTGRES_DB:-vox_control}?sslmode=disable
+      
+      # SMTP Hostinger
+      SMTP_HOST: ${SMTP_HOST:-smtp.hostinger.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: "true"
+      SMTP_USER: ${SMTP_USER:-contato@voxacademy.com.br}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-sua_senha_hostinger}
+      SMTP_FROM_NAME: "Vox Marketing Academy"
+      EMAIL_FROM: ${EMAIL_FROM:-contato@voxacademy.com.br}
+      
+      # SEGURANÇA HOMOLOGAÇÃO: Redireciona 100% dos e-mails em testes
+      EMAIL_TEST_REDIRECT: ${EMAIL_TEST_REDIRECT:-}
+
+      # Gateways & Rastreamento
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:-}
+      MP_WEBHOOK_SECRET: ${MP_WEBHOOK_SECRET:-}
+      META_PIXEL_ID: ${META_PIXEL_ID:-}
+      META_CAPI_TOKEN: ${META_CAPI_TOKEN:-}
+
+      # Integrações Agentes & n8n
+      AGENT_API_KEY: ${AGENT_API_KEY:-vox_agent_key_master_contabo}
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
+    ports:
+      - "3333:3333"
+    volumes:
+      - uploads_data:/app/uploads
+    networks:
+      - vox-network
+
+  postgrest:
+    image: postgrest/postgrest:v12.0.2
+    container_name: vox_postgrest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgresql://${POSTGRES_USER:-vox_user}:${POSTGRES_PASSWORD:-vox_secure_password_contabo}@postgres:5432/${POSTGRES_DB:-vox_control}
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: ${POSTGRES_USER:-vox_user}
+      PGRST_SERVER_PORT: 3000
+    ports:
+      - "3000:3000"
+    networks:
+      - vox-network
+
+volumes:
+  postgres_data:
+    driver: local
+  uploads_data:
+    driver: local
+
+networks:
+  vox-network:
+    driver: bridge

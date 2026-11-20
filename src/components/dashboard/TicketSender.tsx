@@ -11,6 +11,7 @@ interface TicketSenderProps {
 }
 
 const SEND_EMAIL_ENDPOINT = 'https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/send-ticket-email';
+const API_URL = import.meta.env.VITE_API_URL || '';
 const SUPABASE_ANON_KEY =
   import.meta.env.VITE_SUPABASE_ANON_KEY ||
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
@@ -23,7 +24,7 @@ export const TicketSender: React.FC<TicketSenderProps> = ({ leads, checkouts, up
   const [selectedTurma, setSelectedTurma] = useState('');
   const [messageText, setMessageText] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  const [sendMethod, setSendMethod] = useState<'whatsapp' | 'email'>('whatsapp');
+  const [sendMethod, setSendMethod] = useState<'whatsapp' | 'email' | 'both'>('both');
   const [isSending, setIsSending] = useState(false);
   const [sentCount, setSentCount] = useState(0);
   const [failedCount, setFailedCount] = useState(0);
@@ -51,7 +52,7 @@ export const TicketSender: React.FC<TicketSenderProps> = ({ leads, checkouts, up
     );
   }, [checkouts, selectedTurma]);
 
-  const getLeadsForTurma = (turma: string, method: 'whatsapp' | 'email' = sendMethod) => {
+  const getLeadsForTurma = (turma: string, method: 'whatsapp' | 'email' | 'both' = sendMethod) => {
     const checkoutIds = new Set(
       checkouts
         .filter((checkout) => checkout.turma === turma || checkout.productName === turma)
@@ -60,7 +61,11 @@ export const TicketSender: React.FC<TicketSenderProps> = ({ leads, checkouts, up
 
     return leads.filter((lead) => {
       const belongsToTurma = lead.turma === turma || checkoutIds.has(lead.product_id || '');
-      const hasContact = method === 'email' ? Boolean(lead.email) : Boolean(lead.phone);
+      const hasContact = method === 'email'
+        ? Boolean(lead.email)
+        : method === 'whatsapp'
+        ? Boolean(lead.phone)
+        : Boolean(lead.email || lead.phone);
       return belongsToTurma && isPaid(lead) && hasContact;
     });
   };
@@ -69,7 +74,11 @@ export const TicketSender: React.FC<TicketSenderProps> = ({ leads, checkouts, up
     if (!selectedTurma) return [];
     return leads.filter((lead) => {
       const belongsToTurma = lead.turma === selectedTurma || checkoutIdsForSelectedTurma.has(lead.product_id || '');
-      const hasContact = sendMethod === 'email' ? Boolean(lead.email) : Boolean(lead.phone);
+      const hasContact = sendMethod === 'email'
+        ? Boolean(lead.email)
+        : sendMethod === 'whatsapp'
+        ? Boolean(lead.phone)
+        : Boolean(lead.email || lead.phone);
       return belongsToTurma && isPaid(lead) && hasContact;
     });
   }, [leads, selectedTurma, checkoutIdsForSelectedTurma, sendMethod]);
@@ -136,7 +145,7 @@ export const TicketSender: React.FC<TicketSenderProps> = ({ leads, checkouts, up
     if (turmaLeads.length === 0) return alert('Nenhum aluno pago com contato nesta turma');
     if (!messageText.trim()) return alert('Escreva uma mensagem para enviar');
 
-    const confirmSend = confirm(`Enviar ingressos para ${turmaLeads.length} aluno(s) via ${sendMethod === 'whatsapp' ? 'WhatsApp' : 'Email'}?`);
+    const confirmSend = confirm(`Enviar ingressos para ${turmaLeads.length} aluno(s) via ${sendMethod === 'both' ? 'WhatsApp + Email' : sendMethod === 'whatsapp' ? 'WhatsApp' : 'Email'}?`);
     if (!confirmSend) return;
 
     setIsSending(true);
@@ -153,19 +162,54 @@ export const TicketSender: React.FC<TicketSenderProps> = ({ leads, checkouts, up
         setStatusMessage(`Enviando para ${lead.name}...`);
         const ticketUrl = `${window.location.origin}/?mode=ticket&checkout=${encodeURIComponent(lead.product_id || '')}&cpf=${encodeURIComponent(lead.cpf || '')}`;
 
-        if (sendMethod === 'whatsapp') {
-          const phoneNumber = lead.phone?.replace(/\D/g, '');
-          if (!phoneNumber) throw new Error('Sem telefone');
-          let whatsappMessage = `${messageText}\n\n🎫 Seu Ingresso: ${ticketUrl}`;
-          if (imageUrl) whatsappMessage += `\n📸 Imagem: ${imageUrl}`;
-          window.open(`https://wa.me/55${phoneNumber}?text=${encodeURIComponent(whatsappMessage)}`, '_blank');
+        // Se o novo backend Fastify estiver conectado, usamos a rota oficial que suporta email e fila de webhook n8n/UAZAPI
+        if (API_URL) {
+          const res = await fetch(`${API_URL}/api/v1/tickets/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              leadId: lead.id,
+              channel: sendMethod,
+              to: lead.email,
+              name: lead.name,
+              phone: lead.phone,
+              ticketUrl,
+              productName: lead.product_name || selectedTurma,
+              turma: selectedTurma,
+              customMessage: messageText,
+              imageUrl
+            })
+          });
+
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData?.error || 'Falha no envio pelo backend');
+          }
         } else {
-          await sendTicketEmail(lead, ticketUrl);
+          // Fallback Supabase antigo
+          if (sendMethod === 'whatsapp') {
+            const phoneNumber = lead.phone?.replace(/\D/g, '');
+            if (!phoneNumber) throw new Error('Sem telefone');
+            let whatsappMessage = `${messageText}\n\n🎫 Seu Ingresso: ${ticketUrl}`;
+            if (imageUrl) whatsappMessage += `\n📸 Imagem: ${imageUrl}`;
+            window.open(`https://wa.me/55${phoneNumber}?text=${encodeURIComponent(whatsappMessage)}`, '_blank');
+          } else if (sendMethod === 'email') {
+            await sendTicketEmail(lead, ticketUrl);
+          } else {
+            // Both no fallback
+            await sendTicketEmail(lead, ticketUrl);
+            const phoneNumber = lead.phone?.replace(/\D/g, '');
+            if (phoneNumber) {
+              let whatsappMessage = `${messageText}\n\n🎫 Seu Ingresso: ${ticketUrl}`;
+              if (imageUrl) whatsappMessage += `\n📸 Imagem: ${imageUrl}`;
+              window.open(`https://wa.me/55${phoneNumber}?text=${encodeURIComponent(whatsappMessage)}`, '_blank');
+            }
+          }
         }
 
         successful += 1;
         setSentCount(successful);
-        await new Promise((resolve) => setTimeout(resolve, sendMethod === 'email' ? 350 : 200));
+        await new Promise((resolve) => setTimeout(resolve, 300));
       } catch (error) {
         console.error(`Erro ao enviar para ${lead.name}:`, error);
         failed += 1;
@@ -202,16 +246,46 @@ export const TicketSender: React.FC<TicketSenderProps> = ({ leads, checkouts, up
           </div>
 
           <div>
-            <label className="block text-sm font-black uppercase text-gray-700 tracking-widest mb-3">Método de Envio *</label>
-            <div className="flex gap-4">
-              <button onClick={() => setSendMethod('whatsapp')} disabled={isSending} className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 border-2 ${sendMethod === 'whatsapp' ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white text-emerald-600 border-emerald-200 hover:border-emerald-400'} disabled:opacity-50`}><MessageCircle size={16} /> WhatsApp</button>
-              <button onClick={() => setSendMethod('email')} disabled={isSending} className={`flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 border-2 ${sendMethod === 'email' ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-blue-600 border-blue-200 hover:border-blue-400'} disabled:opacity-50`}><Mail size={16} /> Email</button>
+            <label className="block text-sm font-black uppercase text-gray-700 tracking-widest mb-3">Canal de Envio *</label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button
+                type="button"
+                onClick={() => setSendMethod('both')}
+                disabled={isSending}
+                className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 border-2 ${
+                  sendMethod === 'both' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20' : 'bg-white text-indigo-700 border-indigo-200 hover:border-indigo-400'
+                } disabled:opacity-50`}
+              >
+                <Send size={15} /> Ambos (Zap + Email)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSendMethod('whatsapp')}
+                disabled={isSending}
+                className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 border-2 ${
+                  sendMethod === 'whatsapp' ? 'bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/20' : 'bg-white text-emerald-600 border-emerald-200 hover:border-emerald-400'
+                } disabled:opacity-50`}
+              >
+                <MessageCircle size={15} /> WhatsApp (n8n)
+              </button>
+              <button
+                type="button"
+                onClick={() => setSendMethod('email')}
+                disabled={isSending}
+                className={`py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 border-2 ${
+                  sendMethod === 'email' ? 'bg-blue-500 text-white border-blue-500 shadow-md shadow-blue-500/20' : 'bg-white text-blue-600 border-blue-200 hover:border-blue-400'
+                } disabled:opacity-50`}
+              >
+                <Mail size={15} /> E-mail
+              </button>
             </div>
-            {sendMethod === 'email' && (
-              <div className="mt-3 bg-blue-50 border border-blue-100 text-blue-700 rounded-xl px-4 py-3 text-xs font-bold">
-                O email será enviado direto pelo sistema, sem abrir mailto ou programa de email.
-              </div>
-            )}
+            <div className="mt-3 bg-gray-50 border border-gray-200 text-gray-600 rounded-xl px-4 py-3 text-xs font-bold">
+              {sendMethod === 'both'
+                ? '🚀 O ingresso será disparado via WhatsApp (n8n/UAZAPI) e por E-mail (Hostinger SMTP com redirect de teste se ativo).'
+                : sendMethod === 'whatsapp'
+                ? '💬 Enfileira webhook para o n8n disparar mensagem com link e QR Code direto no WhatsApp do aluno.'
+                : '📧 Envia e-mail formatado diretamente pelo servidor Fastify/Hostinger.'}
+            </div>
           </div>
 
           <div>

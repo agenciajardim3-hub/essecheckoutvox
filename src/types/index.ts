@@ -44,13 +44,32 @@ export interface Lead extends CustomerData {
   fb_event_id?: string;
   fbp?: string;
   fbc?: string;
+  gclid?: string;
+  ttclid?: string;
+  external_ids?: Record<string, any>;
 }
+
+export type ExpenseCategory =
+  | 'Tráfego Pago'
+  | 'Sala / Local'
+  | 'Hotel / Hospedagem'
+  | 'Gasolina / Deslocamento'
+  | 'Infraestrutura'
+  | 'Alimentação'
+  | 'Equipe'
+  | 'Taxas / Outros'
+  | 'material'
+  | 'equipamento'
+  | 'marketing'
+  | 'infraestrutura'
+  | 'servico'
+  | 'outro';
 
 export interface Expense {
   id?: string;
   description: string;
   amount: number;
-  category: 'material' | 'equipamento' | 'marketing' | 'infraestrutura' | 'servico' | 'outro';
+  category: ExpenseCategory | string;
   date: string;
   created_at?: string;
   checkout_id?: string;
@@ -145,6 +164,9 @@ export interface AppConfig {  id: string;
   viewerCount?: number; // Mantido para compatibilidade com checkouts antigos.
   faqItems?: CheckoutFaqItem[];
   testimonials?: CheckoutTestimonial[];
+  // Central Notion & CRM IDs
+  notion_page_id?: string | null;
+  external_ids?: Record<string, any>;
 }
 
 export interface MultiTicketPurchase {
@@ -166,4 +188,54 @@ export interface Coupon {
   isActive: boolean;
   createdAt?: string;
   expiresAt?: string;
+}
+
+export interface BreakEvenMetrics {
+  totalRevenue: number;
+  netRevenue: number;
+  totalExpenses: number;
+  netProfit: number;
+  profitMarginPercent: number;
+  confirmedStudentsCount: number;
+  averageNetTicket: number;
+  studentsNeededToBreakEven: number;
+  remainingStudentsToBreakEven: number;
+  breakEvenStatus: 'lucro' | 'equilibrio' | 'prejuizo';
+  breakEvenProgressPercent: number;
+}
+
+export type WebhookEventType =
+  | 'checkout.started'
+  | 'pix.generated'
+  | 'payment.approved'
+  | 'payment.refunded'
+  | 'lead.created'
+  | 'checkin.completed'
+  | 'ticket.generated'
+  | 'cohort.created'
+  | 'cohort.updated';
+
+export interface WebhookEventPayload {
+  event: WebhookEventType;
+  timestamp: string;
+  turma_id?: string;
+  turma_name?: string;
+  notion_page_id?: string | null;
+  gross_amount?: number;
+  net_amount?: number;
+  fee_amount?: number;
+  currency: 'BRL';
+  lead?: Partial<Lead>;
+  tracking: {
+    utm_source?: string;
+    utm_medium?: string;
+    utm_campaign?: string;
+    fbp?: string;
+    fbc?: string;
+    gclid?: string;
+    ttclid?: string;
+    event_id?: string;
+  };
+  external_ids?: Record<string, any>;
+  skip_webhook?: boolean;
 }

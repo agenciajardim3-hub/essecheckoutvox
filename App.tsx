@@ -18,6 +18,7 @@ import {
   trackMetaPageView,
 } from './src/utils/metaPixel';
 import { sendMetaCapiEvent } from './src/utils/metaCapi';
+import { uploadFileToStorage } from './src/utils/apiStorage';
 import { savePendingPurchase } from './src/utils/pendingPurchase';
 import {
   loadGlobalTrackingSettings,
@@ -167,24 +168,22 @@ export default function App() {
       if (checkoutError) throw checkoutError;
       const checkoutsData = checkoutData || [];
 
-      // OPTIMIZATION: Only fetch leads/coupons for dashboard (not client checkout pages)
-      // EXCEPT: Always fetch for ticket/certificate modes which need lead data
+      // Leads: apenas para dashboard ou modos ticket/certificate que precisam de dados de lead
       let leadsData: any = null;
       let couponsData: any = null;
 
       if (!checkoutParam || userRole !== 'none' || isTicketMode || isCertificateMode) {
-        // Dashboard mode or ticket/certificate mode - fetch all leads and coupons
         const leadsResult = await supabase.from('leads').select('*').order('created_at', { ascending: false });
         leadsData = leadsResult.data;
         if (leadsResult.error && leadsResult.error.code !== 'PGRST116') throw leadsResult.error;
+      }
 
-        // Coupons - ignore errors (table might not exist)
-        try {
-          const couponsResult = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
-          couponsData = couponsResult.data;
-        } catch (couponErr) {
-          console.warn('Coupons table not found or error:', couponErr);
-        }
+      // Cupons: sempre carregar para que o checkout do cliente valide cupons e auto-aplique via URL
+      try {
+        const couponsResult = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
+        couponsData = couponsResult.data;
+      } catch (couponErr) {
+        console.warn('Coupons table not found or error:', couponErr);
       }
 
       const mappedCheckouts: AppConfig[] = (checkoutsData).map(c => ({
@@ -609,31 +608,32 @@ export default function App() {
 
 
 
-  // Better approach: Generic upload function passed to components
+  // Upload de arquivos: prioriza novo Backend Fastify e mantém fallback no Supabase
   const uploadFile = async (file: File): Promise<string | null> => {
-    if (!supabase) return null;
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${crypto.randomUUID()}.${fileExt}`;
-      const filePath = `uploads/${fileName}`;
+    return uploadFileToStorage(file, 'images', async (f) => {
+      if (!supabase) return null;
+      try {
+        const fileExt = f.name.split('.').pop();
+        const fileName = `${crypto.randomUUID()}.${fileExt}`;
+        const filePath = `uploads/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('images')
-        .upload(filePath, file, { cacheControl: '3600', upsert: false });
+        const { error: uploadError } = await supabase.storage
+          .from('images')
+          .upload(filePath, f, { cacheControl: '3600', upsert: false });
 
-      if (uploadError) throw uploadError;
+        if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('images')
-        .getPublicUrl(filePath);
+        const { data: { publicUrl } } = supabase.storage
+          .from('images')
+          .getPublicUrl(filePath);
 
-      return publicUrl;
-    } catch (err: any) {
-      console.error('Erro de Upload:', err);
-      alert('Erro no upload:\n' + getErrorMessage(err));
-      return null;
-    }
-  }
+        return publicUrl;
+      } catch (err: any) {
+        console.error('Erro de Upload no fallback Supabase:', err);
+        return null;
+      }
+    });
+  };
 
   // We will wrap this for the dashboard
 
@@ -1413,21 +1413,23 @@ export default function App() {
     }
   };
 
-  const handleValidateCoupon = async (code: string): Promise<{ success: boolean; coupon?: Coupon; error?: string }> => {
+  const handleValidateCoupon = useCallback(async (code: string): Promise<{ success: boolean; coupon?: Coupon; error?: string }> => {
     // If empty code, remove coupon
-    if (!code) {
+    if (!code || !code.trim()) {
       setAppliedCoupon(null);
       return { success: true };
     }
 
-    // Find coupon in database
-    const coupon = coupons.find(c => c.code === code.toUpperCase());
+    const cleanCode = code.trim().toUpperCase();
+
+    // Find coupon in database (case-insensitive & trimmed)
+    const coupon = coupons.find(c => (c.code || '').trim().toUpperCase() === cleanCode);
 
     if (!coupon) {
       return { success: false, error: 'Cupom não encontrado' };
     }
 
-    if (!coupon.isActive) {
+    if (coupon.isActive === false) {
       return { success: false, error: 'Cupom inativo' };
     }
 
@@ -1435,7 +1437,7 @@ export default function App() {
       return { success: false, error: 'Cupom expirado' };
     }
 
-    if (coupon.maxUses && coupon.currentUses >= coupon.maxUses) {
+    if (coupon.maxUses && (coupon.currentUses || 0) >= coupon.maxUses) {
       return { success: false, error: 'Cupom esgotado' };
     }
 
@@ -1445,7 +1447,17 @@ export default function App() {
 
     setAppliedCoupon(coupon);
     return { success: true, coupon };
-  };
+  }, [coupons, config.id]);
+
+  // Auto-aplicação de cupom via URL (?cupom=CODIGO ou ?coupon=CODIGO)
+  useEffect(() => {
+    if (coupons.length === 0 || appliedCoupon) return;
+    const searchParams = new URLSearchParams(window.location.search);
+    const paramCoupon = (searchParams.get('cupom') || searchParams.get('coupon') || '').trim();
+    if (paramCoupon) {
+      void handleValidateCoupon(paramCoupon);
+    }
+  }, [coupons, appliedCoupon, handleValidateCoupon]);
 
   // Logic to inject the upload wrapper into dashboard
   const handleDashUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: any) => {
