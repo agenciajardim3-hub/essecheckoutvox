@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { db } from '../db/client';
 import { env } from '../config/env';
 import { webhookDispatcher } from '../services/webhookDispatcher';
+import { sendMetaCapiServerEvent } from './tracking';
 
 export async function paymentsRoutes(fastify: FastifyInstance) {
     /**
@@ -144,7 +145,39 @@ export async function paymentsRoutes(fastify: FastifyInstance) {
                         const ticketUrl = `${baseUrl}/?mode=ticket&checkout=${encodeURIComponent(checkout?.id || updatedLead.product_id || '')}&cpf=${encodeURIComponent(updatedLead.cpf || '')}`;
                         const qrCodeData = updatedLead.id;
 
-                        // Enfileira evento de webhook outbound padronizado para o n8n (com dados para UAZAPI/WhatsApp)
+                        // 1. Envio Server-Side para Meta Conversions API (CAPI) com deduplicação via fb_event_id
+                        if (status === 'approved') {
+                            const [firstName, ...lastNameParts] = String(updatedLead.name || '').trim().split(/\s+/);
+                            sendMetaCapiServerEvent({
+                                pixelId: checkout?.meta_pixel_id || env.META_PIXEL_ID,
+                                eventName: 'Purchase',
+                                eventId: updatedLead.fb_event_id || `lead_${updatedLead.id}`,
+                                eventTime: Math.floor(Date.now() / 1000),
+                                eventSourceUrl: `${baseUrl}/?checkout=${encodeURIComponent(checkout?.id || updatedLead.product_id || '')}`,
+                                actionSource: 'website',
+                                useRequestClient: false,
+                                userData: {
+                                    email: updatedLead.email,
+                                    phone: updatedLead.phone,
+                                    firstName,
+                                    lastName: lastNameParts.join(' '),
+                                    city: updatedLead.city,
+                                    cpf: updatedLead.cpf,
+                                    fbp: updatedLead.fbp,
+                                    fbc: updatedLead.fbc,
+                                },
+                                customData: {
+                                    value: transactionAmount,
+                                    currency: payment.currency_id || 'BRL',
+                                    content_type: 'product',
+                                    content_ids: [checkout?.id || updatedLead.product_id].filter(Boolean),
+                                    content_name: checkout?.productName || updatedLead.product_name || '',
+                                    order_id: String(paymentId),
+                                }
+                            }).catch(err => console.warn('[PaymentsWebhook] Meta CAPI falhou ao enviar Purchase:', err));
+                        }
+
+                        // 2. Enfileira evento de webhook outbound padronizado para o n8n (com dados para UAZAPI/WhatsApp)
                         const eventType = status === 'approved' ? 'payment.approved' : 'payment.refunded';
                         await webhookDispatcher.enqueue({
                             eventType,

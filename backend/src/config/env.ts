@@ -26,6 +26,8 @@ export const env = {
     // Meta Conversions API
     META_PIXEL_ID: process.env.META_PIXEL_ID || '',
     META_CAPI_TOKEN: process.env.META_CAPI_TOKEN || '',
+    META_TEST_EVENT_CODE: process.env.META_TEST_EVENT_CODE || '',
+    META_API_VERSION: process.env.META_API_VERSION || 'v21.0',
 
     // Autenticação de Agentes (OpenClaw, Hermes, n8n)
     AGENT_API_KEY: process.env.AGENT_API_KEY || 'vox_agent_secret_key_change_in_production',
