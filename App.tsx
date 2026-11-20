@@ -190,7 +190,7 @@ export default function App() {
         id: c.id,
         mercadoPagoLink: c.mercado_pago_link,
         productName: c.product_name,
-        productPrice: c.product_price,
+        productPrice: c.product_price != null ? String(c.product_price) : '',
         productImage: c.product_image,
         bannerImage: c.banner_image,
         topBannerImage: c.top_banner_image || '',
@@ -543,7 +543,7 @@ export default function App() {
         checkout_id: config.id,
         checkout_slug: config.slug || '',
         product_name: config.productName,
-        value: parseFloat(config.productPrice?.replace(',', '.') || '0'),
+        value: parseFloat(String(config.productPrice || '0').replace(',', '.')),
         currency: 'BRL'
       });
     }
@@ -751,7 +751,7 @@ export default function App() {
   const createMercadoPagoPreference = async (purchase: MultiTicketPurchase, leadIds: string[]) => {
     if (!supabase) return null;
 
-    const price = parseFloat(config.productPrice.replace(',', '.'));
+    const price = parseFloat(String(config.productPrice || '0').replace(',', '.'));
     let totalAmount = price * purchase.quantity;
 
     // Apply discount
@@ -937,7 +937,7 @@ export default function App() {
         coupon_code: appliedCoupon?.code || null,
         discount_applied: appliedCoupon ? (
           appliedCoupon.discountType === 'percentage'
-            ? (parseFloat(config.productPrice.replace(',', '.')) * purchase.quantity * appliedCoupon.discountValue / 100)
+            ? (parseFloat(String(config.productPrice || '0').replace(',', '.')) * purchase.quantity * appliedCoupon.discountValue / 100)
             : appliedCoupon.discountValue
         ) : 0,
         // Rastreamento Meta: o webhook usa estes campos para enviar o Purchase pela CAPI
@@ -1166,7 +1166,7 @@ export default function App() {
                 externalId: targetLead.cpf,
               },
               customData: {
-                value: targetLead.paid_amount || parseFloat(product?.productPrice?.replace(',', '.') || '0'),
+                value: targetLead.paid_amount || parseFloat(String(product?.productPrice || '0').replace(',', '.')),
                 currency: 'BRL',
                 content_type: 'product',
                 content_ids: [product?.id].filter(Boolean),

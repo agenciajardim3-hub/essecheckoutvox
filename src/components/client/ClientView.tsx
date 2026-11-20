@@ -148,7 +148,7 @@ export const ClientView: React.FC<ClientViewProps> = ({
             checkout_id: effectiveConfig.id,
             checkout_slug: effectiveConfig.slug || '',
             product_name: effectiveConfig.productName,
-            value: parseFloat(effectiveConfig.productPrice?.replace(',', '.') || '0'),
+            value: parseFloat(String(effectiveConfig.productPrice || '0').replace(',', '.')),
             currency: 'BRL'
         });
 
@@ -166,7 +166,7 @@ export const ClientView: React.FC<ClientViewProps> = ({
             content_type: 'product',
             content_ids: [effectiveConfig.id],
             content_name: effectiveConfig.productName,
-            value: parseFloat(effectiveConfig.productPrice?.replace(',', '.') || '0'),
+            value: parseFloat(String(effectiveConfig.productPrice || '0').replace(',', '.')),
             currency: 'BRL',
         });
     }, [effectiveConfig.id, effectiveConfig.productName, effectiveConfig.productPrice]);

@@ -116,7 +116,7 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
 
     const ticketAmount = config.ticketAmount || 1;
     const totalParticipants = quantity * ticketAmount;
-    const price = parseFloat((config.productPrice || '0').replace(',', '.')) || 0;
+    const price = parseFloat(String(config.productPrice || '0').replace(',', '.')) || 0;
     let displayPrice = price * quantity;
     if (appliedCoupon) {
         if (appliedCoupon.discountType === 'percentage') {
