@@ -163,10 +163,27 @@ export default function App() {
     if (!supabase) return;
 
     try {
-      // Always fetch all checkouts to ensure we have the right one
-      const { data: checkoutData, error: checkoutError } = await supabase.from('checkouts').select('*');
-      if (checkoutError) throw checkoutError;
-      const checkoutsData = checkoutData || [];
+      // Otimização de Performance: Se for visitante acessando um checkout específico, busca direto por ele
+      let checkoutsData: any[] = [];
+      if (checkoutParam && userRole === 'none' && !isTicketMode && !isCertificateMode) {
+        const { data: directData } = await supabase
+          .from('checkouts')
+          .select('*')
+          .or(`slug.eq.${checkoutParam},id.eq.${checkoutParam}`)
+          .limit(1);
+
+        if (directData && directData.length > 0) {
+          checkoutsData = directData;
+        } else {
+          const { data: allData, error: allErr } = await supabase.from('checkouts').select('*');
+          if (allErr) throw allErr;
+          checkoutsData = allData || [];
+        }
+      } else {
+        const { data: checkoutData, error: checkoutError } = await supabase.from('checkouts').select('*');
+        if (checkoutError) throw checkoutError;
+        checkoutsData = checkoutData || [];
+      }
 
       // Leads: apenas para dashboard ou modos ticket/certificate que precisam de dados de lead
       let leadsData: any = null;

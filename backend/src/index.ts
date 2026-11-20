@@ -39,6 +39,15 @@ async function main() {
             root: clientDist,
             prefix: '/',
             decorateReply: true,
+            setHeaders: (res, pathName) => {
+                if (pathName.includes('/assets/')) {
+                    // Cache imutável de 1 ano para bundles com hash do Vite
+                    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+                } else if (pathName.endsWith('.html') || pathName === '/' || pathName === '') {
+                    // HTML sempre fresco para refletir deploys imediatamente
+                    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+                }
+            },
         });
 
         await fastify.register(fastifyStatic, {
