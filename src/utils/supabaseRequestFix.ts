@@ -1,16 +1,22 @@
-const FALLBACK_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtZHNndnVxcmhwamRncmdhc2xvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NjcyMTIsImV4cCI6MjA4MzU0MzIxMn0.Emfi9OyHn9SrrY4AugAVGzLSm2YkBzAKwsZ1XGQ5DD0';
+const FALLBACK_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzk0ODQyODkyLCJleHAiOjE5NTI1MjI4OTJ9.MXOgUwS-KEmxoNKUH1Hwdp2XOdEL2L6GGkLaiArmDsw';
 
-const getSupabaseKey = () =>
-  localStorage.getItem('supabase_key') ||
-  import.meta.env.VITE_SUPABASE_ANON_KEY ||
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  import.meta.env.VITE_SUPABASE_KEY ||
-  FALLBACK_SUPABASE_KEY;
+const getSupabaseKey = () => {
+  const stored = localStorage.getItem('supabase_key');
+  if (stored && (stored.includes('Landing Page') || stored.includes('Emfi9OyHn9SrrY4AugAVGzLSm2YkBzAKwsZ1XGQ5DD0'))) {
+    localStorage.setItem('supabase_key', FALLBACK_SUPABASE_KEY);
+    return FALLBACK_SUPABASE_KEY;
+  }
+  return stored ||
+    import.meta.env.VITE_SUPABASE_ANON_KEY ||
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    import.meta.env.VITE_SUPABASE_KEY ||
+    FALLBACK_SUPABASE_KEY;
+};
 
 const getApiUrl = () =>
   import.meta.env.VITE_API_URL ||
   localStorage.getItem('vox_api_url') ||
-  '';
+  (typeof window !== 'undefined' && window.location.hostname.includes('voxmarketingacademy.com') ? window.location.origin : '');
 
 const patchFlag = '__voxSupabaseRequestFixInstalled';
 const globalWindow = window as unknown as Window & Record<string, unknown>;

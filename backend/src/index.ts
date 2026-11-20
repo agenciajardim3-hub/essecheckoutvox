@@ -31,10 +31,35 @@ async function main() {
     const uploadsDir = path.resolve(process.cwd(), 'uploads');
     if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
-    await fastify.register(fastifyStatic, {
-        root: uploadsDir,
-        prefix: '/uploads/',
-    });
+    const clientDist = path.resolve(process.cwd(), 'client_dist');
+    const hasClientDist = fs.existsSync(clientDist);
+
+    if (hasClientDist) {
+        await fastify.register(fastifyStatic, {
+            root: clientDist,
+            prefix: '/',
+            decorateReply: true,
+        });
+
+        await fastify.register(fastifyStatic, {
+            root: uploadsDir,
+            prefix: '/uploads/',
+            decorateReply: false,
+        });
+
+        fastify.setNotFoundHandler((req, reply) => {
+            if (req.raw.url && req.raw.url.startsWith('/api/')) {
+                reply.code(404).send({ error: 'Endpoint não encontrado', url: req.raw.url });
+            } else {
+                reply.sendFile('index.html');
+            }
+        });
+    } else {
+        await fastify.register(fastifyStatic, {
+            root: uploadsDir,
+            prefix: '/uploads/',
+        });
+    }
 
     // Health Check
     fastify.get('/health', async () => ({

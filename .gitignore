@@ -29,6 +29,8 @@ dist-ssr
 
 # Supabase CLI
 supabase/.temp/
+backup_dumps/
+deploy_contabo/
 
 # Atalhos locais
 ABRIR_CHECKOUT_LOCAL.bat
