@@ -8,13 +8,65 @@ export async function paymentsRoutes(fastify: FastifyInstance) {
     /**
      * POST /api/v1/payments/preference
      * Cria preferência de pagamento no Mercado Pago
+     * Suporta tanto o payload padrão do SDK Mercado Pago (com array `items`) quanto campos planos (`title`, `unit_price`)
      */
     fastify.post('/preference', async (request: FastifyRequest, reply: FastifyReply) => {
         const body: any = request.body || {};
-        const { title, unit_price, quantity = 1, payer, external_reference, metadata = {} } = body;
 
-        if (!title || !unit_price) {
-            return reply.status(400).send({ success: false, error: 'title e unit_price são obrigatórios' });
+        // 1. Suporte flexível a items (array oficial MP ou campos planos)
+        const items = body.items?.length
+            ? body.items.map((it: any) => ({
+                title: it.title || body.title || 'Inscrição',
+                unit_price: Number(it.unit_price || it.unitPrice || body.unit_price || 0),
+                quantity: Number(it.quantity || body.quantity || 1),
+                currency_id: it.currency_id || 'BRL',
+            }))
+            : [
+                {
+                    title: body.title || 'Inscrição',
+                    unit_price: Number(body.unit_price || 0),
+                    quantity: Number(body.quantity || 1),
+                    currency_id: 'BRL',
+                }
+            ];
+
+        if (!items[0].unit_price || items[0].unit_price <= 0) {
+            return reply.status(400).send({ success: false, error: 'Valor do item inválido ou ausente' });
+        }
+
+        const payer = body.payer || {
+            name: body.payer_name || '',
+            email: body.payer_email || '',
+        };
+
+        const external_reference = body.external_reference || body.externalReference || body.lead_id;
+        const metadata = body.metadata || {};
+
+        const back_urls = body.back_urls || {
+            success: body.success_url || `${env.FRONTEND_URL}/?success=true`,
+            failure: body.failure_url || `${env.FRONTEND_URL}/?success=false`,
+            pending: body.pending_url || `${env.FRONTEND_URL}/?success=pending`,
+        };
+
+        const auto_return = body.auto_return || 'approved';
+
+        const baseUrl = env.FRONTEND_URL || 'https://checkout.voxcontrol.com';
+        const notification_url = (body.notification_url && !body.notification_url.includes('supabase.co'))
+            ? body.notification_url
+            : `${baseUrl}/api/v1/payments/webhook`;
+
+        const preferencePayload: any = {
+            items,
+            payer,
+            external_reference,
+            metadata,
+            back_urls,
+            auto_return,
+            notification_url,
+        };
+
+        if (body.statement_descriptor) {
+            preferencePayload.statement_descriptor = body.statement_descriptor;
         }
 
         try {
@@ -25,32 +77,12 @@ export async function paymentsRoutes(fastify: FastifyInstance) {
                     'Authorization': `Bearer ${env.MP_ACCESS_TOKEN}`,
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    items: [
-                        {
-                            title,
-                            unit_price: Number(unit_price),
-                            quantity: Number(quantity),
-                            currency_id: 'BRL',
-                        },
-                    ],
-                    payer: {
-                        name: payer?.name || '',
-                        email: payer?.email || '',
-                    },
-                    external_reference,
-                    metadata,
-                    back_urls: {
-                        success: body.success_url || '',
-                        failure: body.failure_url || '',
-                        pending: body.pending_url || '',
-                    },
-                    auto_return: 'approved',
-                }),
+                body: JSON.stringify(preferencePayload),
             });
 
             const data: any = await mpRes.json();
             if (!mpRes.ok) {
+                console.error('[PaymentsPreference] Erro da API Mercado Pago:', data);
                 return reply.status(mpRes.status).send({ success: false, error: data });
             }
 
@@ -61,6 +93,7 @@ export async function paymentsRoutes(fastify: FastifyInstance) {
                 sandbox_init_point: data.sandbox_init_point,
             });
         } catch (err: any) {
+            console.error('[PaymentsPreference] Erro interno:', err);
             return reply.status(500).send({ success: false, error: err?.message || 'Erro ao criar preferência MP' });
         }
     });
@@ -95,7 +128,12 @@ export async function paymentsRoutes(fastify: FastifyInstance) {
                 const feeDetails = payment.fee_details || [];
                 const totalFee = feeDetails.reduce((sum: number, fee: any) => sum + (fee.amount || 0), 0);
                 const netAmount = payment.net_received_amount || (transactionAmount - totalFee);
-                const paymentMethod = payment.payment_method_id === 'pix' ? 'Pix' : 'Cartão';
+                let paymentMethod = 'Cartão';
+                if (payment.payment_method_id === 'pix') {
+                    paymentMethod = 'Pix';
+                } else if (payment.payment_type_id === 'ticket' || payment.payment_method_id?.includes('bol')) {
+                    paymentMethod = 'Boleto';
+                }
 
                 if (externalReference && (status === 'approved' || status === 'refunded')) {
                     const newStatus = status === 'approved' ? 'Pago' : 'Devolvido';
@@ -109,6 +147,7 @@ export async function paymentsRoutes(fastify: FastifyInstance) {
                              mp_fee_amount = $4,
                              mp_net_amount = $5,
                              payment_method = $6,
+                             ticket_generated = CASE WHEN $1 = 'Pago' THEN true ELSE ticket_generated END,
                              submitted_at = NOW()
                          WHERE id = $7
                          RETURNING *`,

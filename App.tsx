@@ -763,6 +763,11 @@ export default function App() {
       }
     }
 
+    const apiUrl = (import.meta.env.VITE_API_URL || localStorage.getItem('vox_api_url') || '').replace(/\/+$/, '');
+    const notificationUrl = apiUrl
+      ? `${apiUrl}/api/v1/payments/webhook`
+      : 'https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/mp-webhook';
+
     const preference = {
       items: [{
         title: `${config.productName}${config.turma ? ` - ${config.turma}` : ''} (${purchase.quantity}x)`,
@@ -776,7 +781,7 @@ export default function App() {
         phone: { number: purchase.participants[0].phone.replace(/\D/g, '') }
       },
       external_reference: leadIds[0],
-      notification_url: 'https://emdsgvuqrhpjdgrgaslo.supabase.co/functions/v1/mp-webhook',
+      notification_url: notificationUrl,
       back_urls: {
         success: `${window.location.origin}/?success=true&checkout=${config.slug || config.id}`,
         failure: `${window.location.origin}/?success=false&checkout=${config.slug || config.id}`,
