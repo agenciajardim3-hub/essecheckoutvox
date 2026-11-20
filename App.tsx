@@ -791,23 +791,44 @@ export default function App() {
     };
 
     try {
-      // Chama Edge Function (proxy) ao invés da API do MP diretamente
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://emdsgvuqrhpjdgrgaslo.supabase.co'}/functions/v1/mp-create-preference`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtZHNndnVxcmhwamRncmdhc2xvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NjcyMTIsImV4cCI6MjA4MzU0MzIxMn0.Emfi9OyHn9SrrY4AugAVGzLSm2YkBzAKwsZ1XGQ5DD0'}`
-        },
-        body: JSON.stringify(preference)
-      });
+      // 1. Tenta prioritariamente o backend Fastify no próprio servidor
+      const prefUrl = apiUrl ? `${apiUrl}/api/v1/payments/preference` : '/api/v1/payments/preference';
+      let mpData: any = null;
 
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error('Edge Function error:', errorData);
-        throw new Error('Erro ao criar preferência');
+      try {
+        const response = await fetch(prefUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(preference)
+        });
+        if (response.ok) {
+          mpData = await response.json();
+        } else {
+          console.warn('[MP] Backend local retornou status', response.status);
+        }
+      } catch (backendErr) {
+        console.warn('[MP] Backend preference falhou, tentando fallback:', backendErr);
       }
 
-      const mpData = await response.json();
+      // 2. Fallback para Edge Function caso o backend direto não retorne
+      if (!mpData?.id && !mpData?.init_point) {
+        const efResponse = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://emdsgvuqrhpjdgrgaslo.supabase.co'}/functions/v1/mp-create-preference`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtZHNndnVxcmhwamRncmdhc2xvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc5NjcyMTIsImV4cCI6MjA4MzU0MzIxMn0.Emfi9OyHn9SrrY4AugAVGzLSm2YkBzAKwsZ1XGQ5DD0'}`
+          },
+          body: JSON.stringify(preference)
+        });
+
+        if (!efResponse.ok) {
+          const errorData = await efResponse.text();
+          console.error('Edge Function error:', errorData);
+          throw new Error('Erro ao criar preferência');
+        }
+
+        mpData = await efResponse.json();
+      }
 
       // Save preference_id in leads
       await supabase
